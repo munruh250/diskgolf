@@ -1,7 +1,7 @@
 {
     "name": "DiskGolf",
     "rootNamespace": "DiskGolf",
-    "references": [],
+    "references": ["UnityEngine.UI"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false
