@@ -1,0 +1,12 @@
+{
+  "name": "DiskGolf.Editor",
+  "references": [
+    "DiskGolf",
+    "Cinemachine",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false
+}
