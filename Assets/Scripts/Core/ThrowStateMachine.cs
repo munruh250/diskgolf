@@ -23,7 +23,8 @@ namespace DiskGolf.Core
                 ThrowPhase.Throwing => ThrowPhase.InFlight,
                 ThrowPhase.InFlight => ThrowPhase.Landed,
                 ThrowPhase.Landed => ThrowPhase.Resolve,
-                ThrowPhase.Putting => ThrowPhase.Resolve,
+                // Putting uses the same throw pipeline as drives (manual double Advance -> InFlight).
+                ThrowPhase.Putting => ThrowPhase.Throwing,
                 ThrowPhase.Resolve => ThrowPhase.Aiming,
                 _ => ThrowPhase.Aiming
             });

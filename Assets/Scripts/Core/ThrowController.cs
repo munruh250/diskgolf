@@ -10,6 +10,11 @@ namespace DiskGolf.Core
 {
     public class ThrowController : MonoBehaviour
     {
+        const float PuttMaxDistanceFt = 80f;
+
+        /// <summary>Holed tolerance in feet (converted with HoleSetup distance).</summary>
+        const float HoledToleranceFt = 1f;
+
         [SerializeField] HoleSetup hole;
 
         [SerializeField] DiscBag bag;
@@ -22,12 +27,16 @@ namespace DiskGolf.Core
 
         [SerializeField] HeightMeterUI heightMeter;
 
+        [SerializeField] GameObject inTheCircleBanner;
+
         readonly ThrowStateMachine _state = new ThrowStateMachine();
         WindSettings _wind;
 
         float _confirmedPower;
 
         Vector3 _discPosition;
+
+        bool _pendingPutOutcome;
 
         public ThrowPhase Phase => _state.Phase;
 
@@ -39,16 +48,18 @@ namespace DiskGolf.Core
 
         public DiscProfile ActiveDisc => bag != null ? bag.Active : null;
 
+        public Vector3 CurrentDiscWorld => _discPosition;
+
         void Start()
         {
             _state.PhaseChanged += p => PhaseChanged?.Invoke(p);
-            _state.PhaseChanged += OnPhaseChanged;
+            _state.PhaseChanged += OnPhaseChangedInternal;
             ResetHole();
         }
 
         void OnDestroy()
         {
-            _state.PhaseChanged -= OnPhaseChanged;
+            _state.PhaseChanged -= OnPhaseChangedInternal;
         }
 
         void Update()
@@ -59,13 +70,14 @@ namespace DiskGolf.Core
             if (input.ResetPressed)
             {
                 ResetHole();
+
                 return;
             }
 
             switch (_state.Phase)
             {
                 case ThrowPhase.Aiming:
-                    HandleAiming();
+                    HandleAimingDrive();
 
                     break;
                 case ThrowPhase.PowerMeter:
@@ -81,17 +93,35 @@ namespace DiskGolf.Core
                 case ThrowPhase.HeightMeter:
                     if (input.ConfirmPressed)
                     {
-                        var heightRaw = heightMeter != null ? heightMeter.Confirm() : 0.55f;
+                        float heightRaw =
+                            heightMeter != null ? heightMeter.Confirm() : 0.55f;
+
                         var height = HeightMeterZones.FromValue(heightRaw);
+
                         ExecuteThrow(_confirmedPower, height);
+
+                        heightMeter?.Stop();
                     }
+
+                    break;
+                case ThrowPhase.Putting:
+                    HandlePutting();
+
+                    break;
+                default:
+
+                    // Throwing/InFlight handled by presenter; Resolve is transient elsewhere.
 
                     break;
             }
         }
 
-        void HandleAiming()
+        /// <remarks>Putting has its own power-only confirm path (<see cref="HandlePutting"/>).</remarks>
+        void HandleAimingDrive()
         {
+            if (_state.Phase != ThrowPhase.Aiming)
+                return;
+
             if (input.CycleNext) bag.CycleNext();
 
             if (input.CyclePrev) bag.CyclePrev();
@@ -103,14 +133,27 @@ namespace DiskGolf.Core
             if (input.ConfirmPressed)
             {
                 powerMeter?.Begin();
+
                 _state.Advance();
             }
+        }
+
+        void HandlePutting()
+        {
+            bag.SelectIndex(0);
+
+            if (input.ConfirmPressed && powerMeter != null)
+                ExecutePuttPower(powerMeter.Confirm());
         }
 
         void ExecuteThrow(float power, ThrowHeight height)
         {
             if (presenter == null || hole == null)
                 return;
+
+            _pendingPutOutcome = false;
+
+            var aim = hole.AimDirectionFrom(_discPosition);
 
             var throwInput = new ThrowInput(
                 bag.Active,
@@ -119,15 +162,61 @@ namespace DiskGolf.Core
                 height,
                 _wind,
                 _discPosition,
-                hole.AimDirection);
+                aim);
 
             var path = FlightSimulator.Compute(throwInput);
+
+            heightMeter?.Stop();
+
             _state.Advance(); // HeightMeter → Throwing
-            _state.Advance(); // Throwing → InFlight (during path playback)
+            _state.Advance(); // Throwing → InFlight
             presenter.Play(path, OnFlightComplete);
         }
 
+        void ExecutePuttPower(float rawMeterPower)
+        {
+            if (presenter == null || hole == null || bag == null)
+                return;
+
+            bag.SelectIndex(0);
+
+            var putter = bag.Active;
+
+            float power =
+                ClampPuttPower(rawMeterPower, putter?.maxDistanceFt ?? PuttMaxDistanceFt);
+
+            var aim = hole.AimDirectionFrom(_discPosition);
+
+            var throwInput = new ThrowInput(
+                putter,
+                ReleaseAngle.Flat,
+                power,
+                ThrowHeight.Nice,
+                _wind,
+                _discPosition,
+                aim);
+
+            var path = FlightSimulator.Compute(throwInput);
+
+            _pendingPutOutcome = true;
+
+            powerMeter?.Stop();
+
+            heightMeter?.Stop();
+
+            _state.Advance(); // Putting → Throwing
+
+            _state.Advance(); // Throwing → InFlight
+            presenter.Play(path, OnPuttOutcomeComplete);
+        }
+
         void OnFlightComplete(FlightPath completedPath)
+            => FinishThrowCommon(completedPath, allowEnterPutting: true);
+
+        void OnPuttOutcomeComplete(FlightPath completedPath)
+            => FinishThrowCommon(completedPath, allowEnterPutting: false);
+
+        void FinishThrowCommon(FlightPath completedPath, bool allowEnterPutting)
         {
             var wps = completedPath?.Waypoints;
 
@@ -136,18 +225,58 @@ namespace DiskGolf.Core
 
             _state.Advance(); // InFlight → Landed
 
-            var rest = hole != null ? hole.DistanceToBasket(_discPosition) : float.PositiveInfinity;
+            float restFt =
+                hole != null ? hole.DistanceToBasket(_discPosition) : float.PositiveInfinity;
 
-            if (rest <= hole.CircleRadiusFt)
+            bool wasPutOutcome = _pendingPutOutcome;
+
+            _pendingPutOutcome = false;
+
+            if (wasPutOutcome)
+            {
+                ResolvePutOutcome(restFt);
+
+                return;
+            }
+
+            // Drive / upshot landed
+
+            if (allowEnterPutting && hole != null && restFt <= hole.CircleRadiusFt)
+            {
+                _state.EnterPutting();
+
+                return;
+            }
+
+            _state.Advance(); // Landed → Resolve
+
+            _state.Advance(); // Resolve → Aiming
+        }
+
+        void ResolvePutOutcome(float restFt)
+        {
+            if (hole != null && restFt <= HoledToleranceFt)
+            {
+                Debug.Log("[Disk Golf] Made putt");
+
+                presenter?.SetPosition(hole.BasketPosition);
+
+                ResetHole();
+
+                return;
+            }
+
+            if (hole != null && restFt <= hole.CircleRadiusFt)
                 _state.EnterPutting();
             else
             {
                 _state.Advance(); // Landed → Resolve
+
                 _state.Advance(); // Resolve → Aiming
             }
         }
 
-        void OnPhaseChanged(ThrowPhase phase)
+        void OnPhaseChangedInternal(ThrowPhase phase)
         {
             switch (phase)
             {
@@ -156,29 +285,63 @@ namespace DiskGolf.Core
 
                     break;
                 case ThrowPhase.Putting:
-                    // Putting flow expanded in Task 13
+                    bag?.SelectIndex(0);
+                    powerMeter?.Begin();
+                    heightMeter?.Stop();
+                    EnableCircleBanner(true);
+
+                    break;
+                case ThrowPhase.Resolve:
+                    powerMeter?.Stop();
+
+                    EnableCircleBanner(false);
+
+                    break;
+                case ThrowPhase.Aiming:
+                    powerMeter?.Stop();
+                    heightMeter?.Stop();
+
+                    EnableCircleBanner(false);
 
                     break;
             }
         }
 
+        void EnableCircleBanner(bool on)
+        {
+            if (inTheCircleBanner != null && inTheCircleBanner.activeSelf != on)
+                inTheCircleBanner.SetActive(on);
+        }
+
         public void ResetHole()
         {
+            _pendingPutOutcome = false;
+
             if (hole != null)
             {
                 _wind = hole.RollWind();
+
                 _discPosition = hole.TeePosition;
             }
 
             presenter?.SetPosition(_discPosition);
+
             heightMeter?.Stop();
+
             powerMeter?.Stop();
+
+            EnableCircleBanner(false);
 
             _state.TransitionTo(ThrowPhase.Aiming);
         }
 
         public FlightPath GetPreviewPath()
         {
+            if (hole == null || bag?.Active == null || input == null)
+                return null;
+
+            var aim = hole.AimDirectionFrom(_discPosition);
+
             return FlightSimulator.Compute(new ThrowInput(
                 bag.Active,
                 input.ReleaseAngle,
@@ -186,7 +349,19 @@ namespace DiskGolf.Core
                 ThrowHeight.Nice,
                 _wind,
                 _discPosition,
-                hole.AimDirection));
+                aim));
+        }
+
+        static float ClampPuttPower(float meterValue, float discMaxFt)
+        {
+            float denom = Mathf.Max(discMaxFt, 1e-4f);
+
+            float capped = Mathf.Clamp(PuttMaxDistanceFt / denom, 0f, 1.1f);
+
+            float v =
+                Mathf.Clamp(meterValue, 0f, 1.1f);
+
+            return Mathf.Min(v, capped);
         }
     }
 }

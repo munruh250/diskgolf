@@ -1,7 +1,11 @@
 {
     "name": "DiskGolf",
     "rootNamespace": "DiskGolf",
-    "references": ["UnityEngine.UI"],
+    "references": [
+      "UnityEngine.UI",
+      "Unity.TextMeshPro",
+      "Cinemachine"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false

@@ -19,6 +19,7 @@ namespace DiskGolf.Core
         /// <summary>Hole length tuning (inspector); visuals use tee/basket positions.</summary>
         public float HoleLengthFt => holeLengthFt;
 
+        /// <summary>World-space aim axis from tee toward basket (legacy / hole framing).</summary>
         public Vector3 AimDirection
         {
             get
@@ -26,6 +27,13 @@ namespace DiskGolf.Core
                 var delta = BasketPosition - TeePosition;
                 return delta.sqrMagnitude < 1e-8f ? Vector3.forward : delta.normalized;
             }
+        }
+
+        /// <summary>Aim axis from any lie toward the basket (used for drives, previews, putts).</summary>
+        public Vector3 AimDirectionFrom(Vector3 lieWorld)
+        {
+            var delta = BasketPosition - lieWorld;
+            return delta.sqrMagnitude < 1e-8f ? Vector3.forward : delta.normalized;
         }
 
         public float DistanceToBasket(Vector3 from) =>
