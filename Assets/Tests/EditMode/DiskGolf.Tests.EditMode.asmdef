@@ -1,0 +1,14 @@
+{
+    "name": "DiskGolf.Tests.EditMode",
+    "rootNamespace": "DiskGolf.Tests",
+    "references": [
+        "DiskGolf"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
