@@ -50,6 +50,10 @@ namespace DiskGolf.Core
 
         public Vector3 CurrentDiscWorld => _discPosition;
 
+        public bool IsPreThrowPhase => _state.Phase is ThrowPhase.Aiming
+            or ThrowPhase.PowerMeter
+            or ThrowPhase.HeightMeter;
+
         void Start()
         {
             _state.PhaseChanged += p => PhaseChanged?.Invoke(p);
@@ -60,6 +64,22 @@ namespace DiskGolf.Core
         void OnDestroy()
         {
             _state.PhaseChanged -= OnPhaseChangedInternal;
+        }
+
+        void LateUpdate()
+        {
+            if (hole == null || presenter == null || !IsPreThrowPhase || hole.Thrower == null)
+                return;
+
+            SyncDiscToHand();
+        }
+
+        void SyncDiscToHand()
+        {
+            var pos = hole.DiscHoldPosition;
+            var rot = hole.DiscHoldRotation;
+            presenter.SetPositionAndRotation(pos, rot);
+            _discPosition = pos;
         }
 
         void Update()
@@ -290,6 +310,11 @@ namespace DiskGolf.Core
                     heightMeter?.Stop();
                     EnableCircleBanner(true);
 
+                    if (hole != null)
+                        hole.PositionThrowerAtLie(_discPosition);
+
+                    SyncDiscToHand();
+
                     break;
                 case ThrowPhase.Resolve:
                     powerMeter?.Stop();
@@ -302,6 +327,16 @@ namespace DiskGolf.Core
                     heightMeter?.Stop();
 
                     EnableCircleBanner(false);
+
+                    if (hole != null && presenter != null)
+                    {
+                        if (hole.IsNearTee(_discPosition))
+                            hole.PositionThrowerAtTee();
+                        else
+                            hole.PositionThrowerAtLie(_discPosition);
+
+                        SyncDiscToHand();
+                    }
 
                     break;
             }
@@ -320,11 +355,11 @@ namespace DiskGolf.Core
             if (hole != null)
             {
                 _wind = hole.RollWind();
-
-                _discPosition = hole.TeePosition;
+                hole.PositionThrowerAtTee();
+                _discPosition = hole.DiscHoldPosition;
             }
 
-            presenter?.SetPosition(_discPosition);
+            presenter?.SetPositionAndRotation(hole.DiscHoldPosition, hole.DiscHoldRotation);
 
             heightMeter?.Stop();
 

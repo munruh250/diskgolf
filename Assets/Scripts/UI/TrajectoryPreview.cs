@@ -6,6 +6,8 @@ namespace DiskGolf.UI
     [RequireComponent(typeof(LineRenderer))]
     public class TrajectoryPreview : MonoBehaviour
     {
+        public static readonly Color PathColor = MinimapTrajectoryLine.PathColor;
+
         [SerializeField] ThrowController controller;
 
         LineRenderer _line;
@@ -45,7 +47,7 @@ namespace DiskGolf.UI
             for (int i = 0; i < wps.Count; i++)
                 _line.SetPosition(i, wps[i].Position + Vector3.up * 0.1f);
 
-            _line.startColor = _line.endColor = Color.green;
+            _line.startColor = _line.endColor = PathColor;
             _line.startWidth = _line.endWidth = 0.15f;
         }
     }

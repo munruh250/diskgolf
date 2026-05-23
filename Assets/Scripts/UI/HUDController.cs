@@ -21,6 +21,8 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI windText;
 
+        void OnEnable() => NtmHudLayout.Apply();
+
         void LateUpdate()
         {
             if (hole == null || discTransform == null)
@@ -36,7 +38,7 @@ namespace DiskGolf.UI
             if (discText != null)
             {
                 discText.text = active != null
-                    ? $"{active.displayName} {active.speed}/{active.glide}/{active.turn}/{active.fade}"
+                    ? $"{active.displayName}  {active.speed}/{active.glide}/{active.turn}/{active.fade}"
                     : "—";
             }
 
@@ -48,7 +50,6 @@ namespace DiskGolf.UI
             if (windText != null && controller != null)
             {
                 var w = controller.Wind;
-
                 windText.text = $"WIND {(int)Mathf.Round(w.speedMph)} mph";
             }
         }
