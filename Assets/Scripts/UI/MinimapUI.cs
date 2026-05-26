@@ -310,16 +310,30 @@ namespace DiskGolf.UI
             if (course == null)
                 return;
 
-            var go = GameObject.Find("MinimapTrajectoryLine");
-            if (go == null)
+            MinimapTrajectoryLine primary = null;
+            foreach (var line in FindObjectsOfType<MinimapTrajectoryLine>(true))
             {
-                go = new GameObject("MinimapTrajectoryLine");
-                go.transform.SetParent(course.transform, false);
-                go.AddComponent<LineRenderer>();
-                go.AddComponent<MinimapTrajectoryLine>();
+                if (primary == null)
+                {
+                    primary = line;
+                    continue;
+                }
+
+                if (Application.isPlaying)
+                    Destroy(line.gameObject);
+                else
+                    DestroyImmediate(line.gameObject);
             }
 
-            go.GetComponent<MinimapTrajectoryLine>()?.Bind(controller);
+            if (primary == null)
+            {
+                var go = new GameObject("MinimapTrajectoryLine");
+                go.transform.SetParent(course.transform, false);
+                go.AddComponent<LineRenderer>();
+                primary = go.AddComponent<MinimapTrajectoryLine>();
+            }
+
+            primary.Bind(controller);
         }
 
         public void Bind(CourseLayout layout, HoleSetup holeSetup, Transform disc, ThrowController throwController = null)

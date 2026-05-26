@@ -130,6 +130,10 @@ namespace DiskGolf.Core
         public float DistanceToBasket(Vector3 from) =>
             Vector3.Distance(from, BasketPosition) / 0.3048f;
 
+        /// <summary>Distance used to pick a disc — full tee length when still at the tee.</summary>
+        public float DistanceForDiscSelection(Vector3 lieWorld) =>
+            IsNearTee(lieWorld) ? DistanceToBasket(TeePosition) : DistanceToBasket(lieWorld);
+
         public WindSettings RollWind()
         {
             float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;

@@ -26,6 +26,8 @@ namespace DiskGolf.Core
 
         [SerializeField] GameObject inTheCircleBanner;
 
+        [SerializeField] ThrowResultBannerUI throwResultBanner;
+
         [SerializeField] ThrowAimAdjust aimAdjust;
 
         readonly ThrowStateMachine _state = new ThrowStateMachine();
@@ -58,6 +60,7 @@ namespace DiskGolf.Core
         void Awake()
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
+            throwResultBanner ??= ThrowResultBannerUI.Ensure();
         }
 
         void Start()
@@ -225,6 +228,7 @@ namespace DiskGolf.Core
             if (presenter == null || hole == null)
                 return;
 
+            throwResultBanner?.Hide();
             _pendingPutOutcome = false;
 
             var aim = aimAdjust.AimDirection(hole, _discPosition);
@@ -252,6 +256,7 @@ namespace DiskGolf.Core
             if (presenter == null || hole == null || bag == null)
                 return;
 
+            throwResultBanner?.Hide();
             bag.SelectIndex(0);
 
             var putter = bag.Active;
@@ -301,6 +306,9 @@ namespace DiskGolf.Core
 
             _state.Advance(); // InFlight → Landed
 
+            if (completedPath != null)
+                throwResultBanner?.ShowThrowDistance(completedPath.TotalDistanceFt);
+
             float restFt =
                 hole != null ? hole.DistanceToBasket(_discPosition) : float.PositiveInfinity;
 
@@ -325,7 +333,6 @@ namespace DiskGolf.Core
             }
 
             _state.Advance(); // Landed → Resolve
-
             _state.Advance(); // Resolve → Aiming
         }
 
@@ -347,7 +354,6 @@ namespace DiskGolf.Core
             else
             {
                 _state.Advance(); // Landed → Resolve
-
                 _state.Advance(); // Resolve → Aiming
             }
         }
@@ -386,7 +392,7 @@ namespace DiskGolf.Core
 
                     if (hole != null && bag != null)
                     {
-                        bag.SelectForDistance(hole.DistanceToBasket(_discPosition));
+                        bag.SelectForDistance(hole.DistanceForDiscSelection(_discPosition));
                         _trackedDisc = bag.Active;
                     }
 
@@ -416,6 +422,7 @@ namespace DiskGolf.Core
         public void ResetHole()
         {
             _pendingPutOutcome = false;
+            throwResultBanner?.Hide();
 
             if (hole != null)
             {
@@ -425,7 +432,7 @@ namespace DiskGolf.Core
 
                 if (bag != null)
                 {
-                    bag.SelectForDistance(hole.DistanceToBasket(_discPosition));
+                    bag.SelectForDistance(hole.DistanceForDiscSelection(_discPosition));
                     _trackedDisc = bag.Active;
                 }
 

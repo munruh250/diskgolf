@@ -22,7 +22,7 @@ namespace DiskGolf.UI
             ApplyMinimap();
             StyleCanvasScaler(hud);
 
-            PinTopLeft(FindTmp(canvas, "REST"), new Vector2(36f, -36f), 44f);
+            PinTopLeft(FindBucketDistanceLabel(canvas), new Vector2(36f, -36f), 44f);
             PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -96f), 32f);
             PinTopRight(FindTmp(canvas, "WIND"), new Vector2(-36f, -132f), 30f);
 
@@ -83,12 +83,15 @@ namespace DiskGolf.UI
             tmp.color = Color.white;
             tmp.raycastTarget = false;
 
-            var rest = FindTmp(canvas, "REST");
+            var rest = FindBucketDistanceLabel(canvas);
             if (rest != null)
                 tmp.font = rest.font;
 
             return tmp;
         }
+
+        static TextMeshProUGUI FindBucketDistanceLabel(RectTransform canvas) =>
+            FindTmp(canvas, "Bucket Distance") ?? FindTmp(canvas, "REST");
 
         static void ApplyMinimap()
         {

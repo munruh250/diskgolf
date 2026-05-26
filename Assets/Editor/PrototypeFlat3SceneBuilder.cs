@@ -121,7 +121,7 @@ namespace DiskGolf.EditorTools
 
             var hudRt = HudCanvas(out _);
 
-            HudTmpLabel(hudRt, new Vector2(0f, 130f), "REST --- ft", 34f, out TextMeshProUGUI restUi);
+            HudTmpLabel(hudRt, new Vector2(0f, 130f), "Bucket Distance --- ft", 34f, out TextMeshProUGUI restUi);
             HudTmpLabel(hudRt, new Vector2(0f, 108f), "DISC HEIGHT --- ft", 30f, out TextMeshProUGUI discHeightUi);
             HudTmpLabel(hudRt, new Vector2(0f, 94f), "Disc", 28f, out TextMeshProUGUI discUi);
 
@@ -206,6 +206,19 @@ namespace DiskGolf.EditorTools
             banner.gameObject.SetActive(false);
 
             AssignSerialized(controller, "inTheCircleBanner", banner.gameObject);
+
+            var throwLabel = HudTmpLabelRow(hudRt, Vector2.zero, "200 FEET", 64f,
+                TextAlignmentOptions.Center);
+            var throwRt = throwLabel.rectTransform;
+            throwRt.anchorMin = throwRt.anchorMax = new Vector2(0.5f, 0.5f);
+            throwRt.anchoredPosition = Vector2.zero;
+            throwRt.sizeDelta = new Vector2(900f, 140f);
+            throwLabel.gameObject.name = "ThrowResultBanner";
+            ThrowResultBannerUI.ApplyStyle(throwLabel);
+            var throwBanner = throwLabel.gameObject.AddComponent<ThrowResultBannerUI>();
+            AssignSerialized(throwBanner, "label", throwLabel);
+            throwLabel.gameObject.SetActive(false);
+            AssignSerialized(controller, "throwResultBanner", throwBanner);
 
             var hud = hudRt.gameObject.AddComponent<HUDController>();
 

@@ -37,7 +37,7 @@ namespace DiskGolf.UI
             int restFt = Mathf.Max(0, Mathf.RoundToInt(hole.DistanceToBasket(discTransform.position)));
 
             if (restText != null)
-                restText.text = $"REST {restFt}ft";
+                restText.text = $"Bucket Distance {restFt}ft";
 
             if (discHeightText != null)
             {
