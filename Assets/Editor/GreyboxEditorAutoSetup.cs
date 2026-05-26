@@ -42,6 +42,15 @@ namespace DiskGolf.EditorTools
             Debug.Log("[Disk Golf] Greybox auto setup applied.");
         }
 
+        [MenuItem("Disk Golf/Clean Duplicate Vcams In Scene")]
+        public static void CleanDuplicateVcamsInScene()
+        {
+            DiskGolf.Camera.NtmCameraRig.RemoveDuplicateVcams();
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log("[Disk Golf] Removed duplicate virtual cameras from the active scene.");
+        }
+
         [MenuItem("Disk Golf/Reset Greybox Migration Version")]
         public static void ResetMigrationVersion()
         {

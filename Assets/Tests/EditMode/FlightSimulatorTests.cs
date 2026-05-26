@@ -31,9 +31,43 @@ namespace DiskGolf.Tests
         [Test]
         public void Compute_FullPowerMid_DistanceNearMax()
         {
-            var buzzz = MakeDisc(5, 4, -1, 1, 250f);
+            var buzzz = MakeDisc(5, 4, -1, 1, 320f);
             var path = FlightSimulator.Compute(MakeInput(buzzz, ReleaseAngle.Flat, 1f, ThrowHeight.Nice));
-            Assert.That(path.TotalDistanceFt, Is.InRange(200f, 280f));
+            Assert.That(path.TotalDistanceFt, Is.InRange(275f, 350f));
+        }
+
+        [Test]
+        public void Compute_FullPowerMid_PeakHeightInStandardRange()
+        {
+            var buzzz = MakeDisc(5, 4, -1, 1, 320f);
+            var path = FlightSimulator.Compute(MakeInput(buzzz, ReleaseAngle.Flat, 1f, ThrowHeight.Nice));
+            float peakY = 0f;
+            foreach (var wp in path.Waypoints)
+                peakY = Mathf.Max(peakY, wp.Position.y);
+
+            float peakFt = peakY / 0.3048f;
+            Assert.That(peakFt, Is.InRange(15f, 42f));
+        }
+
+        [Test]
+        public void Compute_FullPowerHigh_PeakHeightInBomberRange()
+        {
+            var destroyer = MakeDisc(12, 5, -1, 3, 450f);
+            var path = FlightSimulator.Compute(MakeInput(destroyer, ReleaseAngle.Flat, 1f, ThrowHeight.High));
+            float peakY = 0f;
+            foreach (var wp in path.Waypoints)
+                peakY = Mathf.Max(peakY, wp.Position.y);
+
+            float peakFt = peakY / 0.3048f;
+            Assert.That(peakFt, Is.InRange(50f, 92f));
+        }
+
+        [Test]
+        public void Compute_FullPowerDriver_DistanceNearMax()
+        {
+            var destroyer = MakeDisc(12, 5, -1, 3, 450f);
+            var path = FlightSimulator.Compute(MakeInput(destroyer, ReleaseAngle.Flat, 1f, ThrowHeight.Nice));
+            Assert.That(path.TotalDistanceFt, Is.InRange(400f, 470f));
         }
 
         [Test]

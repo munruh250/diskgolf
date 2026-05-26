@@ -25,6 +25,9 @@ namespace DiskGolf.Gameplay
 
         public float FlightProgress { get; private set; }
 
+        public Vector3 LandedPosition =>
+            discTransform != null ? discTransform.position : Vector3.zero;
+
         void Awake()
         {
             if (discTransform == null)
@@ -83,6 +86,9 @@ namespace DiskGolf.Gameplay
 
             float duration = lastT / Mathf.Max(flightSpeed, 1e-4f);
 
+            float discRadius = GreyboxScale.DiscDiameterM * 0.45f;
+            var previousPos = discTransform.position;
+
             while (elapsed < duration && discTransform != null)
             {
                 elapsed += Time.deltaTime;
@@ -95,8 +101,21 @@ namespace DiskGolf.Gameplay
 
                 var from = wps[i].Position;
                 var to = wps[i + 1].Position;
+                var nextPos = Vector3.Lerp(from, to, localT);
 
-                discTransform.position = Vector3.Lerp(from, to, localT);
+                if (TreeObstacle.TryHitSegment(previousPos, nextPos, discRadius, out var hitPos))
+                {
+                    discTransform.position = hitPos;
+                    discTransform.rotation = _restRotation;
+                    IsFlying = false;
+                    FlightProgress = t;
+                    Debug.Log("[Disk Golf] Disc hit a tree.");
+                    _onComplete?.Invoke(_activePath);
+                    yield break;
+                }
+
+                discTransform.position = nextPos;
+                previousPos = nextPos;
                 OrientDiscInFlight(from, to, t);
 
                 yield return null;

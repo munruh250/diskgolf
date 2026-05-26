@@ -37,8 +37,7 @@ namespace DiskGolf.Gameplay
                 flightPresenter = GetComponent<DiscFlightPresenter>();
 
 #if UNITY_EDITOR
-            if (!Application.isPlaying)
-                NtmCameraRig.RemoveDuplicateSideSetupCams();
+            NtmCameraRig.RemoveDuplicateVcams();
 #endif
 
             var disc = ResolveDiscTransform();
@@ -82,6 +81,7 @@ namespace DiskGolf.Gameplay
 
         static void ApplyPlayModeCamera(Transform disc, Transform basket)
         {
+            NtmCameraRig.RemoveDuplicateVcams();
             EnsureCourseHierarchy();
 
             var thrower = GameObject.Find("Thrower")?.transform;
@@ -91,12 +91,16 @@ namespace DiskGolf.Gameplay
             var aimPoint = NtmCameraRig.EnsureAimPoint(thrower, basket);
             FixSideCamera(thrower, aimPoint);
             EnsureFlightChaseCam(disc, aimPoint);
+            WireCameraDirector();
         }
 
         static void EnsureCourseHierarchy()
         {
-            CourseLayout.EnsureInScene();
+            var course = CourseLayout.EnsureInScene();
+            course?.EnsureFoliageAndTrees();
             UpgradeLegacyMinimap();
+
+            EnsureDiscSelectUi();
 
             var minimap = Object.FindObjectOfType<MinimapUI>();
             minimap?.RefreshCapture();
@@ -312,40 +316,32 @@ namespace DiskGolf.Gameplay
             if (disc == null)
                 return;
 
-            var chaseGo = GameObject.Find(NtmCameraRig.FlightChaseName);
-            if (chaseGo == null)
+            var chase = NtmCameraRig.FindFlightChaseCam();
+            if (chase == null)
             {
                 if (Application.isPlaying)
                     return;
 
                 var parent = GameObject.Find("Main Camera")?.transform;
-                chaseGo = new GameObject(NtmCameraRig.FlightChaseName);
+                var chaseGo = new GameObject(NtmCameraRig.FlightChaseName);
                 if (parent != null)
                     chaseGo.transform.SetParent(parent, false);
 
-                chaseGo.AddComponent<CinemachineVirtualCamera>();
+                chase = chaseGo.AddComponent<CinemachineVirtualCamera>();
             }
-
-            var chase = chaseGo.GetComponent<CinemachineVirtualCamera>();
-            if (chase == null)
-                return;
 
             NtmCameraRig.ConfigureFlightChaseCam(chase, disc, aimPoint);
 
-            var topGo = GameObject.Find(NtmCameraRig.TopDownName);
-            if (topGo != null)
+            var top = NtmCameraRig.FindTopDownCam();
+            if (top != null)
             {
-                var top = topGo.GetComponent<CinemachineVirtualCamera>();
-                if (top != null)
-                {
-                    top.Follow = disc;
-                    top.LookAt = disc;
-                    var body = top.GetCinemachineComponent<CinemachineTransposer>();
-                    if (body != null)
-                        body.m_FollowOffset = new Vector3(0f, 22f, 0f);
+                top.Follow = disc;
+                top.LookAt = disc;
+                var body = top.GetCinemachineComponent<CinemachineTransposer>();
+                if (body != null)
+                    body.m_FollowOffset = new Vector3(0f, 22f, 0f);
 
-                    top.gameObject.SetActive(false);
-                }
+                top.gameObject.SetActive(false);
             }
         }
 
@@ -358,14 +354,26 @@ namespace DiskGolf.Gameplay
 #if UNITY_EDITOR
             var so = new UnityEditor.SerializedObject(director);
             AssignRef(so, "sideSetupCam", NtmCameraRig.FindSideSetupCam());
-            AssignRef(so, "flightChaseCam", GameObject.Find(NtmCameraRig.FlightChaseName)?.GetComponent<CinemachineVirtualCamera>());
-            AssignRef(so, "topDownTrackCam", GameObject.Find(NtmCameraRig.TopDownName)?.GetComponent<CinemachineVirtualCamera>());
+            AssignRef(so, "flightChaseCam", NtmCameraRig.FindFlightChaseCam());
+            AssignRef(so, "topDownTrackCam", NtmCameraRig.FindTopDownCam());
             AssignRef(so, "flightPresenter", director.GetComponent<DiscFlightPresenter>());
             so.ApplyModifiedPropertiesWithoutUndo();
+#else
+            _ = director;
 #endif
         }
 
 #if UNITY_EDITOR
+        static void EnsureDiscSelectUi()
+        {
+            var hud = GameObject.Find("GameplayHUD");
+            if (hud == null)
+                return;
+
+            if (hud.GetComponent<DiscSelectUI>() == null)
+                hud.AddComponent<DiscSelectUI>();
+        }
+
         static void AssignRef(UnityEditor.SerializedObject so, string prop, Object value)
         {
             var p = so.FindProperty(prop);

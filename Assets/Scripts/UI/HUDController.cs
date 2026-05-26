@@ -15,13 +15,19 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI restText;
 
+        [SerializeField] TextMeshProUGUI discHeightText;
+
         [SerializeField] TextMeshProUGUI discText;
 
         [SerializeField] TextMeshProUGUI stanceText;
 
         [SerializeField] TextMeshProUGUI windText;
 
-        void OnEnable() => NtmHudLayout.Apply();
+        void OnEnable()
+        {
+            discHeightText ??= NtmHudLayout.EnsureDiscHeightLabel();
+            NtmHudLayout.Apply();
+        }
 
         void LateUpdate()
         {
@@ -32,6 +38,12 @@ namespace DiskGolf.UI
 
             if (restText != null)
                 restText.text = $"REST {restFt}ft";
+
+            if (discHeightText != null)
+            {
+                int heightFt = Mathf.Max(0, Mathf.RoundToInt(discTransform.position.y * 3.28084f));
+                discHeightText.text = $"DISC HEIGHT {heightFt}ft";
+            }
 
             var active = controller != null ? controller.ActiveDisc : null;
 

@@ -122,6 +122,7 @@ namespace DiskGolf.EditorTools
             var hudRt = HudCanvas(out _);
 
             HudTmpLabel(hudRt, new Vector2(0f, 130f), "REST --- ft", 34f, out TextMeshProUGUI restUi);
+            HudTmpLabel(hudRt, new Vector2(0f, 108f), "DISC HEIGHT --- ft", 30f, out TextMeshProUGUI discHeightUi);
             HudTmpLabel(hudRt, new Vector2(0f, 94f), "Disc", 28f, out TextMeshProUGUI discUi);
 
             HudTmpLabel(hudRt, new Vector2(0f, 60f), "FLAT", 26f,
@@ -216,6 +217,8 @@ namespace DiskGolf.EditorTools
 
             AssignSerialized(hud, "restText", restUi);
 
+            AssignSerialized(hud, "discHeightText", discHeightUi);
+
             AssignSerialized(hud, "discText", discUi);
 
             AssignSerialized(hud, "stanceText", stanceUi);
@@ -223,8 +226,6 @@ namespace DiskGolf.EditorTools
             AssignSerialized(hud, "windText", windUi);
 
             SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
-
-            SpawnTrajectory(gm.transform, controller);
 
             var aimPoint = NtmCameraRig.EnsureAimPoint(throwerTf, basketTf);
 
@@ -280,23 +281,6 @@ namespace DiskGolf.EditorTools
             t.alignment = TextAnchor.MiddleCenter;
             t.fontSize = 18;
             t.color = Color.white;
-        }
-
-        static void SpawnTrajectory(Transform parent, ThrowController controller)
-        {
-            var go = new GameObject("TrajectoryPreview");
-            go.transform.SetParent(parent, false);
-
-            var lr = go.AddComponent<LineRenderer>();
-            lr.numCornerVertices = 2;
-            lr.numCapVertices = 2;
-            lr.widthMultiplier = 0.12f;
-            lr.material = Mat("TrajectoryLine", Color.green);
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-
-            var preview = go.AddComponent<TrajectoryPreview>();
-            AssignSerialized(preview, "controller", controller);
         }
 
         static void SpawnMinimap(RectTransform hudRoot, HoleSetup hole, Transform discTf, CourseLayout course,

@@ -51,7 +51,7 @@ namespace DiskGolf.UI
             EnsureMapImage();
             EnsureMarkers();
             EnsureTrajectoryOverlay();
-            EnsureWorldTrajectoryLine();
+            EnsureTrajectoryLine();
         }
 
         void Start() => RefreshCapture();
@@ -110,7 +110,7 @@ namespace DiskGolf.UI
             course?.Refresh();
             course?.ApplyMinimapLayer();
             FrameCourse();
-            EnsureWorldTrajectoryLine();
+            EnsureTrajectoryLine();
 
             if (mapImage != null && _renderTexture != null)
                 mapImage.texture = _renderTexture;
@@ -303,7 +303,7 @@ namespace DiskGolf.UI
             }
         }
 
-        void EnsureWorldTrajectoryLine()
+        void EnsureTrajectoryLine()
         {
             controller ??= FindObjectOfType<ThrowController>();
             course ??= CourseLayout.EnsureInScene();

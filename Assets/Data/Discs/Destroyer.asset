@@ -18,5 +18,5 @@ MonoBehaviour:
   glide: 5
   turn: -1
   fade: 3
-  maxDistanceFt: 420
+  maxDistanceFt: 450
   meterSpeedMod: 1

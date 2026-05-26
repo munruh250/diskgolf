@@ -23,6 +23,7 @@ namespace DiskGolf.UI
             StyleCanvasScaler(hud);
 
             PinTopLeft(FindTmp(canvas, "REST"), new Vector2(36f, -36f), 44f);
+            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -96f), 32f);
             PinTopRight(FindTmp(canvas, "WIND"), new Vector2(-36f, -132f), 30f);
 
             PinBottomLeft(FindTmp(canvas, "FLAT"), new Vector2(36f, 88f), 28f);
@@ -59,6 +60,34 @@ namespace DiskGolf.UI
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
+        }
+
+        public static TextMeshProUGUI EnsureDiscHeightLabel()
+        {
+            var hud = GameObject.Find(HudRootName)?.GetComponent<RectTransform>();
+            return hud != null ? EnsureDiscHeightLabel(hud) : null;
+        }
+
+        static TextMeshProUGUI EnsureDiscHeightLabel(RectTransform canvas)
+        {
+            var existing = FindTmp(canvas, "DISC HEIGHT");
+            if (existing != null)
+                return existing;
+
+            var go = new GameObject("DiscHeight", typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(canvas, false);
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = "DISC HEIGHT --- ft";
+            tmp.color = Color.white;
+            tmp.raycastTarget = false;
+
+            var rest = FindTmp(canvas, "REST");
+            if (rest != null)
+                tmp.font = rest.font;
+
+            return tmp;
         }
 
         static void ApplyMinimap()

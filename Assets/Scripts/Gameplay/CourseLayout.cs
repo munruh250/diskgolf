@@ -19,7 +19,11 @@ namespace DiskGolf.Gameplay
 
         [SerializeField] Transform basket;
 
+        public const string TreesRootName = "Trees";
+
         [SerializeField] Transform[] roughBorders;
+
+        [SerializeField] Transform treesRoot;
 
         Bounds _bounds;
 
@@ -32,6 +36,8 @@ namespace DiskGolf.Gameplay
         public Transform Basket => basket;
 
         public IReadOnlyList<Transform> RoughBorders => roughBorders;
+
+        public Transform TreesRoot => treesRoot;
 
         public Bounds WorldBounds
         {
@@ -67,6 +73,8 @@ namespace DiskGolf.Gameplay
                 for (int i = 0; i < rough.Length; i++)
                     roughBorders[i] = rough[i].transform;
             }
+
+            treesRoot ??= transform.Find(TreesRootName);
         }
 
         public Bounds ComputeBounds()
@@ -125,6 +133,15 @@ namespace DiskGolf.Gameplay
 
             if (basket != null)
                 yield return basket;
+
+            if (treesRoot != null)
+            {
+                foreach (Transform tree in treesRoot)
+                {
+                    if (tree != null)
+                        yield return tree;
+                }
+            }
         }
 
         public Vector2 WorldToNormalizedMap(Vector3 world)
@@ -153,6 +170,9 @@ namespace DiskGolf.Gameplay
                 if (t != null)
                     SetLayerRecursively(t.gameObject, layer);
             }
+
+            if (treesRoot != null)
+                SetLayerRecursively(treesRoot.gameObject, layer);
         }
 
         static void SetLayerRecursively(GameObject go, int layer)
@@ -220,6 +240,58 @@ namespace DiskGolf.Gameplay
             existing.localScale = new Vector3(6f, 1f, 24f);
         }
 
+        public void EnsureFoliageAndTrees()
+        {
+            ApplyFoliageMaterials();
+            EnsureTestTrees();
+            Refresh();
+        }
+
+        void ApplyFoliageMaterials()
+        {
+            ApplyFoliageMaterial(fairwayPlane, FoliageSprites.GrassLightA);
+
+            if (roughBorders == null)
+                return;
+
+            foreach (var rough in roughBorders)
+                ApplyFoliageMaterial(rough, FoliageSprites.GrassDarkA);
+        }
+
+        static void ApplyFoliageMaterial(Transform target, string spriteName)
+        {
+            if (target == null || !target.TryGetComponent<Renderer>(out var renderer))
+                return;
+
+            var mat = FoliageSprites.CreateUnlitMaterial(spriteName);
+            if (mat != null)
+                renderer.sharedMaterial = mat;
+        }
+
+        void EnsureTestTrees()
+        {
+            if (teePad == null || basket == null)
+                return;
+
+            if (treesRoot == null)
+            {
+                var rootGo = new GameObject(TreesRootName);
+                rootGo.transform.SetParent(transform, false);
+                treesRoot = rootGo.transform;
+            }
+
+            if (treesRoot.childCount > 0)
+                return;
+
+            var forward = (basket.position - teePad.position).normalized;
+            var right = Vector3.Cross(Vector3.up, forward);
+
+            CourseTree.Spawn(treesRoot, teePad.position + forward * 52f + right * 13f, CourseTreeVariant.Conical, 12f);
+            CourseTree.Spawn(treesRoot, teePad.position + forward * 88f + right * -11f, CourseTreeVariant.Round, -6f);
+            CourseTree.Spawn(treesRoot, teePad.position + forward * 124f + right * 15f, CourseTreeVariant.Conical,
+                -18f);
+        }
+
         public static CourseLayout EnsureInScene()
         {
             var rootGo = GameObject.Find(RootName) ?? new GameObject(RootName);
@@ -243,6 +315,7 @@ namespace DiskGolf.Gameplay
             var layout = rootGo.GetComponent<CourseLayout>() ?? rootGo.AddComponent<CourseLayout>();
             layout.ResolveReferences();
             layout.EnsureTopDownRough();
+            layout.EnsureFoliageAndTrees();
             layout.ResolveReferences();
             layout.ApplyMinimapLayer();
             layout.Refresh();

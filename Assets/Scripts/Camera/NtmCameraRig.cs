@@ -9,14 +9,16 @@ namespace DiskGolf.Camera
         public const string SideSetupName = "SideSetupCam";
         public const string FlightChaseName = "FlightChaseCam";
         public const string TopDownName = "TopDownTrackCam";
+        public const string LieZoomName = "LieZoomCam";
+        public const string OverheadPuttName = "OverheadPuttCam";
         public const string AimPointName = "ThrowAimPoint";
 
-        /// <summary>Camera behind thrower — pulled back for course view, player low in frame (NTM).</summary>
-        public static readonly Vector3 SideFollowOffset = new(0.35f, 2.0f, -5.6f);
+        /// <summary>Low behind-left camera — player lands at bottom of frame (NTM).</summary>
+        public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
 
-        public static readonly Vector3 FlightChaseOffset = new(0.5f, 2.25f, -4.8f);
+        public static readonly Vector3 FlightChaseOffset = new(0.35f, 2.0f, -4.6f);
 
-        public const float SideFieldOfView = 54f;
+        public const float SideFieldOfView = 50f;
 
         public const int SidePriority = 20;
 
@@ -36,7 +38,7 @@ namespace DiskGolf.Camera
 
             var dir = (basket.position - thrower.position).normalized;
             var dist = Vector3.Distance(thrower.position, basket.position);
-            go.transform.position = thrower.position + dir * Mathf.Clamp(dist * 0.38f, 22f, 42f) + Vector3.up * 0.55f;
+            go.transform.position = thrower.position + dir * Mathf.Clamp(dist * 0.48f, 28f, 55f) + Vector3.up * 0.35f;
             return go.transform;
         }
 
@@ -72,13 +74,14 @@ namespace DiskGolf.Camera
             var composer = vcam.GetCinemachineComponent<CinemachineComposer>()
                 ?? vcam.AddCinemachineComponent<CinemachineComposer>();
 
-            composer.m_ScreenX = 0.38f;
-            composer.m_ScreenY = 0.30f;
-            composer.m_DeadZoneWidth = 0.04f;
-            composer.m_DeadZoneHeight = 0.05f;
-            composer.m_SoftZoneWidth = 0.78f;
-            composer.m_SoftZoneHeight = 0.72f;
-            composer.m_TrackedObjectOffset = new Vector3(0f, 0.15f, 0f);
+            // Aim point high in frame → thrower/tee sit low in viewport like NTM.
+            composer.m_ScreenX = 0.42f;
+            composer.m_ScreenY = 0.72f;
+            composer.m_DeadZoneWidth = 0.06f;
+            composer.m_DeadZoneHeight = 0.08f;
+            composer.m_SoftZoneWidth = 0.75f;
+            composer.m_SoftZoneHeight = 0.70f;
+            composer.m_TrackedObjectOffset = Vector3.zero;
 
             vcam.gameObject.SetActive(true);
             return vcam;
@@ -107,14 +110,21 @@ namespace DiskGolf.Camera
             return vcam;
         }
 
-        public static CinemachineVirtualCamera FindSideSetupCam()
+        public static CinemachineVirtualCamera FindSideSetupCam() => FindNamedVcam(SideSetupName);
+
+        public static CinemachineVirtualCamera FindFlightChaseCam() => FindNamedVcam(FlightChaseName);
+
+        public static CinemachineVirtualCamera FindTopDownCam() => FindNamedVcam(TopDownName);
+
+        /// <summary>Find first vcam by name (includes inactive objects).</summary>
+        public static CinemachineVirtualCamera FindNamedVcam(string name)
         {
-            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
             CinemachineVirtualCamera found = null;
+            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
 
             foreach (var cam in cams)
             {
-                if (cam.name != SideSetupName)
+                if (cam.name != name)
                     continue;
 
                 found ??= cam;
@@ -123,15 +133,23 @@ namespace DiskGolf.Camera
             return found;
         }
 
-#if UNITY_EDITOR
-        public static void RemoveDuplicateSideSetupCams()
+        public static void RemoveDuplicateVcams()
         {
-            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
+            RemoveDuplicateNamed(SideSetupName);
+            RemoveDuplicateNamed(FlightChaseName);
+            RemoveDuplicateNamed(TopDownName);
+            RemoveDuplicateNamed(LieZoomName);
+            RemoveDuplicateNamed(OverheadPuttName);
+        }
+
+        static void RemoveDuplicateNamed(string name)
+        {
             CinemachineVirtualCamera keep = null;
+            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
 
             foreach (var cam in cams)
             {
-                if (cam.name != SideSetupName)
+                if (cam.name != name)
                     continue;
 
                 if (keep == null)
@@ -140,9 +158,15 @@ namespace DiskGolf.Camera
                     continue;
                 }
 
-                Object.DestroyImmediate(cam.gameObject);
+                if (Application.isPlaying)
+                    Object.Destroy(cam.gameObject);
+                else
+                    Object.DestroyImmediate(cam.gameObject);
             }
         }
+
+#if UNITY_EDITOR
+        public static void RemoveDuplicateSideSetupCams() => RemoveDuplicateNamed(SideSetupName);
 #endif
     }
 }

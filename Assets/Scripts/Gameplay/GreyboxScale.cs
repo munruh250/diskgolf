@@ -3,7 +3,7 @@ namespace DiskGolf.Gameplay
     /// <summary>Increment when greybox auto-setup logic changes (triggers editor re-migration).</summary>
     public static class GreyboxScale
     {
-        public const int SetupVersion = 10;
+        public const int SetupVersion = 12;
 
         /// <summary>Local Y offset for thrower sprite child (feet alignment on tee).</summary>
         public const float ThrowerSpriteLocalY = 0.730f;

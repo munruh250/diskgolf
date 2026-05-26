@@ -22,9 +22,7 @@ namespace DiskGolf.Camera
 
         [SerializeField] DiscFlightPresenter flightPresenter;
 
-        [SerializeField] float chaseDurationSeconds = 1.35f;
-
-        [SerializeField] float chaseUntilProgress = 0.28f;
+        [SerializeField] float topDownDelaySeconds = 1f;
 
         ThrowPhase _phase;
 
@@ -69,9 +67,7 @@ namespace DiskGolf.Camera
 
             _inFlightElapsed += Time.deltaTime;
 
-            float progress = flightPresenter != null ? flightPresenter.FlightProgress : 0f;
-
-            if (_inFlightElapsed < chaseDurationSeconds && progress < chaseUntilProgress)
+            if (_inFlightElapsed < topDownDelaySeconds)
                 return;
 
             _usingTopDown = true;
@@ -120,11 +116,7 @@ namespace DiskGolf.Camera
                 sideSetupCam.gameObject.SetActive(true);
         }
 
-        static CinemachineVirtualCamera FindVcam(string name)
-        {
-            var go = GameObject.Find(name);
-            return go != null ? go.GetComponent<CinemachineVirtualCamera>() : null;
-        }
+        static CinemachineVirtualCamera FindVcam(string name) => NtmCameraRig.FindNamedVcam(name);
 
         static void SetActive(CinemachineVirtualCamera vcam, bool on)
         {

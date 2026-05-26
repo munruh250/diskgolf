@@ -1,15 +1,15 @@
 using DiskGolf.Core;
-using DiskGolf.Flight;
-using DiskGolf.Gameplay;
 using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>World-space preview path drawn on the minimap capture layer.</summary>
+    /// <summary>World-space throw preview path — visible in the main game view while aiming.</summary>
     [RequireComponent(typeof(LineRenderer))]
     public sealed class MinimapTrajectoryLine : MonoBehaviour
     {
         public static readonly Color PathColor = new(1f, 0.92f, 0.15f, 0.95f);
+
+        const float PathHeightOffset = 0.2f;
 
         [SerializeField] ThrowController controller;
 
@@ -44,7 +44,7 @@ namespace DiskGolf.UI
             _line.positionCount = wps.Count;
 
             for (int i = 0; i < wps.Count; i++)
-                _line.SetPosition(i, wps[i].Position + Vector3.up * 0.2f);
+                _line.SetPosition(i, wps[i].Position + Vector3.up * PathHeightOffset);
         }
 
         void ConfigureLine()
@@ -59,10 +59,7 @@ namespace DiskGolf.UI
             _line.endColor = PathColor;
             _line.material = new Material(Shader.Find("Sprites/Default"));
             _line.textureMode = LineTextureMode.Stretch;
-
-            int layer = LayerMask.NameToLayer(CourseLayout.MinimapLayerName);
-            if (layer >= 0)
-                gameObject.layer = layer;
+            _line.alignment = LineAlignment.View;
         }
 
         public void Bind(ThrowController throwController)
