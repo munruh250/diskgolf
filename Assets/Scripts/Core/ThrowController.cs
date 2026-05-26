@@ -384,6 +384,12 @@ namespace DiskGolf.Core
 
                     EnableCircleBanner(false);
 
+                    if (hole != null && bag != null)
+                    {
+                        bag.SelectForDistance(hole.DistanceToBasket(_discPosition));
+                        _trackedDisc = bag.Active;
+                    }
+
                     if (hole != null && bag?.Active != null)
                         aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
 
@@ -416,6 +422,12 @@ namespace DiskGolf.Core
                 _wind = hole.RollWind();
                 hole.PositionThrowerAtTee();
                 _discPosition = hole.DiscHoldPosition;
+
+                if (bag != null)
+                {
+                    bag.SelectForDistance(hole.DistanceToBasket(_discPosition));
+                    _trackedDisc = bag.Active;
+                }
 
                 if (bag?.Active != null)
                     aimAdjust.ResetForLie(hole, _discPosition, bag.Active);

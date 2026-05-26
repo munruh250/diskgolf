@@ -99,5 +99,23 @@ namespace DiskGolf.Tests
             var windEnd = wind.Waypoints[wind.Waypoints.Count - 1].Position;
             Assert.That(windEnd.x, Is.GreaterThan(noWindEnd.x + 1f));
         }
+        [Test]
+        public void Compute_ShortThrow_HasDiscLikeHangTime()
+        {
+            var buzzz = MakeDisc(5, 4, -1, 1, 320f);
+            var path = FlightSimulator.Compute(MakeInput(buzzz, ReleaseAngle.Flat, 0.45f, ThrowHeight.Nice));
+            float duration = path.Waypoints[path.Waypoints.Count - 1].Time;
+            Assert.That(path.TotalDistanceFt, Is.InRange(100f, 160f));
+            Assert.That(duration, Is.InRange(3.8f, 5.5f));
+        }
+
+        [Test]
+        public void Compute_FullPowerDriver_FlightTimeScalesWithDistance()
+        {
+            var destroyer = MakeDisc(12, 5, -1, 3, 450f);
+            var path = FlightSimulator.Compute(MakeInput(destroyer, ReleaseAngle.Flat, 1f, ThrowHeight.Nice));
+            float duration = path.Waypoints[path.Waypoints.Count - 1].Time;
+            Assert.That(duration, Is.GreaterThan(8f));
+        }
     }
 }

@@ -33,19 +33,21 @@ namespace DiskGolf.Core
             }
         }
 
-        /// <summary>Disc orientation while held — flat backhand, visible from side camera.</summary>
+        /// <summary>Disc orientation while held — flat disc, yaw aligned with throw direction.</summary>
         public Quaternion DiscHoldRotation
         {
             get
             {
                 if (thrower == null)
-                    return Quaternion.Euler(90f, 0f, 0f);
+                    return Quaternion.identity;
 
-                var visual = thrower.GetComponent<ThrowerVisual>();
-                if (visual != null && visual.HandAnchor != null)
-                    return visual.HandAnchor.rotation * Quaternion.Euler(90f, 0f, 0f);
+                var forward = AimDirection;
+                forward.y = 0f;
 
-                return thrower.rotation * Quaternion.Euler(90f, 0f, 0f);
+                if (forward.sqrMagnitude < 1e-6f)
+                    return Quaternion.identity;
+
+                return Quaternion.LookRotation(forward.normalized, Vector3.up);
             }
         }
 

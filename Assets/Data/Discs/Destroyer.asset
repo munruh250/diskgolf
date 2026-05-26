@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d2553205636444c394e641830e43a0c, type: 3}
   m_Name: Destroyer
   m_EditorClassIdentifier: 
-  displayName: Destroyer
+  displayName: Distance
   category: 3
   speed: 12
   glide: 5

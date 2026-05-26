@@ -5,7 +5,7 @@ namespace DiskGolf.Disc
     [CreateAssetMenu(fileName = "DiscProfile", menuName = "Disk Golf/Disc Profile")]
     public class DiscProfile : ScriptableObject
     {
-        public string displayName = "Buzzz";
+        public string displayName = "Midrange";
         public DiscCategory category = DiscCategory.Mid;
         [Range(1, 14)] public int speed = 5;
         [Range(1, 7)] public int glide = 4;

@@ -19,7 +19,7 @@ namespace DiskGolf.Gameplay
             if (handAnchor == null)
                 return;
 
-            handAnchor.localPosition = new Vector3(0.18f, 1.12f + GreyboxScale.ThrowerSpriteLocalY, 0.06f);
+            handAnchor.localPosition = new Vector3(0.18f, 1.20f, 0.06f);
             handAnchor.localRotation = Quaternion.Euler(-16f, 0f, 0f);
         }
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d2553205636444c394e641830e43a0c, type: 3}
   m_Name: P2
   m_EditorClassIdentifier: 
-  displayName: P2
+  displayName: Putter
   category: 0
   speed: 2
   glide: 3

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d2553205636444c394e641830e43a0c, type: 3}
   m_Name: Buzzz
   m_EditorClassIdentifier: 
-  displayName: Buzzz
+  displayName: Midrange
   category: 1
   speed: 5
   glide: 4

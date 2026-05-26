@@ -77,7 +77,7 @@ namespace DiskGolf.EditorTools
             var discTf = InstantiatePrefabIntoScene(discPrefab, throwerVisual.HandAnchor.position, aimRot);
             discTf.SetPositionAndRotation(
                 throwerVisual.HandAnchor.position,
-                throwerVisual.HandAnchor.rotation * Quaternion.Euler(90f, 0f, 0f));
+                aimRot);
 
             SpawnCircleVisualizer(basketTf);
 

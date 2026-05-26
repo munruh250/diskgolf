@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using DiskGolf.Flight;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace DiskGolf.Gameplay
 {
@@ -11,7 +12,9 @@ namespace DiskGolf.Gameplay
 
         [SerializeField] float flightSpeed = 1f;
 
-        [SerializeField] float flightTiltDegrees = 22f;
+        [Tooltip("Nose-down pitch while gliding. Keep near 0 for a flat saucer look.")]
+        [FormerlySerializedAs("flightTiltDegrees")]
+        [SerializeField] float flightPitchDegrees = 0f;
 
         Action<FlightPath> _onComplete;
 
@@ -19,7 +22,7 @@ namespace DiskGolf.Gameplay
 
         Vector3 _restScale;
 
-        Quaternion _restRotation;
+        float _restYaw;
 
         public bool IsFlying { get; private set; }
 
@@ -34,10 +37,10 @@ namespace DiskGolf.Gameplay
                 return;
 
             _restScale = discTransform.localScale;
-            _restRotation = discTransform.rotation;
+            _restYaw = discTransform.rotation.eulerAngles.y;
         }
 
-        public void SetPosition(Vector3 pos) => SetPositionAndRotation(pos, _restRotation);
+        public void SetPosition(Vector3 pos) => SetPositionAndRotation(pos, FlatRotation(_restYaw));
 
         public void SetPositionAndRotation(Vector3 pos, Quaternion rot)
         {
@@ -46,10 +49,12 @@ namespace DiskGolf.Gameplay
 
             discTransform.gameObject.SetActive(true);
             discTransform.position = pos;
-            discTransform.rotation = rot;
+            ApplyDiscRotation(rot);
             discTransform.localScale = _restScale.sqrMagnitude > 0f
                 ? _restScale
                 : new Vector3(GreyboxScale.DiscDiameterM, GreyboxScale.DiscThicknessM, GreyboxScale.DiscDiameterM);
+
+            _restYaw = discTransform.rotation.eulerAngles.y;
         }
 
         public void Play(FlightPath path, Action<FlightPath> onComplete)
@@ -63,7 +68,7 @@ namespace DiskGolf.Gameplay
 
         IEnumerator FlyRoutine()
         {
-            var wps = _activePath.Waypoints;
+            var wps = _activePath?.Waypoints;
 
             if (_activePath == null || wps == null || wps.Count == 0)
             {
@@ -81,34 +86,23 @@ namespace DiskGolf.Gameplay
                 discTransform.gameObject.SetActive(true);
 
             float elapsed = 0f;
-
-            float lastT = Mathf.Max(wps[wps.Count - 1].Time, 1e-4f);
-
-            float duration = lastT / Mathf.Max(flightSpeed, 1e-4f);
-
+            float duration = wps[wps.Count - 1].Time / Mathf.Max(flightSpeed, 1e-4f);
             float discRadius = GreyboxScale.DiscDiameterM * 0.45f;
             var previousPos = discTransform.position;
 
             while (elapsed < duration && discTransform != null)
             {
                 elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(duration > 0f ? elapsed / duration : 1f);
-                FlightProgress = t;
+                float simTime = Mathf.Clamp(elapsed * flightSpeed, 0f, wps[wps.Count - 1].Time);
+                FlightProgress = duration > 0f ? elapsed / duration : 1f;
 
-                float pathT = t * (wps.Count - 1);
-                var i = Mathf.Min(Mathf.FloorToInt(pathT), wps.Count - 2);
-                float localT = pathT - i;
-
-                var from = wps[i].Position;
-                var to = wps[i + 1].Position;
-                var nextPos = Vector3.Lerp(from, to, localT);
+                var nextPos = SamplePathAtTime(wps, simTime);
 
                 if (TreeObstacle.TryHitSegment(previousPos, nextPos, discRadius, out var hitPos))
                 {
                     discTransform.position = hitPos;
-                    discTransform.rotation = _restRotation;
+                    ApplyDiscRotation(FlatRotation(YawFromPosition(previousPos, hitPos)));
                     IsFlying = false;
-                    FlightProgress = t;
                     Debug.Log("[Disk Golf] Disc hit a tree.");
                     _onComplete?.Invoke(_activePath);
                     yield break;
@@ -116,7 +110,7 @@ namespace DiskGolf.Gameplay
 
                 discTransform.position = nextPos;
                 previousPos = nextPos;
-                OrientDiscInFlight(from, to, t);
+                OrientDiscInFlight(wps, simTime, FlightProgress);
 
                 yield return null;
             }
@@ -124,7 +118,7 @@ namespace DiskGolf.Gameplay
             if (discTransform != null)
             {
                 discTransform.position = wps[wps.Count - 1].Position;
-                discTransform.rotation = _restRotation;
+                ApplyDiscRotation(FlatRotation(YawFromWaypoints(wps)));
             }
 
             IsFlying = false;
@@ -132,20 +126,63 @@ namespace DiskGolf.Gameplay
             _onComplete?.Invoke(_activePath);
         }
 
-        void OrientDiscInFlight(Vector3 from, Vector3 to, float pathProgress)
+        static Vector3 SamplePathAtTime(System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps, float time)
         {
+            for (int i = 0; i < wps.Count - 1; i++)
+            {
+                if (time > wps[i + 1].Time)
+                    continue;
+
+                float segDuration = wps[i + 1].Time - wps[i].Time;
+                float localT = segDuration > 1e-5f ? (time - wps[i].Time) / segDuration : 0f;
+                return Vector3.Lerp(wps[i].Position, wps[i + 1].Position, localT);
+            }
+
+            return wps[wps.Count - 1].Position;
+        }
+
+        void OrientDiscInFlight(System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps, float simTime,
+            float pathProgress)
+        {
+            const float sampleDt = 0.05f;
+            var from = SamplePathAtTime(wps, Mathf.Max(0f, simTime - sampleDt));
+            var to = SamplePathAtTime(wps, simTime + sampleDt);
             var vel = to - from;
             vel.y = 0f;
 
             if (vel.sqrMagnitude < 1e-8f)
                 return;
 
-            var forward = vel.normalized;
-            var right = Vector3.Cross(Vector3.up, forward).normalized;
+            float yaw = Mathf.Atan2(vel.x, vel.z) * Mathf.Rad2Deg;
+            float bank = Mathf.Sin(pathProgress * Mathf.PI) * 16f;
+            ApplyDiscRotation(Quaternion.Euler(flightPitchDegrees, yaw, bank));
+        }
 
-            float bank = Mathf.Sin(pathProgress * Mathf.PI) * 28f;
-            var noseDown = Quaternion.AngleAxis(flightTiltDegrees, right);
-            discTransform.rotation = noseDown * Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, 0f, bank);
+        static float YawFromWaypoints(System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps)
+        {
+            if (wps.Count < 2)
+                return 0f;
+
+            return YawFromPosition(wps[wps.Count - 2].Position, wps[wps.Count - 1].Position);
+        }
+
+        static float YawFromPosition(Vector3 from, Vector3 to)
+        {
+            var vel = to - from;
+            vel.y = 0f;
+
+            if (vel.sqrMagnitude < 1e-8f)
+                return 0f;
+
+            return Mathf.Atan2(vel.x, vel.z) * Mathf.Rad2Deg;
+        }
+
+        static Quaternion FlatRotation(float yaw) => Quaternion.Euler(0f, yaw, 0f);
+
+        void ApplyDiscRotation(Quaternion rot)
+        {
+            discTransform.rotation = rot;
+            _restYaw = rot.eulerAngles.y;
         }
     }
 }

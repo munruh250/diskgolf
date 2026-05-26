@@ -15,6 +15,16 @@ namespace DiskGolf.Flight
         /// <summary>Distance multiplier when power is below the disc's speed requirement.</summary>
         public const float UnderpowerDistanceMultiplier = 0.82f;
 
+        /// <summary>Base hang time before distance adds flight seconds (disc glide, not ballistics).</summary>
+        public const float FlightBaseSeconds = 1.15f;
+
+        /// <summary>Extra seconds in the air per foot of carry — tune for floaty disc feel.</summary>
+        public const float FlightSecondsPerFoot = 0.028f;
+
+        public const float MinFlightSeconds = 2f;
+
+        public const float MaxFlightSeconds = 12f;
+
         public static FlightPath Compute(ThrowInput input)
         {
             float power = Mathf.Clamp(input.Power, 0f, 1.1f);
@@ -60,28 +70,29 @@ namespace DiskGolf.Flight
             Vector3 wind = input.Wind.DriftVector * (input.Disc.speed / 14f) * FtToUnity;
 
             var waypoints = new List<FlightWaypoint>(WaypointCount);
-            float totalTime = 2.5f;
+            float totalTime = ComputeFlightDurationSeconds(distanceFt, input.Height);
             float maxLateral = 0f;
 
             for (int i = 0; i < WaypointCount; i++)
             {
-                float t = i / (float)(WaypointCount - 1);
-                float dist = distanceFt * t * FtToUnity;
-                float turnPhase = TurnPhase(t) * turnAmount * FtToUnity;
-                float fadePhase = FadePhase(t) * fadeAmount * FtToUnity;
+                float u = i / (float)(WaypointCount - 1);
+                float timeU = GlideTimeCurve(u);
+                float dist = distanceFt * u * FtToUnity;
+                float turnPhase = TurnPhase(u) * turnAmount * FtToUnity;
+                float fadePhase = FadePhase(u) * fadeAmount * FtToUnity;
                 float lateral = turnPhase + fadePhase;
                 maxLateral = Mathf.Max(maxLateral, Mathf.Abs(lateral));
 
-                float windEnvelope = WindEnvelope(t, input.Height);
+                float windEnvelope = WindEnvelope(u, input.Height);
                 Vector3 windOffset = wind * windEnvelope;
 
                 Vector3 pos = input.Origin
                     + forward * dist
                     + right * lateral
                     + windOffset;
-                pos.y = ArcHeightFeet(t, input.Height, heightPower) * FtToUnity;
+                pos.y = ArcHeightFeet(u, input.Height, heightPower) * FtToUnity;
 
-                waypoints.Add(new FlightWaypoint(pos, t * totalTime));
+                waypoints.Add(new FlightWaypoint(pos, timeU * totalTime));
             }
 
             var shape = ClassifyShape(turnAmount, fadeAmount, maxLateral);
@@ -162,8 +173,32 @@ namespace DiskGolf.Flight
         public static float PuttPowerForDistance(float distanceFt, DiscProfile putter) =>
             distanceFt / Mathf.Max(putter.maxDistanceFt, 1e-4f);
 
-        static float ArcHeightFeet(float t, ThrowHeight height, float normalizedPower) =>
-            PeakHeightFeet(height, normalizedPower) * Mathf.Sin(t * Mathf.PI);
+        /// <summary>Estimated in-air time for a given carry distance.</summary>
+        public static float ComputeFlightDurationSeconds(float distanceFt, ThrowHeight height)
+        {
+            float heightFactor = height switch
+            {
+                ThrowHeight.Low => 0.9f,
+                ThrowHeight.Nice => 1f,
+                ThrowHeight.High => 1.12f,
+                _ => 1f,
+            };
+
+            float duration = (FlightBaseSeconds + distanceFt * FlightSecondsPerFoot) * heightFactor;
+            return Mathf.Clamp(duration, MinFlightSeconds, MaxFlightSeconds);
+        }
+
+        /// <summary>Spend more clock time around apex so the disc feels like it is gliding.</summary>
+        static float GlideTimeCurve(float u)
+        {
+            if (u <= 0.5f)
+                return 0.44f * (u / 0.5f);
+
+            return 0.44f + 0.56f * ((u - 0.5f) / 0.5f);
+        }
+
+        static float ArcHeightFeet(float u, ThrowHeight height, float normalizedPower) =>
+            PeakHeightFeet(height, normalizedPower) * Mathf.Sin(u * Mathf.PI);
 
         static FlightShape ClassifyShape(float turn, float fade, float maxLateral)
         {
