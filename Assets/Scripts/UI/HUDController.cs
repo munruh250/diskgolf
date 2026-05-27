@@ -15,6 +15,8 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI restText;
 
+        [SerializeField] TextMeshProUGUI scoreText;
+
         [SerializeField] TextMeshProUGUI discHeightText;
 
         [SerializeField] TextMeshProUGUI discText;
@@ -25,19 +27,38 @@ namespace DiskGolf.UI
 
         void OnEnable()
         {
+            TimingMeterHud.Ensure();
+            scoreText ??= NtmHudLayout.EnsureScoreLabel();
             discHeightText ??= NtmHudLayout.EnsureDiscHeightLabel();
             NtmHudLayout.Apply();
         }
 
         void LateUpdate()
         {
+            if (controller != null && scoreText != null)
+            {
+                scoreText.text = controller.IsHoleComplete
+                    ? HoleScore.CompletedLine(controller.StrokeCount, controller.HolePar)
+                    : HoleScore.InProgressLine(controller.StrokeCount, controller.HolePar);
+            }
+
+            if (hole != null && discTransform != null && restText != null)
+            {
+                int restFt = Mathf.Max(0, Mathf.RoundToInt(hole.DistanceToBasket(discTransform.position)));
+
+                if (controller != null && controller.ShowsTrajectoryPreview)
+                {
+                    int targetFt = Mathf.RoundToInt(controller.TargetTrajectoryFt);
+                    restText.text = $"TARGET {targetFt}ft  ·  Bucket {restFt}ft";
+                }
+                else
+                {
+                    restText.text = $"Bucket Distance {restFt}ft";
+                }
+            }
+
             if (hole == null || discTransform == null)
                 return;
-
-            int restFt = Mathf.Max(0, Mathf.RoundToInt(hole.DistanceToBasket(discTransform.position)));
-
-            if (restText != null)
-                restText.text = $"Bucket Distance {restFt}ft";
 
             if (discHeightText != null)
             {

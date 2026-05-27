@@ -11,6 +11,9 @@ namespace DiskGolf.Core
         [SerializeField] Transform thrower;
         [SerializeField] float circleRadiusFt = 33f;
         [SerializeField] float holeLengthFt = 250f;
+        [SerializeField] int par = 3;
+
+        public int Par => par;
 
         public Vector3 TeePosition => teePad != null ? teePad.position : Vector3.zero;
 
@@ -55,6 +58,8 @@ namespace DiskGolf.Core
             Vector3.Distance(worldPosition, TeePosition) <= radiusMeters;
 
         public Vector3 BasketPosition => basket != null ? basket.position : Vector3.forward * 76.2f;
+
+        public Transform BasketTransform => basket;
 
         public Transform Thrower => thrower;
 
@@ -130,9 +135,14 @@ namespace DiskGolf.Core
         public float DistanceToBasket(Vector3 from) =>
             Vector3.Distance(from, BasketPosition) / 0.3048f;
 
-        /// <summary>Distance used to pick a disc — full tee length when still at the tee.</summary>
-        public float DistanceForDiscSelection(Vector3 lieWorld) =>
-            IsNearTee(lieWorld) ? DistanceToBasket(TeePosition) : DistanceToBasket(lieWorld);
+        /// <summary>Distance used to pick a disc — uses configured hole length at the tee.</summary>
+        public float DistanceForDiscSelection(Vector3 lieWorld)
+        {
+            if (IsNearTee(lieWorld))
+                return Mathf.Max(HoleLengthFt, DistanceToBasket(TeePosition));
+
+            return DistanceToBasket(lieWorld);
+        }
 
         public WindSettings RollWind()
         {

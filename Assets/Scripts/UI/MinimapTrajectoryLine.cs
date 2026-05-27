@@ -1,4 +1,5 @@
 using DiskGolf.Core;
+using DiskGolf.Gameplay;
 using UnityEngine;
 
 namespace DiskGolf.UI
@@ -7,7 +8,7 @@ namespace DiskGolf.UI
     [RequireComponent(typeof(LineRenderer))]
     public sealed class MinimapTrajectoryLine : MonoBehaviour
     {
-        public static readonly Color PathColor = new(1f, 0.92f, 0.15f, 0.95f);
+        public static readonly Color PathColor = new(1f, 0.92f, 0.15f, 0.38f);
 
         const float PathHeightOffset = 0.2f;
 
@@ -26,7 +27,7 @@ namespace DiskGolf.UI
             if (_line == null || controller == null)
                 return;
 
-            if (controller.Phase != ThrowPhase.Aiming)
+            if (!controller.ShowsTrajectoryPreview)
             {
                 _line.enabled = false;
                 return;
@@ -49,12 +50,14 @@ namespace DiskGolf.UI
 
         void ConfigureLine()
         {
+            float width = GreyboxScale.DiscDiameterM;
+
             _line.useWorldSpace = true;
             _line.loop = false;
             _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _line.receiveShadows = false;
-            _line.startWidth = 1.4f;
-            _line.endWidth = 1.4f;
+            _line.startWidth = width;
+            _line.endWidth = width;
             _line.startColor = PathColor;
             _line.endColor = PathColor;
             _line.material = new Material(Shader.Find("Sprites/Default"));

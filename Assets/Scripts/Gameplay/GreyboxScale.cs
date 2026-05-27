@@ -3,7 +3,7 @@ namespace DiskGolf.Gameplay
     /// <summary>Increment when greybox auto-setup logic changes (triggers editor re-migration).</summary>
     public static class GreyboxScale
     {
-        public const int SetupVersion = 12;
+        public const int SetupVersion = 14;
 
         /// <summary>Local Y offset for thrower sprite child (feet alignment on tee).</summary>
         public const float ThrowerSpriteLocalY = 0.730f;
@@ -13,6 +13,9 @@ namespace DiskGolf.Gameplay
         public const float BasketCatchDiameterM = DiscDiameterM * 10f;
         public const float BasketCatchHeightM = 1.35f;
         public const float PoleDiameterM = 0.05f;
+
+        /// <summary>Sprite width relative to catch ring diameter.</summary>
+        public const float BasketSpriteWidthScale = 1.05f;
 
         public static readonly UnityEngine.Color DiscColor = new(0.92f, 0.42f, 0.06f);
         public static readonly UnityEngine.Color BasketColor = new(0.46f, 0.49f, 0.53f);

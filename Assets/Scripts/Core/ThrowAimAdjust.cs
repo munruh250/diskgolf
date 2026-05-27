@@ -11,7 +11,7 @@ namespace DiskGolf.Core
 
         const float DistanceStepFt = 15f;
 
-        const float MinTargetDistanceFt = 25f;
+        const float MinTargetDistanceFt = 10f;
 
         [SerializeField] float maxYawDegrees = 35f;
 
@@ -45,7 +45,9 @@ namespace DiskGolf.Core
 
             float alongBasket = DistanceAlongAim(hole, lie, AimDirection(hole, lie));
             float maxReach = disc.maxDistanceFt * FlightSimulator.DistanceScale;
-            TargetDistanceFt = Mathf.Clamp(alongBasket + _distanceOffsetFt, MinTargetDistanceFt, maxReach);
+            float baseline = alongBasket;
+
+            TargetDistanceFt = Mathf.Clamp(baseline + _distanceOffsetFt, MinTargetDistanceFt, maxReach);
             _plannedHeight = SuggestHeightForTarget(TargetDistanceFt, maxReach);
         }
 

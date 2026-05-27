@@ -29,6 +29,7 @@ namespace DiskGolf.EditorTools
                 return;
 
             MigratePrototypeScene();
+            BasketSpriteImporter.ReimportBasketSprite();
             EditorPrefs.SetInt(VersionKey, GreyboxScale.SetupVersion);
             Debug.Log("[Disk Golf] Greybox auto setup migrated PrototypeFlat3 (version " +
                       GreyboxScale.SetupVersion + ").");

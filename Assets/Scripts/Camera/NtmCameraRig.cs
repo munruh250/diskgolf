@@ -16,7 +16,7 @@ namespace DiskGolf.Camera
         /// <summary>Low behind-left camera — player lands at bottom of frame (NTM).</summary>
         public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
 
-        public static readonly Vector3 FlightChaseOffset = new(0.35f, 2.0f, -4.6f);
+        public static readonly Vector3 FlightChaseOffset = new(0.1f, 3.2f, -7.5f);
 
         public const float SideFieldOfView = 50f;
 
@@ -87,24 +87,47 @@ namespace DiskGolf.Camera
             return vcam;
         }
 
+        public static void BindSideThrowCam(
+            CinemachineVirtualCamera vcam,
+            Transform thrower,
+            Transform basket)
+        {
+            if (vcam == null || thrower == null)
+                return;
+
+            var aimPoint = EnsureAimPoint(thrower, basket);
+            ConfigureSideThrowCam(vcam, thrower, aimPoint);
+        }
+
         public static CinemachineVirtualCamera ConfigureFlightChaseCam(
             CinemachineVirtualCamera vcam,
             Transform disc,
-            Transform aimPoint)
+            Transform lookTarget = null)
         {
             if (vcam == null || disc == null)
                 return vcam;
 
             vcam.Follow = disc;
-            vcam.LookAt = aimPoint != null ? aimPoint : disc;
+            vcam.LookAt = disc;
             vcam.Priority = FlightChasePriority;
             vcam.m_Lens.FieldOfView = SideFieldOfView;
 
             var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>()
                 ?? vcam.AddCinemachineComponent<CinemachineTransposer>();
 
-            transposer.m_BindingMode = CinemachineTransposer.BindingMode.LockToTargetWithWorldUp;
+            transposer.m_BindingMode = CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp;
             transposer.m_FollowOffset = FlightChaseOffset;
+
+            var composer = vcam.GetCinemachineComponent<CinemachineComposer>()
+                ?? vcam.AddCinemachineComponent<CinemachineComposer>();
+
+            composer.m_ScreenX = 0.5f;
+            composer.m_ScreenY = 0.4f;
+            composer.m_DeadZoneWidth = 0.08f;
+            composer.m_DeadZoneHeight = 0.08f;
+            composer.m_SoftZoneWidth = 0.85f;
+            composer.m_SoftZoneHeight = 0.85f;
+            composer.m_TrackedObjectOffset = new Vector3(0f, 0.35f, 0f);
 
             vcam.gameObject.SetActive(false);
             return vcam;

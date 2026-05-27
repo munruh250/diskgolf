@@ -110,7 +110,6 @@ namespace DiskGolf.UI
             course?.Refresh();
             course?.ApplyMinimapLayer();
             FrameCourse();
-            EnsureTrajectoryLine();
 
             if (mapImage != null && _renderTexture != null)
                 mapImage.texture = _renderTexture;
@@ -249,7 +248,7 @@ namespace DiskGolf.UI
             if (_trajectorySegments.Count == 0)
                 EnsureTrajectoryOverlay();
 
-            if (controller == null || controller.Phase != ThrowPhase.Aiming)
+            if (controller == null || !controller.ShowsTrajectoryPreview)
             {
                 HideTrajectorySegments();
                 return;
@@ -290,7 +289,7 @@ namespace DiskGolf.UI
 
             segment.gameObject.SetActive(true);
             rt.anchoredPosition = (a + b) * 0.5f;
-            rt.sizeDelta = new Vector2(length, 4f);
+            rt.sizeDelta = new Vector2(length, 2f);
             rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
         }
 

@@ -24,7 +24,11 @@ namespace DiskGolf.Gameplay
 
         float _restYaw;
 
+        public Transform DiscTransform => discTransform;
+
         public bool IsFlying { get; private set; }
+
+        public bool LastFlightHoled { get; private set; }
 
         public float FlightProgress { get; private set; }
 
@@ -61,6 +65,7 @@ namespace DiskGolf.Gameplay
         {
             _activePath = path;
             _onComplete = onComplete;
+            LastFlightHoled = false;
 
             StopAllCoroutines();
             StartCoroutine(FlyRoutine());
@@ -108,6 +113,17 @@ namespace DiskGolf.Gameplay
                     yield break;
                 }
 
+                if (BasketCatchDetector.TryHitSegment(previousPos, nextPos, discRadius, out var basketHit))
+                {
+                    discTransform.position = basketHit;
+                    ApplyDiscRotation(FlatRotation(YawFromPosition(previousPos, basketHit)));
+                    IsFlying = false;
+                    LastFlightHoled = true;
+                    Debug.Log("[Disk Golf] Disc hit the basket.");
+                    _onComplete?.Invoke(_activePath);
+                    yield break;
+                }
+
                 discTransform.position = nextPos;
                 previousPos = nextPos;
                 OrientDiscInFlight(wps, simTime, FlightProgress);
@@ -119,6 +135,9 @@ namespace DiskGolf.Gameplay
             {
                 discTransform.position = wps[wps.Count - 1].Position;
                 ApplyDiscRotation(FlatRotation(YawFromWaypoints(wps)));
+
+                if (BasketCatchDetector.ContainsPoint(discTransform.position, discRadius))
+                    LastFlightHoled = true;
             }
 
             IsFlying = false;

@@ -240,16 +240,16 @@ namespace DiskGolf.EditorTools
 
             SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
 
-            var aimPoint = NtmCameraRig.EnsureAimPoint(throwerTf, basketTf);
+            var aimPoint = NtmCameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
 
             var side =
                 Vcam(NtmCameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, NtmCameraRig.SideFollowOffset, 0f);
 
             var flightChase =
-                Vcam(NtmCameraRig.FlightChaseName, mainCam.transform, discTf, aimPoint, NtmCameraRig.FlightChaseOffset, 0f);
+                Vcam(NtmCameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, NtmCameraRig.FlightChaseOffset, 0f);
 
             NtmCameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
-            NtmCameraRig.ConfigureFlightChaseCam(flightChase, discTf, aimPoint);
+            NtmCameraRig.ConfigureFlightChaseCam(flightChase, discTf, discTf);
 
             var top =
                 Vcam("TopDownTrackCam", mainCam.transform, discTf, discTf, new Vector3(0f, 22f, 0f), 90f);
@@ -273,7 +273,6 @@ namespace DiskGolf.EditorTools
             var director = directorGo.AddComponent<CameraDirector>();
             AssignSerialized(director, "sideSetupCam", side);
             AssignSerialized(director, "flightChaseCam", flightChase);
-            AssignSerialized(director, "topDownTrackCam", top);
             AssignSerialized(director, "lieZoomCam", lie);
             AssignSerialized(director, "overheadPuttCam", putt);
             AssignSerialized(director, "throwController", controller);
@@ -509,6 +508,7 @@ namespace DiskGolf.EditorTools
             pole.transform.localScale = new Vector3(poleRadius * 2f, poleH * 0.5f, poleRadius * 2f);
             pole.transform.localPosition = Vector3.up * (poleH * 0.5f);
             pole.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            pole.GetComponent<MeshRenderer>().enabled = false;
             DestroyColliderImmediate(pole);
 
             var top = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -517,7 +517,11 @@ namespace DiskGolf.EditorTools
             top.transform.localScale = new Vector3(ringDiameter, 0.04f, ringDiameter);
             top.transform.localPosition = Vector3.up * catchY;
             top.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            top.GetComponent<MeshRenderer>().enabled = false;
             DestroyColliderImmediate(top);
+
+            root.AddComponent<BasketVisual>();
+            root.AddComponent<BasketCatchDetector>();
 
             root.tag = "Basket";
             return SavePrefabAsset(root, $"{PrefabsDir}/Basket.prefab");
@@ -627,8 +631,11 @@ namespace DiskGolf.EditorTools
             go = new GameObject("Directional Light");
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.05f;
-            go.transform.rotation = Quaternion.Euler(48f, -28f, 0f);
+            light.intensity = 1.18f;
+            light.color = new Color(1f, 0.96f, 0.88f);
+            light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.9f;
+            go.transform.rotation = Quaternion.Euler(50f, -34f, 0f);
         }
 
         static GameObject MainCam(out CinemachineBrain brain)

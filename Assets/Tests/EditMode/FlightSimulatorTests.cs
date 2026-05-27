@@ -117,5 +117,19 @@ namespace DiskGolf.Tests
             float duration = path.Waypoints[path.Waypoints.Count - 1].Time;
             Assert.That(duration, Is.GreaterThan(8f));
         }
+
+        [Test]
+        public void Compute_UnderstableMid_NoMidFlightLateralJerk()
+        {
+            var buzzz = MakeDisc(5, 4, -1, 1, 320f);
+            var path = FlightSimulator.Compute(MakeInput(buzzz, ReleaseAngle.Flat, 1f, ThrowHeight.Nice));
+            var wps = path.Waypoints;
+
+            for (int i = 1; i < wps.Count; i++)
+            {
+                float lateralStep = Mathf.Abs(wps[i].Position.x - wps[i - 1].Position.x);
+                Assert.That(lateralStep, Is.LessThan(0.12f), $"Lateral step jump at waypoint {i}");
+            }
+        }
     }
 }

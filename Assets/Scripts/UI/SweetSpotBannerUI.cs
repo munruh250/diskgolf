@@ -3,25 +3,25 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>NTM-style centered popup when the disc stops (e.g. "200 FEET").</summary>
-    public sealed class ThrowResultBannerUI : MonoBehaviour
+    /// <summary>Centered overlay when both timing meters hit the sweet spot.</summary>
+    public sealed class SweetSpotBannerUI : MonoBehaviour
     {
         const string HudCanvasName = "GameplayHUD";
-        const string BannerName = "ThrowResultBanner";
+        const string BannerName = "SweetSpotBanner";
 
         [SerializeField] TextMeshProUGUI label;
 
-        [SerializeField] float displaySeconds = 2.75f;
+        [SerializeField] float displaySeconds = 2f;
 
         public float DisplaySeconds => displaySeconds;
 
-        public static ThrowResultBannerUI Ensure()
+        public static SweetSpotBannerUI Ensure()
         {
             var canvas = FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<ThrowResultBannerUI>();
+            var existing = canvas.Find(BannerName)?.GetComponent<SweetSpotBannerUI>();
             if (existing != null)
             {
                 existing.EnsureBuilt();
@@ -54,7 +54,7 @@ namespace DiskGolf.UI
             gameObject.SetActive(false);
         }
 
-        static ThrowResultBannerUI Build(RectTransform canvas)
+        static SweetSpotBannerUI Build(RectTransform canvas)
         {
             var bannerGo = new GameObject(BannerName, typeof(RectTransform));
             var rt = bannerGo.GetComponent<RectTransform>();
@@ -64,7 +64,7 @@ namespace DiskGolf.UI
             var tmp = bannerGo.AddComponent<TextMeshProUGUI>();
             ApplyStyle(tmp);
 
-            var banner = bannerGo.AddComponent<ThrowResultBannerUI>();
+            var banner = bannerGo.AddComponent<SweetSpotBannerUI>();
             banner.label = tmp;
             bannerGo.SetActive(false);
             return banner;
@@ -78,44 +78,36 @@ namespace DiskGolf.UI
 
         static void ConfigureBannerRect(RectTransform rt)
         {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.62f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(900f, 140f);
+            rt.sizeDelta = new Vector2(640f, 120f);
         }
 
-        public static void ApplyStyle(TextMeshProUGUI tmp)
+        static void ApplyStyle(TextMeshProUGUI tmp)
         {
-            tmp.text = "200 FEET";
-            tmp.fontSize = 64f;
+            tmp.text = "SWEET!";
+            tmp.fontSize = 72f;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.42f, 0.96f, 0.52f);
-            tmp.outlineWidth = 0.32f;
+            tmp.color = new Color(0.82f, 0.28f, 1f);
+            tmp.outlineWidth = 0.35f;
             tmp.outlineColor = Color.black;
             tmp.raycastTarget = false;
 
-            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("HudRoot/TMPRow");
-            var circleTmp = circleBanner != null ? circleBanner.GetComponent<TextMeshProUGUI>() : null;
-            if (circleTmp != null && circleTmp.font != null)
-                tmp.font = circleTmp.font;
-            else
-            {
-                var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-                if (font != null)
-                    tmp.font = font;
-            }
+            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (font != null)
+                tmp.font = font;
         }
 
-        public void ShowThrowDistance(float distanceFt)
+        public void Show()
         {
             EnsureBuilt();
 
             if (label == null)
                 return;
 
-            int feet = Mathf.Max(0, Mathf.RoundToInt(distanceFt));
-            label.text = $"{feet} FEET";
+            label.text = "SWEET!";
             transform.SetAsLastSibling();
             gameObject.SetActive(true);
         }

@@ -78,9 +78,7 @@ namespace DiskGolf.Flight
                 float u = i / (float)(WaypointCount - 1);
                 float timeU = GlideTimeCurve(u);
                 float dist = distanceFt * u * FtToUnity;
-                float turnPhase = TurnPhase(u) * turnAmount * FtToUnity;
-                float fadePhase = FadePhase(u) * fadeAmount * FtToUnity;
-                float lateral = turnPhase + fadePhase;
+                float lateral = LateralOffsetFeet(u, turnAmount, fadeAmount) * FtToUnity;
                 maxLateral = Mathf.Max(maxLateral, Mathf.Abs(lateral));
 
                 float windEnvelope = WindEnvelope(u, input.Height);
@@ -117,8 +115,21 @@ namespace DiskGolf.Flight
             };
         }
 
-        static float TurnPhase(float t) => t <= 0.4f ? Mathf.Sin(t / 0.4f * Mathf.PI * 0.5f) : 0f;
-        static float FadePhase(float t) => t >= 0.6f ? Mathf.Sin((t - 0.6f) / 0.4f * Mathf.PI * 0.5f) : 0f;
+        static float LateralOffsetFeet(float u, float turnAmount, float fadeAmount)
+        {
+            float turnCurve = Mathf.Sin(Mathf.Clamp01(u / 0.55f) * Mathf.PI * 0.5f);
+            float turnWeight = 1f - SmoothStep(0.32f, 0.68f, u);
+            float fadeCurve = Mathf.Sin(Mathf.Clamp01((u - 0.35f) / 0.65f) * Mathf.PI * 0.5f);
+            float fadeWeight = SmoothStep(0.38f, 0.72f, u);
+
+            return turnAmount * turnCurve * turnWeight + fadeAmount * fadeCurve * fadeWeight;
+        }
+
+        static float SmoothStep(float edge0, float edge1, float x)
+        {
+            float t = Mathf.Clamp01((x - edge0) / Mathf.Max(edge1 - edge0, 1e-5f));
+            return t * t * (3f - 2f * t);
+        }
 
         /// <summary>
         /// Monotonic 0–1 exposure along the flight (contrast: Sin(πt)·t is zero at t=1, so the

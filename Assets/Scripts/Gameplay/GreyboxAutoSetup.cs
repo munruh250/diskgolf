@@ -30,6 +30,8 @@ namespace DiskGolf.Gameplay
 
         public void Apply()
         {
+            SceneLightingBootstrap.Apply();
+
             if (holeSetup == null)
                 holeSetup = GetComponent<HoleSetup>();
 
@@ -46,8 +48,8 @@ namespace DiskGolf.Gameplay
 
             if (basket != null)
             {
-                FixBasketScale(basket);
                 FixCircleZone(basket);
+                BasketVisual.Ensure(basket);
             }
 
             if (disc != null)
@@ -56,6 +58,7 @@ namespace DiskGolf.Gameplay
             if (Application.isPlaying)
             {
                 ApplyPlayModeCamera(disc, basket);
+                TimingMeterHud.Ensure();
                 NtmHudLayout.Apply();
                 return;
             }
@@ -66,7 +69,7 @@ namespace DiskGolf.Gameplay
 
             var aimPoint = NtmCameraRig.EnsureAimPoint(thrower, basket);
             FixSideCamera(thrower, aimPoint);
-            EnsureFlightChaseCam(disc, aimPoint);
+            EnsureFlightChaseCam(disc, basket);
             EnsureCourseHierarchy();
             NtmHudLayout.Apply();
             WireCameraDirector();
@@ -90,7 +93,7 @@ namespace DiskGolf.Gameplay
 
             var aimPoint = NtmCameraRig.EnsureAimPoint(thrower, basket);
             FixSideCamera(thrower, aimPoint);
-            EnsureFlightChaseCam(disc, aimPoint);
+            EnsureFlightChaseCam(disc, basket);
             WireCameraDirector();
         }
 
@@ -214,28 +217,6 @@ namespace DiskGolf.Gameplay
             SetColor(renderer, GreyboxScale.DiscColor);
         }
 
-        static void FixBasketScale(Transform basket)
-        {
-            var pole = basket.Find("Pole");
-            if (pole != null)
-            {
-                float poleH = GreyboxScale.BasketCatchHeightM;
-                pole.localScale = new Vector3(GreyboxScale.PoleDiameterM, poleH * 0.5f, GreyboxScale.PoleDiameterM);
-                pole.localPosition = Vector3.up * (poleH * 0.5f);
-            }
-
-            var ring = basket.Find("TopRing");
-            if (ring != null)
-            {
-                float d = GreyboxScale.BasketCatchDiameterM;
-                ring.localScale = new Vector3(d, 0.04f, d);
-                ring.localPosition = Vector3.up * GreyboxScale.BasketCatchHeightM;
-            }
-
-            foreach (var r in basket.GetComponentsInChildren<Renderer>())
-                SetColor(r, GreyboxScale.BasketColor);
-        }
-
         static void FixCircleZone(Transform basket)
         {
             var zone = basket.Find("CircleZone");
@@ -311,7 +292,7 @@ namespace DiskGolf.Gameplay
             NtmCameraRig.ConfigureSideThrowCam(side, thrower, aimPoint ?? thrower);
         }
 
-        static void EnsureFlightChaseCam(Transform disc, Transform aimPoint)
+        static void EnsureFlightChaseCam(Transform disc, Transform basket)
         {
             if (disc == null)
                 return;
@@ -330,19 +311,7 @@ namespace DiskGolf.Gameplay
                 chase = chaseGo.AddComponent<CinemachineVirtualCamera>();
             }
 
-            NtmCameraRig.ConfigureFlightChaseCam(chase, disc, aimPoint);
-
-            var top = NtmCameraRig.FindTopDownCam();
-            if (top != null)
-            {
-                top.Follow = disc;
-                top.LookAt = disc;
-                var body = top.GetCinemachineComponent<CinemachineTransposer>();
-                if (body != null)
-                    body.m_FollowOffset = new Vector3(0f, 22f, 0f);
-
-                top.gameObject.SetActive(false);
-            }
+            NtmCameraRig.ConfigureFlightChaseCam(chase, disc, disc);
         }
 
         static void WireCameraDirector()
@@ -355,7 +324,6 @@ namespace DiskGolf.Gameplay
             var so = new UnityEditor.SerializedObject(director);
             AssignRef(so, "sideSetupCam", NtmCameraRig.FindSideSetupCam());
             AssignRef(so, "flightChaseCam", NtmCameraRig.FindFlightChaseCam());
-            AssignRef(so, "topDownTrackCam", NtmCameraRig.FindTopDownCam());
             AssignRef(so, "flightPresenter", director.GetComponent<DiscFlightPresenter>());
             so.ApplyModifiedPropertiesWithoutUndo();
 #else

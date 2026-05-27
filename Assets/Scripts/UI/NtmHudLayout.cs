@@ -22,33 +22,40 @@ namespace DiskGolf.UI
             ApplyMinimap();
             StyleCanvasScaler(hud);
 
-            PinTopLeft(FindBucketDistanceLabel(canvas), new Vector2(36f, -36f), 44f);
-            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -96f), 32f);
+            PinTopLeft(EnsureScoreLabel(canvas), new Vector2(36f, -36f), 34f);
+            PinTopLeft(FindBucketDistanceLabel(canvas), new Vector2(36f, -88f), 40f);
+            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -136f), 32f);
             PinTopRight(FindTmp(canvas, "WIND"), new Vector2(-36f, -132f), 30f);
 
             PinBottomLeft(FindTmp(canvas, "FLAT"), new Vector2(36f, 88f), 28f);
             PinBottomLeft(FindTmp(canvas, "Disc"), new Vector2(36f, 48f), 26f);
 
-            var powerSlider = FindSlider(canvas, "Slider", 0);
-            var heightSlider = FindSlider(canvas, "Slider", 1);
-
-            PinBottomRight(powerSlider, new Vector2(-348f, 52f), new Vector2(300f, 48f));
-            PinBottomRight(heightSlider, new Vector2(-36f, 52f), new Vector2(300f, 48f));
+            HideLegacySliders(canvas);
+            TimingMeterHud.Ensure();
 
             var powerLabel = FindTmpContains(canvas, "POWER");
             if (powerLabel != null)
-                PinBottomRight(powerLabel, new Vector2(-348f, 112f), 24f);
+            {
+                PinBottomRight(powerLabel, new Vector2(-170f, 168f), 22f);
+                powerLabel.gameObject.SetActive(false);
+            }
 
             var heightLabel = FindTmpContains(canvas, "HEIGHT");
             if (heightLabel != null)
-                PinBottomRight(heightLabel, new Vector2(-36f, 112f), 24f);
+            {
+                PinBottomRight(heightLabel, new Vector2(-28f, 188f), 22f);
+                heightLabel.gameObject.SetActive(false);
+            }
 
             var nice = FindUnityText(canvas, "NICE");
             if (nice != null)
-                PinBottomRight(nice, new Vector2(-36f, 16f), 22f);
+                nice.gameObject.SetActive(false);
+        }
 
-            StyleSlider(powerSlider, new Color(0.08f, 0.72f, 0.68f));
-            StyleSlider(heightSlider, new Color(0.95f, 0.72f, 0.18f));
+        static void HideLegacySliders(RectTransform canvas)
+        {
+            foreach (var slider in canvas.GetComponentsInChildren<Slider>(true))
+                slider.gameObject.SetActive(false);
         }
 
         static void StyleCanvasScaler(GameObject hud)
@@ -66,6 +73,34 @@ namespace DiskGolf.UI
         {
             var hud = GameObject.Find(HudRootName)?.GetComponent<RectTransform>();
             return hud != null ? EnsureDiscHeightLabel(hud) : null;
+        }
+
+        public static TextMeshProUGUI EnsureScoreLabel()
+        {
+            var hud = GameObject.Find(HudRootName)?.GetComponent<RectTransform>();
+            return hud != null ? EnsureScoreLabel(hud) : null;
+        }
+
+        static TextMeshProUGUI EnsureScoreLabel(RectTransform canvas)
+        {
+            var existing = FindTmp(canvas, "PAR");
+            if (existing != null)
+                return existing;
+
+            var go = new GameObject("Score", typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(canvas, false);
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = "PAR 3  ·  THROW 0";
+            tmp.color = new Color(0.95f, 0.95f, 0.95f);
+            tmp.raycastTarget = false;
+
+            var rest = FindBucketDistanceLabel(canvas);
+            if (rest != null)
+                tmp.font = rest.font;
+
+            return tmp;
         }
 
         static TextMeshProUGUI EnsureDiscHeightLabel(RectTransform canvas)
