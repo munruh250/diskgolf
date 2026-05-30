@@ -9,15 +9,24 @@ namespace DiskGolf.Input
 
         void Update()
         {
-            if (UnityEngine.Input.GetKeyDown(KeyCode.LeftArrow)) ReleaseAngle = ReleaseAngle.Hyzer;
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Z)) ReleaseAngle = ReleaseAngle.Hyzer;
 
-            if (UnityEngine.Input.GetKeyDown(KeyCode.DownArrow)) ReleaseAngle = ReleaseAngle.Flat;
+            if (UnityEngine.Input.GetKeyDown(KeyCode.X)) ReleaseAngle = ReleaseAngle.Flat;
 
-            if (UnityEngine.Input.GetKeyDown(KeyCode.RightArrow)) ReleaseAngle = ReleaseAngle.Anhyzer;
+            if (UnityEngine.Input.GetKeyDown(KeyCode.C)) ReleaseAngle = ReleaseAngle.Anhyzer;
         }
 
         public bool ConfirmPressed => UnityEngine.Input.GetKeyDown(KeyCode.Space);
+
         public bool ResetPressed => UnityEngine.Input.GetKeyDown(KeyCode.R);
+
+        public bool AimLeft => UnityEngine.Input.GetKeyDown(KeyCode.LeftArrow);
+
+        public bool AimRight => UnityEngine.Input.GetKeyDown(KeyCode.RightArrow);
+
+        public bool AimUp => UnityEngine.Input.GetKeyDown(KeyCode.UpArrow);
+
+        public bool AimDown => UnityEngine.Input.GetKeyDown(KeyCode.DownArrow);
 
         public int DiscHotkey =>
             UnityEngine.Input.GetKeyDown(KeyCode.Alpha1) ? 0 :

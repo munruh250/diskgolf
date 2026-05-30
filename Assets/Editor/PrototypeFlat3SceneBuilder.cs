@@ -19,10 +19,12 @@ using UnityEngine.UI;
 
 namespace DiskGolf.EditorTools
 {
-    /// <summary>One-click greybox scaffold for Prototype Flat 3 (+ CLI batch).</summary>
+    /// <summary>Full scene scaffold (optional). Prefer <see cref="GreyboxAutoSetup"/> auto-migration on load.</summary>
     public static class PrototypeFlat3SceneBuilder
     {
         const string PrefabsDir = "Assets/Prefabs";
+
+        const string MaterialsDir = "Assets/Materials";
 
         const string ScenePath = "Assets/Scenes/PrototypeFlat3.unity";
 
@@ -31,6 +33,7 @@ namespace DiskGolf.EditorTools
         public static void Build()
         {
             Directory.CreateDirectory(PrefabsDir);
+            Directory.CreateDirectory(MaterialsDir);
             Directory.CreateDirectory("Assets/Scenes");
 
             EnsureTmpEssentials();
@@ -38,11 +41,11 @@ namespace DiskGolf.EditorTools
             EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough" });
 
             var fairRgb = new Color(0.2f, 0.52f, 0.26f);
-            var fairMat = Mat("FairwayMat", fairRgb);
-            var teeMat = Mat("TeeMat", new Color(0.73f, 0.57f, 0.41f));
-            var metalMat = Mat("BasketMat", new Color(0.46f, 0.49f, 0.53f));
+            var fairMat = SaveMaterialAsset("FairwayMat", fairRgb, $"{MaterialsDir}/FairwayMat.mat");
+            var teeMat = SaveMaterialAsset("TeeMat", new Color(0.73f, 0.57f, 0.41f), $"{MaterialsDir}/TeeMat.mat");
+            var metalMat = SaveMaterialAsset("BasketMat", new Color(0.46f, 0.49f, 0.53f), $"{MaterialsDir}/BasketMat.mat");
 
-            var discOrange = Mat("DiscOrange", new Color(0.92f, 0.42f, 0.06f));
+            var discOrange = SaveMaterialAsset("DiscOrange", new Color(0.92f, 0.42f, 0.06f), $"{MaterialsDir}/DiscOrange.mat");
 
             GameObject discPrefab = SaveDiscPrefab(discOrange);
             GameObject teePrefab = SaveTeePrefab(teeMat);
@@ -65,12 +68,22 @@ namespace DiskGolf.EditorTools
             var basketTf = InstantiatePrefabIntoScene(basketPrefab, new Vector3(0f, 0f, 76.2f),
                 Quaternion.identity);
 
-            var discTf = InstantiatePrefabIntoScene(discPrefab, teeTf.position + Vector3.up * 0.12f, Quaternion.identity);
-            discTf.rotation = Quaternion.Euler(90f, 0f, 0f);
+            var aimRot = Quaternion.LookRotation((basketTf.position - teeTf.position).normalized, Vector3.up);
+            var throwerVisual = ThrowerVisual.Build(
+                teeTf.position + aimRot * Vector3.back * 0.55f,
+                aimRot);
+            var throwerTf = throwerVisual.transform;
+
+            var discTf = InstantiatePrefabIntoScene(discPrefab, throwerVisual.HandAnchor.position, aimRot);
+            discTf.SetPositionAndRotation(
+                throwerVisual.HandAnchor.position,
+                aimRot);
 
             SpawnCircleVisualizer(basketTf);
 
             RoughBands(fairRgb);
+
+            var courseLayout = CourseLayout.EnsureInScene();
 
             var mainCam = MainCam(out CinemachineBrain _);
 
@@ -84,6 +97,8 @@ namespace DiskGolf.EditorTools
                 "teePad", teeTf);
             AssignSerialized(hole,
                 "basket", basketTf);
+            AssignSerialized(hole,
+                "thrower", throwerTf);
 
             var bag = gm.AddComponent<DiscBag>();
 
@@ -106,7 +121,8 @@ namespace DiskGolf.EditorTools
 
             var hudRt = HudCanvas(out _);
 
-            HudTmpLabel(hudRt, new Vector2(0f, 130f), "REST --- ft", 34f, out TextMeshProUGUI restUi);
+            HudTmpLabel(hudRt, new Vector2(0f, 130f), "Bucket Distance --- ft", 34f, out TextMeshProUGUI restUi);
+            HudTmpLabel(hudRt, new Vector2(0f, 108f), "DISC HEIGHT --- ft", 30f, out TextMeshProUGUI discHeightUi);
             HudTmpLabel(hudRt, new Vector2(0f, 94f), "Disc", 28f, out TextMeshProUGUI discUi);
 
             HudTmpLabel(hudRt, new Vector2(0f, 60f), "FLAT", 26f,
@@ -191,6 +207,19 @@ namespace DiskGolf.EditorTools
 
             AssignSerialized(controller, "inTheCircleBanner", banner.gameObject);
 
+            var throwLabel = HudTmpLabelRow(hudRt, Vector2.zero, "200 FEET", 64f,
+                TextAlignmentOptions.Center);
+            var throwRt = throwLabel.rectTransform;
+            throwRt.anchorMin = throwRt.anchorMax = new Vector2(0.5f, 0.5f);
+            throwRt.anchoredPosition = Vector2.zero;
+            throwRt.sizeDelta = new Vector2(900f, 140f);
+            throwLabel.gameObject.name = "ThrowResultBanner";
+            ThrowResultBannerUI.ApplyStyle(throwLabel);
+            var throwBanner = throwLabel.gameObject.AddComponent<ThrowResultBannerUI>();
+            AssignSerialized(throwBanner, "label", throwLabel);
+            throwLabel.gameObject.SetActive(false);
+            AssignSerialized(controller, "throwResultBanner", throwBanner);
+
             var hud = hudRt.gameObject.AddComponent<HUDController>();
 
             AssignSerialized(hud, "controller", controller);
@@ -201,21 +230,29 @@ namespace DiskGolf.EditorTools
 
             AssignSerialized(hud, "restText", restUi);
 
+            AssignSerialized(hud, "discHeightText", discHeightUi);
+
             AssignSerialized(hud, "discText", discUi);
 
             AssignSerialized(hud, "stanceText", stanceUi);
 
             AssignSerialized(hud, "windText", windUi);
 
-            SpawnMinimap(hudRt, hole, discTf);
+            SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
 
-            SpawnTrajectory(gm.transform, controller);
+            var aimPoint = NtmCameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
 
             var side =
-                Vcam("SideSetupCam", mainCam.transform, discTf, basketTf, new Vector3(-6f, 2.8f, -4f), 0f);
+                Vcam(NtmCameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, NtmCameraRig.SideFollowOffset, 0f);
+
+            var flightChase =
+                Vcam(NtmCameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, NtmCameraRig.FlightChaseOffset, 0f);
+
+            NtmCameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
+            NtmCameraRig.ConfigureFlightChaseCam(flightChase, discTf, discTf);
 
             var top =
-                Vcam("TopDownTrackCam", mainCam.transform, discTf, basketTf, new Vector3(0f, 30f, 0.6f), 80f);
+                Vcam("TopDownTrackCam", mainCam.transform, discTf, discTf, new Vector3(0f, 22f, 0f), 90f);
 
             var lie = Vcam("LieZoomCam", mainCam.transform, discTf, basketTf, new Vector3(1.8f, 2.1f, -2.2f), 0f);
 
@@ -223,19 +260,26 @@ namespace DiskGolf.EditorTools
                 Vcam("OverheadPuttCam", mainCam.transform, basketTf, basketTf, new Vector3(0f, 15f, 0.9f), 72f);
 
             side.gameObject.SetActive(true);
+            flightChase.gameObject.SetActive(false);
             top.gameObject.SetActive(false);
             lie.gameObject.SetActive(false);
             putt.gameObject.SetActive(false);
+
+            NtmHudLayout.Apply();
 
             var directorGo = new GameObject("CameraDirector");
             directorGo.transform.SetParent(gm.transform, false);
 
             var director = directorGo.AddComponent<CameraDirector>();
             AssignSerialized(director, "sideSetupCam", side);
-            AssignSerialized(director, "topDownTrackCam", top);
+            AssignSerialized(director, "flightChaseCam", flightChase);
             AssignSerialized(director, "lieZoomCam", lie);
             AssignSerialized(director, "overheadPuttCam", putt);
             AssignSerialized(director, "throwController", controller);
+            AssignSerialized(director, "flightPresenter", presenter);
+
+            var autoSetup = gm.GetComponent<GreyboxAutoSetup>() ?? gm.AddComponent<GreyboxAutoSetup>();
+            autoSetup.Apply();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
@@ -251,24 +295,8 @@ namespace DiskGolf.EditorTools
             t.color = Color.white;
         }
 
-        static void SpawnTrajectory(Transform parent, ThrowController controller)
-        {
-            var go = new GameObject("TrajectoryPreview");
-            go.transform.SetParent(parent, false);
-
-            var lr = go.AddComponent<LineRenderer>();
-            lr.numCornerVertices = 2;
-            lr.numCapVertices = 2;
-            lr.widthMultiplier = 0.12f;
-            lr.material = Mat("TrajectoryLine", Color.green);
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-
-            var preview = go.AddComponent<TrajectoryPreview>();
-            AssignSerialized(preview, "controller", controller);
-        }
-
-        static void SpawnMinimap(RectTransform hudRoot, HoleSetup hole, Transform discTf)
+        static void SpawnMinimap(RectTransform hudRoot, HoleSetup hole, Transform discTf, CourseLayout course,
+            ThrowController throwController)
         {
             var host = new GameObject("MinimapHost", typeof(RectTransform));
             var hostRt = host.GetComponent<RectTransform>();
@@ -276,51 +304,46 @@ namespace DiskGolf.EditorTools
             hostRt.anchorMin = new Vector2(1f, 1f);
             hostRt.anchorMax = new Vector2(1f, 1f);
             hostRt.pivot = new Vector2(1f, 1f);
-            hostRt.anchoredPosition = new Vector2(-24f, -90f);
-            hostRt.sizeDelta = new Vector2(200f, 200f);
+            hostRt.anchoredPosition = new Vector2(-20f, -20f);
+            hostRt.sizeDelta = new Vector2(248f, 392f);
 
-            var panel =
-                ImageRect(hostRt,
+            var panelGo = new GameObject("MapPanel", typeof(RectTransform));
+            var panelRt = panelGo.GetComponent<RectTransform>();
+            panelRt.SetParent(hostRt, false);
+            panelRt.anchorMin = Vector2.zero;
+            panelRt.anchorMax = Vector2.one;
+            panelRt.offsetMin = Vector2.zero;
+            panelRt.offsetMax = Vector2.zero;
 
-                    Vector2.zero,
+            var markerLayerGo = new GameObject("MarkerLayer", typeof(RectTransform));
+            var markerLayer = markerLayerGo.GetComponent<RectTransform>();
+            markerLayer.SetParent(panelRt, false);
+            markerLayer.anchorMin = Vector2.zero;
+            markerLayer.anchorMax = Vector2.one;
+            markerLayer.offsetMin = Vector2.zero;
+            markerLayer.offsetMax = Vector2.zero;
 
-                    Vector2.one * 40f,
+            var mapRect = panelRt;
+            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect),
+                new Vector2(8f, 8f), Color.white).rectTransform;
+            teeDot.name = "TeeDot";
 
-                    new Color(0f,
+            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect),
+                new Vector2(10f, 10f), new Color(1f, 0.55f, 0.25f)).rectTransform;
+            basketDot.name = "BasketDot";
 
-                        0f,
-
-                        0f,
-
-                        0.35f));
-
-            var panelRt = panel.rectTransform;
-            panelRt.anchorMin =
-                Vector2.zero;
-            panelRt.anchorMax =
-                Vector2.one;
-            panelRt.pivot =
-                new Vector2(0.5f,
-
-                    0.5f);
-
-            panelRt.offsetMin =
-                Vector2.zero;
-            panelRt.offsetMax =
-                Vector2.zero;
-
-            var teeDot = ImageRect(panel.rectTransform, new Vector2(-58f, -58f), new Vector2(10f, 10f), Color.white)
-                .rectTransform;
-
-            var basketDot = ImageRect(panel.rectTransform, new Vector2(58f, 58f), new Vector2(12f, 12f),
-                new Color(1f, 0.5f, 0.3f)).rectTransform;
-
-            var discDot = ImageRect(panel.rectTransform, new Vector2(-32f, -24f), new Vector2(10f, 10f), Color.cyan)
-                .rectTransform;
+            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect),
+                new Vector2(8f, 8f), Color.cyan).rectTransform;
+            discDot.name = "DiscDot";
 
             var mini = host.AddComponent<MinimapUI>();
+            AssignSerialized(mini, "course", course);
             AssignSerialized(mini, "hole", hole);
             AssignSerialized(mini, "discTransform", discTf);
+            AssignSerialized(mini, "controller", throwController);
+            AssignSerialized(mini, "markerLayer", markerLayer);
+            AssignSerialized(mini, "teeDot", teeDot);
+            AssignSerialized(mini, "basketDot", basketDot);
             AssignSerialized(mini, "discDot", discDot);
         }
 
@@ -417,6 +440,22 @@ namespace DiskGolf.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        static Material SaveMaterialAsset(string name, Color c, string assetPath)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(assetPath) ?? MaterialsDir);
+            var shader = Shader.Find("Standard");
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+            if (mat == null)
+            {
+                mat = new Material(shader) { color = c, name = name };
+                AssetDatabase.CreateAsset(mat, assetPath);
+            }
+            else
+                mat.color = c;
+
+            return mat;
+        }
+
         static Material Mat(string name, Color c)
         {
             var shader = Shader.Find("Standard");
@@ -436,7 +475,10 @@ namespace DiskGolf.EditorTools
             var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             disc.name = "Disc";
             DestroyColliderImmediate(disc);
-            disc.transform.localScale = new Vector3(0.28f, 0.02f, 0.28f);
+            disc.transform.localScale = new Vector3(
+                GreyboxScale.DiscDiameterM,
+                GreyboxScale.DiscThicknessM,
+                GreyboxScale.DiscDiameterM);
             disc.GetComponent<MeshRenderer>().sharedMaterial = mat;
             return SavePrefabAsset(disc, $"{PrefabsDir}/Disc.prefab");
         }
@@ -455,19 +497,31 @@ namespace DiskGolf.EditorTools
         {
             var root = new GameObject("Basket");
 
+            float catchY = GreyboxScale.BasketCatchHeightM;
+            float ringDiameter = GreyboxScale.BasketCatchDiameterM;
+            float poleH = catchY;
+            float poleRadius = GreyboxScale.PoleDiameterM * 0.5f;
+
             var pole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             pole.name = "Pole";
             pole.transform.SetParent(root.transform, false);
-            pole.transform.localScale = new Vector3(0.18f, 2.2f, 0.18f);
-            pole.transform.localPosition = Vector3.up * 2.2f;
+            pole.transform.localScale = new Vector3(poleRadius * 2f, poleH * 0.5f, poleRadius * 2f);
+            pole.transform.localPosition = Vector3.up * (poleH * 0.5f);
             pole.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            pole.GetComponent<MeshRenderer>().enabled = false;
+            DestroyColliderImmediate(pole);
 
             var top = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             top.name = "TopRing";
             top.transform.SetParent(root.transform, false);
-            top.transform.localScale = new Vector3(0.9f, 0.05f, 0.9f);
-            top.transform.localPosition = Vector3.up * 4.3f;
+            top.transform.localScale = new Vector3(ringDiameter, 0.04f, ringDiameter);
+            top.transform.localPosition = Vector3.up * catchY;
             top.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            top.GetComponent<MeshRenderer>().enabled = false;
+            DestroyColliderImmediate(top);
+
+            root.AddComponent<BasketVisual>();
+            root.AddComponent<BasketCatchDetector>();
 
             root.tag = "Basket";
             return SavePrefabAsset(root, $"{PrefabsDir}/Basket.prefab");
@@ -489,16 +543,24 @@ namespace DiskGolf.EditorTools
 
         static void SpawnCircleVisualizer(Transform basket)
         {
-            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "CircleZone";
-            sphere.tag = "Circle";
-            sphere.transform.SetParent(basket, false);
-            sphere.transform.localPosition = Vector3.zero;
+            var circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            circle.name = "CircleZone";
+            circle.tag = "Circle";
+            circle.transform.SetParent(basket, false);
             var radiusMeters = 33f * 0.3048f;
-            sphere.transform.localScale = Vector3.one * (radiusMeters / 0.5f); // unity sphere radius baseline 0.5
-            sphere.GetComponent<SphereCollider>().isTrigger = true;
-            sphere.GetComponent<MeshRenderer>().sharedMaterial =
-                Mat("CircleFill", new Color(0f, 0.55f, 0.92f));
+            circle.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+            circle.transform.localScale = new Vector3(radiusMeters * 2f, 0.02f, radiusMeters * 2f);
+
+            var col = circle.GetComponent<CapsuleCollider>();
+            if (col != null)
+                Object.DestroyImmediate(col);
+
+            var trigger = circle.AddComponent<MeshCollider>();
+            trigger.convex = true;
+            trigger.isTrigger = true;
+
+            // Trigger only — a giant sphere here made the basket look massive.
+            circle.GetComponent<MeshRenderer>().enabled = false;
         }
 
         static string ResolveTextMeshProPackageRoot()
@@ -547,24 +609,21 @@ namespace DiskGolf.EditorTools
 
         static void RoughBands(Color fairwayBase)
         {
-            void Stripe(Vector3 offset, Vector3 euler)
+            void Stripe(string name, Vector3 offset, Vector3 scale)
             {
                 var slab = GameObject.CreatePrimitive(PrimitiveType.Plane);
                 slab.tag = "Rough";
-                slab.name = "RoughBorder";
+                slab.name = name;
                 slab.transform.position = Vector3.forward * (76.2f * 0.5f) + offset;
-                slab.transform.rotation = Quaternion.Euler(euler);
-                slab.transform.localScale = Vector3.one * 6f;
-                slab.GetComponent<MeshRenderer>().sharedMaterial =
-                    Mat("RoughMat",
-                        fairwayBase * new Color(0.55f, 0.4f,
-                            0.25f));
+                slab.transform.rotation = Quaternion.identity;
+                slab.transform.localScale = scale;
+                var mat = Mat("RoughMat", fairwayBase * new Color(0.55f, 0.4f, 0.25f));
+                slab.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                DestroyColliderImmediate(slab);
             }
 
-            Stripe(Vector3.left * 80f + Vector3.up * 0.02f, new Vector3(0f, 90f,
-                0f));
-            Stripe(Vector3.right * 80f + Vector3.up * 0.02f, new Vector3(0f, -90f,
-                0f));
+            Stripe("RoughBorder_L", Vector3.left * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
+            Stripe("RoughBorder_R", Vector3.right * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
         }
 
         static void DirLight(out GameObject go)
@@ -572,8 +631,11 @@ namespace DiskGolf.EditorTools
             go = new GameObject("Directional Light");
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.05f;
-            go.transform.rotation = Quaternion.Euler(48f, -28f, 0f);
+            light.intensity = 1.18f;
+            light.color = new Color(1f, 0.96f, 0.88f);
+            light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.9f;
+            go.transform.rotation = Quaternion.Euler(50f, -34f, 0f);
         }
 
         static GameObject MainCam(out CinemachineBrain brain)
