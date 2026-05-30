@@ -99,7 +99,10 @@ namespace DiskGolf.Gameplay
             float spriteWidth = sprite.bounds.size.x;
             float uniformScale = spriteWidth > 1e-4f ? targetWidth / spriteWidth : 1f;
             spriteGo.transform.localScale = Vector3.one * uniformScale;
-            spriteGo.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+            spriteGo.transform.localPosition = new Vector3(
+                0f,
+                BasketSpriteUtil.ComputeGroundOffset(sprite, uniformScale),
+                0f);
 
             if (spriteGo.GetComponent<BasketBillboard>() == null)
                 spriteGo.AddComponent<BasketBillboard>();
@@ -110,27 +113,29 @@ namespace DiskGolf.Gameplay
             if (basketSprite != null)
                 return basketSprite;
 
+            var texture = LoadBasketTexture();
+            if (texture != null)
+            {
+                basketSprite = BasketSpriteUtil.CreateGroundAlignedSprite(texture);
+                if (basketSprite != null)
+                    return basketSprite;
+            }
+
             basketSprite = Resources.Load<Sprite>(SpriteResourcePath);
-            if (basketSprite != null)
-                return basketSprite;
+            return basketSprite;
+        }
+
+        static Texture2D LoadBasketTexture()
+        {
+            var texture = Resources.Load<Texture2D>(SpriteResourcePath);
+            if (texture != null)
+                return texture;
 
 #if UNITY_EDITOR
-            basketSprite = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteAssetPath);
-            if (basketSprite != null)
-                return basketSprite;
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(SpriteAssetPath);
+#else
+            return null;
 #endif
-
-            var texture = Resources.Load<Texture2D>(SpriteResourcePath);
-            if (texture == null)
-                return null;
-
-            basketSprite = Sprite.Create(
-                texture,
-                new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0f),
-                220f);
-
-            return basketSprite;
         }
     }
 }

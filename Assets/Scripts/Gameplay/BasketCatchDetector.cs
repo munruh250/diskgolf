@@ -1,5 +1,9 @@
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace DiskGolf.Gameplay
 {
     /// <summary>Basket colliders — any disc contact during flight counts as holed.</summary>
@@ -72,6 +76,7 @@ namespace DiskGolf.Gameplay
             DisableLegacyVisualColliders();
 
             var collidersRoot = EnsureChild(CatchCollidersName);
+            ConsolidateLegacyCatchChild(collidersRoot, CatchVolumeName);
             EnsureChainCatch(collidersRoot);
             EnsurePoleCatch(collidersRoot);
             EnsureTrayCatch(collidersRoot);
@@ -93,12 +98,26 @@ namespace DiskGolf.Gameplay
                 collider.enabled = false;
         }
 
+        void ConsolidateLegacyCatchChild(Transform collidersRoot, string childName)
+        {
+            var nested = collidersRoot.Find(childName);
+            var legacy = transform.Find(childName);
+
+            if (legacy == null || legacy.parent == collidersRoot)
+                return;
+
+            if (nested != null)
+                DestroyObject(nested.gameObject);
+
+            legacy.SetParent(collidersRoot, false);
+        }
+
         void EnsureChainCatch(Transform root)
         {
             var catchVolume = EnsureChild(root, CatchVolumeName);
             catchVolume.localPosition = Vector3.up * GreyboxScale.BasketCatchHeightM;
 
-            var sphere = catchVolume.GetComponent<SphereCollider>() ?? catchVolume.gameObject.AddComponent<SphereCollider>();
+            var sphere = EnsureSphereCollider(catchVolume.gameObject);
             sphere.isTrigger = false;
             sphere.radius = catchRadiusM;
             sphere.center = Vector3.zero;
@@ -109,7 +128,7 @@ namespace DiskGolf.Gameplay
             var pole = EnsureChild(root, "CatchPole");
             pole.localPosition = Vector3.up * (GreyboxScale.BasketCatchHeightM * 0.5f);
 
-            var capsule = pole.GetComponent<CapsuleCollider>() ?? pole.gameObject.AddComponent<CapsuleCollider>();
+            var capsule = EnsureCapsuleCollider(pole.gameObject);
             capsule.isTrigger = false;
             capsule.radius = GreyboxScale.PoleDiameterM * 0.55f;
             capsule.height = GreyboxScale.BasketCatchHeightM;
@@ -122,10 +141,36 @@ namespace DiskGolf.Gameplay
             var tray = EnsureChild(root, "CatchTray");
             tray.localPosition = Vector3.up * (GreyboxScale.BasketCatchHeightM * 0.38f);
 
-            var sphere = tray.GetComponent<SphereCollider>() ?? tray.gameObject.AddComponent<SphereCollider>();
+            var sphere = EnsureSphereCollider(tray.gameObject);
             sphere.isTrigger = false;
             sphere.radius = GreyboxScale.BasketCatchDiameterM * 0.34f;
             sphere.center = Vector3.zero;
+        }
+
+        static SphereCollider EnsureSphereCollider(GameObject go)
+        {
+            var sphere = go.GetComponent<SphereCollider>();
+            if (sphere != null)
+                return sphere;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                return Undo.AddComponent<SphereCollider>(go);
+#endif
+            return go.AddComponent<SphereCollider>();
+        }
+
+        static CapsuleCollider EnsureCapsuleCollider(GameObject go)
+        {
+            var capsule = go.GetComponent<CapsuleCollider>();
+            if (capsule != null)
+                return capsule;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                return Undo.AddComponent<CapsuleCollider>(go);
+#endif
+            return go.AddComponent<CapsuleCollider>();
         }
 
         Transform EnsureChild(string name)
@@ -148,6 +193,24 @@ namespace DiskGolf.Gameplay
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             return go.transform;
+        }
+
+        static void DestroyObject(Object target)
+        {
+            if (target == null)
+                return;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                Undo.DestroyObjectImmediate(target);
+                return;
+            }
+#endif
+            if (target is GameObject go)
+                Destroy(go);
+            else if (target is Component component)
+                Destroy(component);
         }
     }
 }
