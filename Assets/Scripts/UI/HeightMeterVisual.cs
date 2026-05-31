@@ -4,10 +4,10 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Neo Turf Masters-style vertical height meter with LOW / NICE / HIGH zones.</summary>
-    public sealed class NtmHeightMeterVisual : MonoBehaviour
+    /// <summary>Vertical height meter with LOW / NICE / HIGH zones.</summary>
+    public sealed class HeightMeterVisual : MonoBehaviour
     {
-        const string VisualName = "NtmHeightMeter";
+        const string VisualName = "HeightMeter";
 
         public static string VisualNameForFind => VisualName;
 
@@ -23,14 +23,17 @@ namespace DiskGolf.UI
 
         [SerializeField] RectTransform sweetSpot;
 
-        public static NtmHeightMeterVisual Ensure(Transform parent)
+        public static HeightMeterVisual Ensure(Transform parent)
         {
             if (parent == null)
                 return null;
 
-            var existing = parent.Find(VisualName)?.GetComponent<NtmHeightMeterVisual>();
+            var existing = parent.Find(VisualName)?.GetComponent<HeightMeterVisual>()
+                ?? parent.Find("NtmHeightMeter")?.GetComponent<HeightMeterVisual>();
             if (existing != null)
             {
+                if (existing.name != VisualName)
+                    existing.name = VisualName;
                 existing.EnsureBuilt();
                 return existing;
             }
@@ -44,8 +47,8 @@ namespace DiskGolf.UI
 
             var root = transform as RectTransform;
             if (track != null
-                && root.sizeDelta.y >= NtmTimingMeterLayout.HeightTotal - 1f
-                && root.sizeDelta.x >= NtmTimingMeterLayout.HeightWidth - 1f)
+                && root.sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f
+                && root.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f)
                 return;
 
             if (track != null)
@@ -79,8 +82,8 @@ namespace DiskGolf.UI
             var root = transform as RectTransform;
             root.anchorMin = root.anchorMax = new Vector2(1f, 0f);
             root.pivot = new Vector2(1f, 0f);
-            root.anchoredPosition = NtmTimingMeterLayout.HeightAnchorPos;
-            root.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightWidth, NtmTimingMeterLayout.HeightTotal);
+            root.anchoredPosition = TimingMeterLayout.HeightAnchorPos;
+            root.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, TimingMeterLayout.HeightTotal);
         }
 
         public void SetChromeVisible(bool visible)
@@ -95,23 +98,23 @@ namespace DiskGolf.UI
                 indicator.gameObject.SetActive(visible);
         }
 
-        static NtmHeightMeterVisual Build(Transform parent)
+        static HeightMeterVisual Build(Transform parent)
         {
             var rootGo = new GameObject(VisualName, typeof(RectTransform));
             rootGo.transform.SetParent(parent, false);
-            var visual = rootGo.AddComponent<NtmHeightMeterVisual>();
+            var visual = rootGo.AddComponent<HeightMeterVisual>();
             visual.BuildFromExistingRoot(rootGo.transform);
             return visual;
         }
 
         void BuildFromExistingRoot(Transform rootTransform)
         {
-            float s = NtmTimingMeterLayout.UiScale;
+            float s = TimingMeterLayout.UiScale;
             var root = rootTransform as RectTransform;
             root.anchorMin = root.anchorMax = new Vector2(1f, 0f);
             root.pivot = new Vector2(1f, 0f);
-            root.anchoredPosition = NtmTimingMeterLayout.HeightAnchorPos;
-            root.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightWidth, NtmTimingMeterLayout.HeightTotal);
+            root.anchoredPosition = TimingMeterLayout.HeightAnchorPos;
+            root.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, TimingMeterLayout.HeightTotal);
 
             var trackGo = new GameObject("Track", typeof(RectTransform));
             var trackRt = trackGo.GetComponent<RectTransform>();
@@ -120,7 +123,7 @@ namespace DiskGolf.UI
             trackRt.anchorMax = new Vector2(0f, 1f);
             trackRt.pivot = new Vector2(0f, 0.5f);
             trackRt.anchoredPosition = Vector2.zero;
-            trackRt.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightTrackWidth, -8f * s);
+            trackRt.sizeDelta = new Vector2(TimingMeterLayout.HeightTrackWidth, -8f * s);
             track = trackRt;
 
             AddZone(trackRt, 0f, 0.33f, LowColor);
@@ -132,9 +135,9 @@ namespace DiskGolf.UI
             sweetRt.SetParent(trackRt, false);
             sweetRt.anchorMin = sweetRt.anchorMax = new Vector2(0.5f, 0.5f);
             sweetRt.pivot = new Vector2(0.5f, 0.5f);
-            sweetRt.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightTrackWidth + 4f * s, 12f * s);
-            sweetGo.GetComponent<Image>().color = NtmTimingMeterLayout.SweetSpotColor;
-            sweetGo.GetComponent<Image>().sprite = NtmArcRingBuilder.WhiteSprite;
+            sweetRt.sizeDelta = new Vector2(TimingMeterLayout.HeightTrackWidth + 4f * s, 12f * s);
+            sweetGo.GetComponent<Image>().color = TimingMeterLayout.SweetSpotColor;
+            sweetGo.GetComponent<Image>().sprite = ArcRingBuilder.WhiteSprite;
             sweetGo.GetComponent<Image>().raycastTarget = false;
             sweetSpot = sweetRt;
             sweetGo.SetActive(false);
@@ -147,7 +150,7 @@ namespace DiskGolf.UI
             indicatorRt.anchoredPosition = new Vector2(-4f * s, 0f);
             indicatorRt.sizeDelta = new Vector2(14f * s, 5f * s);
             indicatorGo.GetComponent<Image>().color = Color.white;
-            indicatorGo.GetComponent<Image>().sprite = NtmArcRingBuilder.WhiteSprite;
+            indicatorGo.GetComponent<Image>().sprite = ArcRingBuilder.WhiteSprite;
             indicatorGo.GetComponent<Image>().raycastTarget = false;
             indicator = indicatorRt;
 
@@ -161,7 +164,7 @@ namespace DiskGolf.UI
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0f, 1f);
             titleRt.pivot = new Vector2(0f, 0f);
             titleRt.anchoredPosition = new Vector2(0f, 6f * s);
-            titleRt.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightWidth, 20f * s);
+            titleRt.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, 20f * s);
             var title = titleGo.AddComponent<TextMeshProUGUI>();
             title.text = "HEIGHT";
             title.fontSize = 16f * s;
@@ -187,7 +190,7 @@ namespace DiskGolf.UI
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
             go.GetComponent<Image>().color = color;
-            go.GetComponent<Image>().sprite = NtmArcRingBuilder.WhiteSprite;
+            go.GetComponent<Image>().sprite = ArcRingBuilder.WhiteSprite;
             go.GetComponent<Image>().raycastTarget = false;
         }
 
@@ -199,7 +202,7 @@ namespace DiskGolf.UI
             rt.anchorMin = rt.anchorMax = new Vector2(1f, anchorY);
             rt.pivot = new Vector2(0f, 0.5f);
             rt.anchoredPosition = new Vector2(6f * scale, 0f);
-            rt.sizeDelta = new Vector2(NtmTimingMeterLayout.HeightLabelWidth, 18f * scale);
+            rt.sizeDelta = new Vector2(TimingMeterLayout.HeightLabelWidth, 18f * scale);
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
@@ -220,7 +223,7 @@ namespace DiskGolf.UI
                 return;
 
             normalized01 = Mathf.Clamp01(normalized01);
-            float s = NtmTimingMeterLayout.UiScale;
+            float s = TimingMeterLayout.UiScale;
             indicator.anchorMin = indicator.anchorMax = new Vector2(0f, normalized01);
             indicator.anchoredPosition = new Vector2(-4f * s, 0f);
         }
@@ -233,11 +236,11 @@ namespace DiskGolf.UI
             center01 = Mathf.Clamp01(center01);
             width01 = Mathf.Clamp(width01, 0.04f, 0.22f);
 
-            float trackHeight = track != null && track.rect.height > 1f ? track.rect.height : 120f * NtmTimingMeterLayout.UiScale;
+            float trackHeight = track != null && track.rect.height > 1f ? track.rect.height : 120f * TimingMeterLayout.UiScale;
             sweetSpot.anchorMin = sweetSpot.anchorMax = new Vector2(0.5f, center01);
             sweetSpot.sizeDelta = new Vector2(
-                NtmTimingMeterLayout.HeightTrackWidth + 4f * NtmTimingMeterLayout.UiScale,
-                Mathf.Max(12f * NtmTimingMeterLayout.UiScale, width01 * trackHeight));
+                TimingMeterLayout.HeightTrackWidth + 4f * TimingMeterLayout.UiScale,
+                Mathf.Max(12f * TimingMeterLayout.UiScale, width01 * trackHeight));
             sweetSpot.gameObject.SetActive(true);
         }
 

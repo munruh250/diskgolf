@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Shared placement for NTM-style timing meters.</summary>
-    public static class NtmTimingMeterLayout
+    /// <summary>Shared placement for timing meters.</summary>
+    public static class TimingMeterLayout
     {
         /// <summary>UI scale multiplier for timing meters (2 = testing size).</summary>
         public const float UiScale = 2f;

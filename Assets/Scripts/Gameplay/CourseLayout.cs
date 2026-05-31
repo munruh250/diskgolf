@@ -8,7 +8,7 @@ namespace DiskGolf.Gameplay
     /// </summary>
     public sealed class CourseLayout : MonoBehaviour
     {
-        public const string RootName = "CourseRoot";
+        public const string RootName = "CourseElements";
         public const string FairwayObjectName = "FairwayPlane";
         public const string RoughObjectName = "RoughBorder";
         public const string MinimapLayerName = "MinimapCourse";

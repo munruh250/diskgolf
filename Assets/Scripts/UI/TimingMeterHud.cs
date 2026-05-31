@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Hosts NTM arc meters under the gameplay HUD canvas.</summary>
+    /// <summary>Hosts power and height arc meters under the gameplay HUD canvas.</summary>
     [DefaultExecutionOrder(-150)]
     public sealed class TimingMeterHud : MonoBehaviour
     {
@@ -12,11 +12,11 @@ namespace DiskGolf.UI
 
         static TimingMeterHud _instance;
 
-        NtmPowerMeterVisual _power;
+        PowerMeterVisual _power;
 
-        NtmHeightMeterVisual _height;
+        HeightMeterVisual _height;
 
-        public static NtmPowerMeterVisual Power
+        public static PowerMeterVisual Power
         {
             get
             {
@@ -25,7 +25,7 @@ namespace DiskGolf.UI
             }
         }
 
-        public static NtmHeightMeterVisual Height
+        public static HeightMeterVisual Height
         {
             get
             {
@@ -79,7 +79,7 @@ namespace DiskGolf.UI
 
             root.SetAsLastSibling();
 
-            DestroyStaleMeter(root, NtmPowerMeterVisual.VisualNameForFind,
+            DestroyStaleMeter(root, PowerMeterVisual.VisualNameForFind,
                 t =>
                 {
                     if (t.Find("Pivot/ArcHub/TrackColorV4") == null)
@@ -87,21 +87,21 @@ namespace DiskGolf.UI
 
                     var rt = t as RectTransform;
                     return rt != null
-                           && rt.sizeDelta.x >= NtmTimingMeterLayout.PowerWidth - 1f
-                           && Vector2.Distance(rt.anchoredPosition, NtmTimingMeterLayout.PowerAnchorPos) < 1f;
+                           && rt.sizeDelta.x >= TimingMeterLayout.PowerWidth - 1f
+                           && Vector2.Distance(rt.anchoredPosition, TimingMeterLayout.PowerAnchorPos) < 1f;
                 });
 
-            DestroyStaleMeter(root, NtmHeightMeterVisual.VisualNameForFind,
+            DestroyStaleMeter(root, HeightMeterVisual.VisualNameForFind,
                 t =>
                 {
                     var rt = t as RectTransform;
                     return rt != null
-                           && rt.sizeDelta.y >= NtmTimingMeterLayout.HeightTotal - 1f
-                           && rt.sizeDelta.x >= NtmTimingMeterLayout.HeightWidth - 1f;
+                           && rt.sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f
+                           && rt.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f;
                 });
 
-            _power = NtmPowerMeterVisual.Ensure(root);
-            _height = NtmHeightMeterVisual.Ensure(root);
+            _power = PowerMeterVisual.Ensure(root);
+            _height = HeightMeterVisual.Ensure(root);
 
             _power?.EnsureBuilt();
             _height?.EnsureBuilt();

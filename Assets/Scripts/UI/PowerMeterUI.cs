@@ -8,7 +8,7 @@ namespace DiskGolf.UI
         [SerializeField] UnityEngine.UI.Slider slider;
 
         TimingMeter _meter = new TimingMeter(0.8f);
-        NtmPowerMeterVisual _visual;
+        PowerMeterVisual _visual;
         bool _active;
         bool _frozen;
         float _frozenDisplay;

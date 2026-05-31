@@ -5,10 +5,10 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>NTM-style wind box: green direction arrow + speed readout.</summary>
-    public sealed class NtmWindWidget : MonoBehaviour
+    /// <summary>Wind direction arrow and speed readout.</summary>
+    public sealed class WindWidget : MonoBehaviour
     {
-        const string RootName = "NtmWindWidget";
+        const string RootName = "WindWidget";
 
         static readonly Color FrameColor = new(0.12f, 0.12f, 0.12f, 1f);
 
@@ -22,20 +22,25 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI speedValueText;
 
-        public static NtmWindWidget Ensure(RectTransform hudRoot)
+        public static WindWidget Ensure(RectTransform hudRoot)
         {
             if (hudRoot == null)
                 return null;
 
-            var existing = hudRoot.Find(RootName)?.GetComponent<NtmWindWidget>();
+            var existing = hudRoot.Find(RootName)?.GetComponent<WindWidget>()
+                ?? hudRoot.Find("NtmWindWidget")?.GetComponent<WindWidget>();
             if (existing != null)
+            {
+                if (existing.name != RootName)
+                    existing.name = RootName;
                 return existing;
+            }
 
             var go = new GameObject(RootName, typeof(RectTransform));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(hudRoot, false);
 
-            var widget = go.AddComponent<NtmWindWidget>();
+            var widget = go.AddComponent<WindWidget>();
             widget.Build();
             return widget;
         }
@@ -141,12 +146,12 @@ namespace DiskGolf.UI
         public void ApplyLayout()
         {
             var rt = transform as RectTransform;
-            float minimapTop = NtmHudLayout.TopInset + NtmHudLayout.HoleInfoHeight + NtmHudLayout.StackGap;
-            float windTop = minimapTop + NtmHudLayout.MinimapHeight + NtmHudLayout.StackGap;
+            float minimapTop = HudLayout.TopInset + HudLayout.HoleInfoHeight + HudLayout.StackGap;
+            float windTop = minimapTop + HudLayout.MinimapHeight + HudLayout.StackGap;
 
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-NtmHudLayout.RightInset, -windTop);
+            rt.anchoredPosition = new Vector2(-HudLayout.RightInset, -windTop);
             rt.sizeDelta = new Vector2(168f, 56f);
         }
     }

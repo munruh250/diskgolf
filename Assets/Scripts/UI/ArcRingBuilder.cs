@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace DiskGolf.UI
 {
     /// <summary>Builds visible uGUI arc rings from rotated Image slices.</summary>
-    public static class NtmArcRingBuilder
+    public static class ArcRingBuilder
     {
         static Sprite _whiteSprite;
 

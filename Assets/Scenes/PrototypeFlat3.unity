@@ -3439,7 +3439,7 @@ GameObject:
   - component: {fileID: 374955280}
   - component: {fileID: 374955281}
   m_Layer: 0
-  m_Name: NtmPowerMeter
+  m_Name: PowerMeter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6164,7 +6164,7 @@ GameObject:
   - component: {fileID: 686830819}
   - component: {fileID: 686830820}
   m_Layer: 0
-  m_Name: NtmWindWidget
+  m_Name: WindWidget
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6457,7 +6457,7 @@ GameObject:
   - component: {fileID: 710671976}
   - component: {fileID: 710671977}
   m_Layer: 0
-  m_Name: NtmHeightMeter
+  m_Name: HeightMeter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7293,7 +7293,7 @@ GameObject:
   - component: {fileID: 849284988}
   - component: {fileID: 849284989}
   m_Layer: 0
-  m_Name: NtmHoleInfo
+  m_Name: HoleInfo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9771,7 +9771,7 @@ GameObject:
   - component: {fileID: 1201263019}
   - component: {fileID: 1201263018}
   m_Layer: 0
-  m_Name: CourseRoot
+  m_Name: CourseElements
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -17317,7 +17317,7 @@ GameObject:
   - component: {fileID: 2106036607}
   - component: {fileID: 2106036608}
   m_Layer: 0
-  m_Name: NtmRestDrive
+  m_Name: RestDrive
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

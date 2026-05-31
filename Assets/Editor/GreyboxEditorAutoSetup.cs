@@ -46,7 +46,7 @@ namespace DiskGolf.EditorTools
         [MenuItem("Disk Golf/Clean Duplicate Vcams In Scene")]
         public static void CleanDuplicateVcamsInScene()
         {
-            DiskGolf.Camera.NtmCameraRig.RemoveDuplicateVcams();
+            DiskGolf.Camera.CameraRig.RemoveDuplicateVcams();
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
             Debug.Log("[Disk Golf] Removed duplicate virtual cameras from the active scene.");

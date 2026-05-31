@@ -66,6 +66,8 @@ namespace DiskGolf.Core
 
         bool _throwFromPutting;
 
+        Vector3 _lastThrowAim = Vector3.forward;
+
         public ThrowPhase Phase => _state.Phase;
 
         public event Action<ThrowPhase> PhaseChanged;
@@ -77,6 +79,8 @@ namespace DiskGolf.Core
         public DiscProfile ActiveDisc => bag != null ? bag.Active : null;
 
         public Vector3 CurrentDiscWorld => _discPosition;
+
+        public Vector3 LastThrowAimDirection => _lastThrowAim;
 
         public int StrokeCount => _strokeCount;
 
@@ -311,6 +315,7 @@ namespace DiskGolf.Core
                 bag.SelectIndex(0);
 
             var aim = aimAdjust.AimDirection(hole, _discPosition);
+            _lastThrowAim = aim;
             var release = isPutt ? ReleaseAngle.Flat : input.ReleaseAngle;
 
             var throwInput = new ThrowInput(

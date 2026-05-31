@@ -4,29 +4,29 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Neo Turf Masters-style semicircle shot-power meter.</summary>
-    public sealed class NtmPowerMeterVisual : MonoBehaviour
+    /// <summary>Semicircle shot-power meter.</summary>
+    public sealed class PowerMeterVisual : MonoBehaviour
     {
         // Clock face: 0% at 6pm (bottom), 50% at 9pm (left), 100% at 12pm (top).
         public const float ArcStartDeg = 270f;
 
         public const float ArcEndDeg = 90f;
 
-        static float S => NtmTimingMeterLayout.UiScale;
+        static float S => TimingMeterLayout.UiScale;
 
         static float TrackThickness => 14f * S;
 
         static float BackdropThickness => 20f * S;
 
-        const string VisualName = "NtmPowerMeter";
+        const string VisualName = "PowerMeter";
 
         const string LayoutMarker = "TrackColorV4";
 
         public static string VisualNameForFind => VisualName;
 
-        static float ArcRadius => NtmTimingMeterLayout.ArcRadius;
+        static float ArcRadius => TimingMeterLayout.ArcRadius;
 
-        static float PivotYOffset => NtmTimingMeterLayout.PowerPivotYOffset;
+        static float PivotYOffset => TimingMeterLayout.PowerPivotYOffset;
 
         static readonly Color GreenLow = new(0.28f, 0.82f, 0.34f, 1f);
 
@@ -44,14 +44,17 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI label100;
 
-        public static NtmPowerMeterVisual Ensure(Transform parent)
+        public static PowerMeterVisual Ensure(Transform parent)
         {
             if (parent == null)
                 return null;
 
-            var existing = parent.Find(VisualName)?.GetComponent<NtmPowerMeterVisual>();
+            var existing = parent.Find(VisualName)?.GetComponent<PowerMeterVisual>()
+                ?? parent.Find("NtmPowerMeter")?.GetComponent<PowerMeterVisual>();
             if (existing != null)
             {
+                if (existing.name != VisualName)
+                    existing.name = VisualName;
                 existing.EnsureBuilt();
                 return existing;
             }
@@ -66,8 +69,8 @@ namespace DiskGolf.UI
             if (pivot != null && pivot.Find("ArcHub/" + LayoutMarker) != null)
             {
                 var root = transform as RectTransform;
-                if (root.sizeDelta.x >= NtmTimingMeterLayout.PowerWidth - 1f
-                    && Vector2.Distance(root.anchoredPosition, NtmTimingMeterLayout.PowerAnchorPos) < 1f)
+                if (root.sizeDelta.x >= TimingMeterLayout.PowerWidth - 1f
+                    && Vector2.Distance(root.anchoredPosition, TimingMeterLayout.PowerAnchorPos) < 1f)
                     return;
             }
 
@@ -85,13 +88,13 @@ namespace DiskGolf.UI
             var root = transform as RectTransform;
             root.anchorMin = root.anchorMax = new Vector2(1f, 0f);
             root.pivot = new Vector2(1f, 0f);
-            root.anchoredPosition = NtmTimingMeterLayout.PowerAnchorPos;
-            root.sizeDelta = new Vector2(NtmTimingMeterLayout.PowerWidth, NtmTimingMeterLayout.PowerTotal);
+            root.anchoredPosition = TimingMeterLayout.PowerAnchorPos;
+            root.sizeDelta = new Vector2(TimingMeterLayout.PowerWidth, TimingMeterLayout.PowerTotal);
         }
 
         void RebuildMeterArt()
         {
-            NtmArcRingBuilder.ClearChildren(pivot);
+            ArcRingBuilder.ClearChildren(pivot);
 
             var root = transform as RectTransform;
             for (int i = root.childCount - 1; i >= 0; i--)
@@ -126,11 +129,11 @@ namespace DiskGolf.UI
                 needle.gameObject.SetActive(visible);
         }
 
-        static NtmPowerMeterVisual Build(Transform parent)
+        static PowerMeterVisual Build(Transform parent)
         {
             var rootGo = new GameObject(VisualName, typeof(RectTransform));
             rootGo.transform.SetParent(parent, false);
-            var visual = rootGo.AddComponent<NtmPowerMeterVisual>();
+            var visual = rootGo.AddComponent<PowerMeterVisual>();
             visual.BuildFromExistingRoot(rootGo.transform);
             return visual;
         }
@@ -172,7 +175,7 @@ namespace DiskGolf.UI
 
         static void BuildArcArt(RectTransform pivotRt)
         {
-            NtmArcRingBuilder.CreateRing(
+            ArcRingBuilder.CreateRing(
                 pivotRt,
                 "TrackBackdrop",
                 ArcStartDeg,
@@ -182,7 +185,7 @@ namespace DiskGolf.UI
                 new Color(0.06f, 0.06f, 0.06f, 0.94f),
                 38);
 
-            NtmArcRingBuilder.CreateGradientRing(
+            ArcRingBuilder.CreateGradientRing(
                 pivotRt,
                 LayoutMarker,
                 ArcStartDeg,
@@ -203,7 +206,7 @@ namespace DiskGolf.UI
             hubRt.anchoredPosition = Vector2.zero;
             hubRt.sizeDelta = new Vector2(34f * S, 34f * S);
             var hubImg = hubGo.GetComponent<Image>();
-            hubImg.sprite = NtmArcRingBuilder.WhiteSprite;
+            hubImg.sprite = ArcRingBuilder.WhiteSprite;
             hubImg.color = new Color(0.12f, 0.38f, 0.14f, 0.95f);
             hubImg.raycastTarget = false;
         }
@@ -229,7 +232,7 @@ namespace DiskGolf.UI
             rt.SetParent(pivotRt, false);
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = NtmArcRingBuilder.PointOnArc(degrees, radius) + offset;
+            rt.anchoredPosition = ArcRingBuilder.PointOnArc(degrees, radius) + offset;
             rt.sizeDelta = new Vector2(52f * S, 20f * S);
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
@@ -253,7 +256,7 @@ namespace DiskGolf.UI
             needleRt.anchoredPosition = Vector2.zero;
             needleRt.sizeDelta = new Vector2(5f * S, ArcRadius + 8f * S);
             var needleImg = needleGo.GetComponent<Image>();
-            needleImg.sprite = NtmArcRingBuilder.WhiteSprite;
+            needleImg.sprite = ArcRingBuilder.WhiteSprite;
             needleImg.color = Color.white;
             needleImg.raycastTarget = false;
             needle = needleRt;
@@ -295,13 +298,13 @@ namespace DiskGolf.UI
             float halfAngle = width01 * 0.5f * Mathf.Abs(ArcEndDeg - ArcStartDeg);
             float centerAngle = Mathf.Lerp(ArcStartDeg, ArcEndDeg, center01);
 
-            NtmArcRingBuilder.PopulateRing(
+            ArcRingBuilder.PopulateRing(
                 sweetSpotRoot,
                 centerAngle - halfAngle,
                 centerAngle + halfAngle,
                 ArcRadius + 1f,
                 TrackThickness + 8f,
-                NtmTimingMeterLayout.SweetSpotColor,
+                TimingMeterLayout.SweetSpotColor,
                 8);
 
             sweetSpotRoot.gameObject.SetActive(true);

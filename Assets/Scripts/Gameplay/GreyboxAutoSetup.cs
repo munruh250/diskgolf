@@ -20,7 +20,39 @@ namespace DiskGolf.Gameplay
 
         [SerializeField] DiscFlightPresenter flightPresenter;
 
-        void OnEnable() => Apply();
+        [Header("Editor workflow")]
+        [Tooltip("Run full greybox setup when the scene loads in Edit Mode. Off by default so Scene-view moves are kept.")]
+        [SerializeField] bool applyInEditMode;
+
+        [Tooltip("Reposition thrower and disc at the tee when greybox setup runs in Edit Mode.")]
+        [SerializeField] bool repositionGameplayOnApply;
+
+        void OnEnable()
+        {
+            SceneLightingBootstrap.Apply();
+            EnsureEditorConfigComponents();
+
+            if (Application.isPlaying)
+            {
+                ApplyPlayMode();
+                return;
+            }
+
+            if (applyInEditMode)
+                ApplyEditMode();
+        }
+
+        [ContextMenu("Apply Greybox Setup Now")]
+        public void ApplyGreyboxNow()
+        {
+            SceneLightingBootstrap.Apply();
+            EnsureEditorConfigComponents();
+
+            if (Application.isPlaying)
+                ApplyPlayMode();
+            else
+                ApplyEditMode();
+        }
 
         void Reset()
         {
@@ -28,10 +60,50 @@ namespace DiskGolf.Gameplay
             flightPresenter = GetComponent<DiscFlightPresenter>();
         }
 
+        static void EnsureEditorConfigComponents()
+        {
+            HudLayoutSettings.EnsureOnHudRoot();
+
+            var director = Object.FindObjectOfType<CameraDirector>();
+            if (director != null && director.GetComponent<FlightCameraSettings>() == null)
+                director.gameObject.AddComponent<FlightCameraSettings>();
+        }
+
+        void ApplyPlayMode()
+        {
+            if (holeSetup == null)
+                holeSetup = GetComponent<HoleSetup>();
+
+            if (flightPresenter == null)
+                flightPresenter = GetComponent<DiscFlightPresenter>();
+
+            var disc = ResolveDiscTransform();
+            var basket = ResolveBasketTransform();
+
+            ApplyPlayModeCamera(disc, basket);
+            TimingMeterHud.Ensure();
+            HudLayout.Apply();
+            SceneHierarchy.Organize();
+        }
+
+        void ApplyEditMode()
+        {
+            ApplyCoreGreybox(repositionGameplayOnApply);
+        }
+
         public void Apply()
         {
             SceneLightingBootstrap.Apply();
+            EnsureEditorConfigComponents();
 
+            if (Application.isPlaying)
+                ApplyPlayMode();
+            else
+                ApplyEditMode();
+        }
+
+        void ApplyCoreGreybox(bool repositionGameplay)
+        {
             if (holeSetup == null)
                 holeSetup = GetComponent<HoleSetup>();
 
@@ -39,7 +111,7 @@ namespace DiskGolf.Gameplay
                 flightPresenter = GetComponent<DiscFlightPresenter>();
 
 #if UNITY_EDITOR
-            NtmCameraRig.RemoveDuplicateVcams();
+            CameraRig.RemoveDuplicateVcams();
 #endif
 
             var disc = ResolveDiscTransform();
@@ -55,26 +127,19 @@ namespace DiskGolf.Gameplay
             if (disc != null)
                 FixDiscVisual(disc);
 
-            if (Application.isPlaying)
-            {
-                ApplyPlayModeCamera(disc, basket);
-                TimingMeterHud.Ensure();
-                NtmHudLayout.Apply();
-                return;
-            }
-
-            var thrower = EnsureThrower(tee, basket);
+            var thrower = EnsureThrower(tee, basket, repositionGameplay);
             if (holeSetup != null && thrower != null)
                 holeSetup.BindThrower(thrower);
 
-            var aimPoint = NtmCameraRig.EnsureAimPoint(thrower, basket);
+            var aimPoint = CameraRig.EnsureAimPoint(thrower, basket);
             FixSideCamera(thrower, aimPoint);
             EnsureFlightChaseCam(disc, basket);
             EnsureCourseHierarchy();
-            NtmHudLayout.Apply();
+            HudLayout.Apply();
             WireCameraDirector();
+            SceneHierarchy.Organize();
 
-            if (disc != null && holeSetup != null)
+            if (repositionGameplay && disc != null && holeSetup != null)
             {
                 holeSetup.PositionThrowerAtTee();
                 disc.SetPositionAndRotation(holeSetup.DiscHoldPosition, holeSetup.DiscHoldRotation);
@@ -84,14 +149,14 @@ namespace DiskGolf.Gameplay
 
         static void ApplyPlayModeCamera(Transform disc, Transform basket)
         {
-            NtmCameraRig.RemoveDuplicateVcams();
+            CameraRig.RemoveDuplicateVcams();
             EnsureCourseHierarchy();
 
             var thrower = GameObject.Find("Thrower")?.transform;
             if (thrower == null)
                 return;
 
-            var aimPoint = NtmCameraRig.EnsureAimPoint(thrower, basket);
+            var aimPoint = CameraRig.EnsureAimPoint(thrower, basket);
             FixSideCamera(thrower, aimPoint);
             EnsureFlightChaseCam(disc, basket);
             WireCameraDirector();
@@ -236,7 +301,7 @@ namespace DiskGolf.Gameplay
                 sphereCol.isTrigger = true;
         }
 
-        static Transform EnsureThrower(Transform tee, Transform basket)
+        static Transform EnsureThrower(Transform tee, Transform basket, bool reposition = true)
         {
             if (tee == null || basket == null)
                 return GameObject.Find("Thrower")?.transform;
@@ -249,7 +314,9 @@ namespace DiskGolf.Gameplay
             if (existing != null)
             {
                 var visual = existing.GetComponent<ThrowerVisual>() ?? existing.AddComponent<ThrowerVisual>();
-                existing.transform.SetPositionAndRotation(pos, rot);
+
+                if (reposition)
+                    existing.transform.SetPositionAndRotation(pos, rot);
 
                 if (existing.GetComponentInChildren<SpriteRenderer>() == null)
                     visual.RebuildAsSprite();
@@ -257,14 +324,6 @@ namespace DiskGolf.Gameplay
                     visual.ApplySpriteLayout();
 
                 return existing.transform;
-            }
-
-            if (existing != null)
-            {
-                if (Application.isPlaying)
-                    Destroy(existing);
-                else
-                    DestroyImmediate(existing);
             }
 
             return ThrowerVisual.Build(pos, rot).transform;
@@ -275,21 +334,22 @@ namespace DiskGolf.Gameplay
             if (thrower == null)
                 return;
 
-            var side = NtmCameraRig.FindSideSetupCam();
+            var side = CameraRig.FindSideSetupCam();
             if (side == null)
             {
                 if (Application.isPlaying)
                     return;
 
-                var parent = GameObject.Find("Main Camera")?.transform;
-                var go = new GameObject(NtmCameraRig.SideSetupName);
+                var parent = GameObject.Find(SceneHierarchy.Camera)?.transform
+                    ?? GameObject.Find("Main Camera")?.transform;
+                var go = new GameObject(CameraRig.SideSetupName);
                 if (parent != null)
                     go.transform.SetParent(parent, false);
 
                 side = go.AddComponent<CinemachineVirtualCamera>();
             }
 
-            NtmCameraRig.ConfigureSideThrowCam(side, thrower, aimPoint ?? thrower);
+            CameraRig.ConfigureSideThrowCam(side, thrower, aimPoint ?? thrower);
         }
 
         static void EnsureFlightChaseCam(Transform disc, Transform basket)
@@ -297,21 +357,22 @@ namespace DiskGolf.Gameplay
             if (disc == null)
                 return;
 
-            var chase = NtmCameraRig.FindFlightChaseCam();
+            var chase = CameraRig.FindFlightChaseCam();
             if (chase == null)
             {
                 if (Application.isPlaying)
                     return;
 
-                var parent = GameObject.Find("Main Camera")?.transform;
-                var chaseGo = new GameObject(NtmCameraRig.FlightChaseName);
+                var parent = GameObject.Find(SceneHierarchy.Camera)?.transform
+                    ?? GameObject.Find("Main Camera")?.transform;
+                var chaseGo = new GameObject(CameraRig.FlightChaseName);
                 if (parent != null)
                     chaseGo.transform.SetParent(parent, false);
 
                 chase = chaseGo.AddComponent<CinemachineVirtualCamera>();
             }
 
-            NtmCameraRig.ConfigureFlightChaseCam(chase, disc, disc);
+            CameraRig.ConfigureFlightChaseCam(chase, disc, Vector3.forward);
         }
 
         static void WireCameraDirector()
@@ -322,8 +383,8 @@ namespace DiskGolf.Gameplay
 
 #if UNITY_EDITOR
             var so = new UnityEditor.SerializedObject(director);
-            AssignRef(so, "sideSetupCam", NtmCameraRig.FindSideSetupCam());
-            AssignRef(so, "flightChaseCam", NtmCameraRig.FindFlightChaseCam());
+            AssignRef(so, "sideSetupCam", CameraRig.FindSideSetupCam());
+            AssignRef(so, "flightChaseCam", CameraRig.FindFlightChaseCam());
             AssignRef(so, "flightPresenter", director.GetComponent<DiscFlightPresenter>());
             so.ApplyModifiedPropertiesWithoutUndo();
 #else

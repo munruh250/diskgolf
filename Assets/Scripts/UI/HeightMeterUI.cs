@@ -12,7 +12,7 @@ namespace DiskGolf.UI
         [SerializeField] Text zoneLabel;
 
         TimingMeter _meter = new TimingMeter(1f);
-        NtmHeightMeterVisual _visual;
+        HeightMeterVisual _visual;
         bool _active;
         bool _frozen;
         float _frozenDisplay;

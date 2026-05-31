@@ -240,16 +240,16 @@ namespace DiskGolf.EditorTools
 
             SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
 
-            var aimPoint = NtmCameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
+            var aimPoint = CameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
 
             var side =
-                Vcam(NtmCameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, NtmCameraRig.SideFollowOffset, 0f);
+                Vcam(CameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, CameraRig.SideFollowOffset, 0f);
 
             var flightChase =
-                Vcam(NtmCameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, NtmCameraRig.FlightChaseOffset, 0f);
+                Vcam(CameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, CameraRig.FlightChaseOffset, 0f);
 
-            NtmCameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
-            NtmCameraRig.ConfigureFlightChaseCam(flightChase, discTf, discTf);
+            CameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
+            CameraRig.ConfigureFlightChaseCam(flightChase, discTf, Vector3.forward);
 
             var top =
                 Vcam("TopDownTrackCam", mainCam.transform, discTf, discTf, new Vector3(0f, 22f, 0f), 90f);
@@ -265,7 +265,7 @@ namespace DiskGolf.EditorTools
             lie.gameObject.SetActive(false);
             putt.gameObject.SetActive(false);
 
-            NtmHudLayout.Apply();
+            HudLayout.Apply();
 
             var directorGo = new GameObject("CameraDirector");
             directorGo.transform.SetParent(gm.transform, false);
@@ -280,6 +280,7 @@ namespace DiskGolf.EditorTools
 
             var autoSetup = gm.GetComponent<GreyboxAutoSetup>() ?? gm.AddComponent<GreyboxAutoSetup>();
             autoSetup.Apply();
+            SceneHierarchy.Organize();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);

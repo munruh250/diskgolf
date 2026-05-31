@@ -4,24 +4,39 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Repositions gameplay HUD to match Neo Turf Masters layout.</summary>
-    public static class NtmHudLayout
+    /// <summary>Repositions gameplay HUD widgets to the default layout.</summary>
+    public static class HudLayout
     {
         const string HudRootName = "GameplayHUD";
 
-        public const float MinimapWidth = 248f;
+        public static float MinimapWidth => Read(s => s.minimapWidth, 248f);
 
-        public const float MinimapHeight = 392f;
+        public static float MinimapHeight => Read(s => s.minimapHeight, 392f);
 
-        public const float RightInset = 20f;
+        public static float RightInset => Read(s => s.rightInset, 20f);
 
-        public const float TopInset = 40f;
+        public static float TopInset => HudTypography.TopInset;
 
-        public const float StackGap = 8f;
+        public static float StackGap => Read(s => s.stackGap, 8f);
 
-        public const float HoleInfoHeight = NtmHudTypography.RowHeight * 3f;
+        public static float HoleInfoHeight =>
+            HudLayoutSettings.Active != null
+                ? HudLayoutSettings.Active.HoleInfoHeight
+                : HudTypography.RowHeight * 3f;
 
         public static void Apply()
+        {
+            if (HudLayoutSettings.ShouldPreserveLayout() && !HudLayoutSettings.ShouldApplyLayoutOnPlay())
+            {
+                ApplyCleanupOnly();
+                return;
+            }
+
+            ApplyPositions();
+        }
+
+        /// <summary>Hides legacy widgets and ensures HUD children exist without moving them.</summary>
+        public static void ApplyCleanupOnly()
         {
             var hud = GameObject.Find(HudRootName);
             if (hud == null)
@@ -31,18 +46,49 @@ namespace DiskGolf.UI
             if (canvas == null)
                 return;
 
+            HudLayoutSettings.EnsureOnHudRoot();
             StyleCanvasScaler(hud);
-            ApplyMinimap();
-            ApplyRightStack(canvas);
             HideLegacyDiscHeightLabel(canvas);
-
-            PinBottomLeft(FindTmp(canvas, "FLAT"), new Vector2(36f, 88f), 28f);
-            PinBottomLeft(FindTmp(canvas, "Disc"), new Vector2(36f, 48f), 26f);
-
-            HideLegacySliders(canvas);
             HideLegacyLabels(canvas);
+            HideLegacySliders(canvas);
+
+            RestDriveReadout.Ensure(canvas);
+            HoleInfoPanel.Ensure(canvas);
+            WindWidget.Ensure(canvas);
             TimingMeterHud.Ensure();
 
+            HideLegacyPowerHeightLabels(canvas);
+        }
+
+        /// <summary>Re-applies the coded default HUD layout (Scene-view positions will be overwritten).</summary>
+        public static void ApplyPositions()
+        {
+            var hud = GameObject.Find(HudRootName);
+            if (hud == null)
+                return;
+
+            var canvas = hud.GetComponent<RectTransform>();
+            if (canvas == null)
+                return;
+
+            var settings = HudLayoutSettings.EnsureOnHudRoot();
+            StyleCanvasScaler(hud);
+            HideLegacyDiscHeightLabel(canvas);
+            HideLegacyLabels(canvas);
+            HideLegacySliders(canvas);
+            TimingMeterHud.Ensure();
+
+            var flatOffset = settings != null ? settings.flatLabelOffset : new Vector2(36f, 88f);
+            var discOffset = settings != null ? settings.discLabelOffset : new Vector2(36f, 48f);
+            PinBottomLeft(FindTmp(canvas, "FLAT"), flatOffset, HudTypography.FontSize);
+            PinBottomLeft(FindTmp(canvas, "Disc"), discOffset, HudTypography.FontSize - 2f);
+
+            HideLegacyPowerHeightLabels(canvas);
+            ApplyRightStack(canvas);
+        }
+
+        static void HideLegacyPowerHeightLabels(RectTransform canvas)
+        {
             var powerLabel = FindTmpContains(canvas, "POWER");
             if (powerLabel != null)
             {
@@ -65,12 +111,11 @@ namespace DiskGolf.UI
         static void ApplyRightStack(RectTransform canvas)
         {
             var hudRoot = canvas;
-            NtmRestDriveReadout.Ensure(hudRoot)?.ApplyLayout();
+            RestDriveReadout.Ensure(hudRoot)?.ApplyLayout();
 
-            float minimapTop = NtmHudTypography.TopInset + HoleInfoHeight + StackGap;
-            var holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
-            if (holeInfo != null)
-                holeInfo.ApplyLayout();
+            float minimapTop = TopInset + HoleInfoHeight + StackGap;
+            var holeInfo = HoleInfoPanel.Ensure(hudRoot);
+            holeInfo?.ApplyLayout();
 
             var host = GameObject.Find("MinimapHost")?.GetComponent<RectTransform>();
             if (host != null)
@@ -81,7 +126,7 @@ namespace DiskGolf.UI
                 host.sizeDelta = new Vector2(MinimapWidth, MinimapHeight);
             }
 
-            var wind = NtmWindWidget.Ensure(hudRoot);
+            var wind = WindWidget.Ensure(hudRoot);
             if (wind != null)
             {
                 wind.ApplyLayout();
@@ -91,6 +136,9 @@ namespace DiskGolf.UI
             if (holeInfo != null && host != null)
                 holeInfo.transform.SetSiblingIndex(host.GetSiblingIndex());
         }
+
+        static float Read(System.Func<HudLayoutSettings, float> pick, float fallback) =>
+            HudLayoutSettings.Active != null ? pick(HudLayoutSettings.Active) : fallback;
 
         static void HideLegacyDiscHeightLabel(RectTransform canvas)
         {
@@ -190,11 +238,6 @@ namespace DiskGolf.UI
         static TextMeshProUGUI FindBucketDistanceLabel(RectTransform canvas) =>
             FindTmp(canvas, "Bucket Distance") ?? FindTmp(canvas, "REST");
 
-        static void ApplyMinimap()
-        {
-            // Position is finalized in ApplyRightStack.
-        }
-
         static TextMeshProUGUI FindTmp(RectTransform root, string exact)
         {
             foreach (var t in root.GetComponentsInChildren<TextMeshProUGUI>(true))
@@ -226,21 +269,6 @@ namespace DiskGolf.UI
             }
 
             return null;
-        }
-
-        static void PinTopLeft(TextMeshProUGUI tmp, Vector2 offset, float fontSize)
-        {
-            if (tmp == null)
-                return;
-
-            var rt = tmp.rectTransform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = offset;
-            rt.sizeDelta = new Vector2(420f, 64f);
-            tmp.fontSize = fontSize;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.TopLeft;
         }
 
         static void PinBottomLeft(TextMeshProUGUI tmp, Vector2 offset, float fontSize)

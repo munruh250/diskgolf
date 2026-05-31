@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace DiskGolf.Camera
 {
-    /// <summary>NTM-style camera flow: side throw view → chase toward the pin for the whole flight.</summary>
+    /// <summary>Camera flow: side throw view → locked-direction chase for the whole flight.</summary>
     public class CameraDirector : MonoBehaviour
     {
         [SerializeField] CinemachineVirtualCamera sideSetupCam;
@@ -24,10 +24,13 @@ namespace DiskGolf.Camera
 
         ThrowPhase _phase;
 
+        Vector3 _lockedThrowForward = Vector3.forward;
+
         void Awake()
         {
-            sideSetupCam ??= NtmCameraRig.FindSideSetupCam();
-            flightChaseCam ??= NtmCameraRig.FindFlightChaseCam();
+            sideSetupCam ??= CameraRig.FindSideSetupCam();
+            flightChaseCam ??= CameraRig.FindFlightChaseCam();
+            overheadPuttCam ??= CameraRig.FindNamedVcam(CameraRig.OverheadPuttName);
             hole ??= FindObjectOfType<HoleSetup>();
 
             if (flightPresenter == null && throwController != null)
@@ -61,6 +64,7 @@ namespace DiskGolf.Camera
             bool sideThrowView = phase is ThrowPhase.Aiming
                 or ThrowPhase.PowerMeter
                 or ThrowPhase.HeightMeter
+                or ThrowPhase.Putting
                 or ThrowPhase.Landed;
 
             if (phase == ThrowPhase.InFlight)
@@ -71,7 +75,7 @@ namespace DiskGolf.Camera
             SetSideThrowViewActive(sideThrowView);
 
             SetActive(lieZoomCam, false);
-            SetActive(overheadPuttCam, phase == ThrowPhase.Putting);
+            SetActive(overheadPuttCam, false);
         }
 
         void BindFlightChaseToDisc()
@@ -83,10 +87,38 @@ namespace DiskGolf.Camera
 
             var disc = flightPresenter != null ? flightPresenter.DiscTransform : null;
             if (disc != null)
-                NtmCameraRig.ConfigureFlightChaseCam(flightChaseCam, disc);
+            {
+                _lockedThrowForward = ResolveThrowForward(disc.position);
+                CameraRig.ConfigureFlightChaseCam(flightChaseCam, disc, _lockedThrowForward);
+            }
 
-            SetPriority(flightChaseCam, NtmCameraRig.FlightChasePriority);
+            SetPriority(flightChaseCam, CameraRig.FlightChasePriority);
             SetActive(flightChaseCam, true);
+        }
+
+        Vector3 ResolveThrowForward(Vector3 discLie)
+        {
+            if (throwController != null)
+            {
+                var aim = throwController.LastThrowAimDirection;
+                aim.y = 0f;
+
+                if (aim.sqrMagnitude > 1e-6f)
+                    return aim.normalized;
+            }
+
+            hole ??= FindObjectOfType<HoleSetup>();
+
+            if (hole != null)
+            {
+                var aim = hole.AimDirectionFrom(discLie);
+                aim.y = 0f;
+
+                if (aim.sqrMagnitude > 1e-6f)
+                    return aim.normalized;
+            }
+
+            return Vector3.forward;
         }
 
         void SetSideThrowViewActive(bool on)
@@ -94,7 +126,7 @@ namespace DiskGolf.Camera
             if (on)
                 BindSideThrowCam();
 
-            SetPriority(sideSetupCam, on ? NtmCameraRig.SidePriority : 0);
+            SetPriority(sideSetupCam, on ? CameraRig.SidePriority : 0);
             SetActive(sideSetupCam, on);
 
             if (on && sideSetupCam != null)
@@ -111,7 +143,7 @@ namespace DiskGolf.Camera
             if (thrower == null)
                 return;
 
-            NtmCameraRig.BindSideThrowCam(sideSetupCam, thrower, hole.BasketTransform);
+            CameraRig.BindSideThrowCam(sideSetupCam, thrower, hole.BasketTransform);
         }
 
         static void SetActive(CinemachineVirtualCamera vcam, bool on)

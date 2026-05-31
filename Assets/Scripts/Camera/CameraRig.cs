@@ -1,10 +1,11 @@
 using Cinemachine;
+using DiskGolf.Gameplay;
 using UnityEngine;
 
 namespace DiskGolf.Camera
 {
-    /// <summary>Neo Turf Masters-style camera framing constants and setup.</summary>
-    public static class NtmCameraRig
+    /// <summary>Side and flight camera framing constants and setup.</summary>
+    public static class CameraRig
     {
         public const string SideSetupName = "SideSetupCam";
         public const string FlightChaseName = "FlightChaseCam";
@@ -13,10 +14,11 @@ namespace DiskGolf.Camera
         public const string OverheadPuttName = "OverheadPuttCam";
         public const string AimPointName = "ThrowAimPoint";
 
-        /// <summary>Low behind-left camera — player lands at bottom of frame (NTM).</summary>
+        /// <summary>Low behind-left camera — player lands at bottom of frame.</summary>
         public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
 
-        public static readonly Vector3 FlightChaseOffset = new(0.1f, 3.2f, -7.5f);
+        /// <summary>Closer / lower chase — keeps the disc centered above bottom HUD.</summary>
+        public static readonly Vector3 FlightChaseOffset = new(0f, 3.2f, -5f);
 
         public const float SideFieldOfView = 50f;
 
@@ -38,16 +40,20 @@ namespace DiskGolf.Camera
 
             var dir = (basket.position - thrower.position).normalized;
             var dist = Vector3.Distance(thrower.position, basket.position);
-            go.transform.position = thrower.position + dir * Mathf.Clamp(dist * 0.48f, 28f, 55f) + Vector3.up * 0.35f;
+            float aimDist = dist <= 18f
+                ? Mathf.Clamp(dist * 0.65f, 1.5f, Mathf.Max(dist - 0.5f, 1.5f))
+                : Mathf.Clamp(dist * 0.48f, 28f, 55f);
+            go.transform.position = thrower.position + dir * aimDist + Vector3.up * 0.35f;
             return go.transform;
         }
 
         static GameObject CreateAimPointObject()
         {
             var go = new GameObject(AimPointName);
-            var gm = GameObject.Find("GameManager");
-            if (gm != null)
-                go.transform.SetParent(gm.transform, false);
+            var parent = GameObject.Find(SceneHierarchy.PlayerThrower)?.transform
+                ?? GameObject.Find("GameManager")?.transform;
+            if (parent != null)
+                go.transform.SetParent(parent, false);
 
             return go;
         }
@@ -60,23 +66,27 @@ namespace DiskGolf.Camera
             if (vcam == null || thrower == null)
                 return vcam;
 
+            var settings = FlightCameraSettings.Resolve(vcam);
+
             vcam.Follow = thrower;
             vcam.LookAt = aimPoint != null ? aimPoint : thrower;
             vcam.Priority = SidePriority;
-            vcam.m_Lens.FieldOfView = SideFieldOfView;
+            vcam.m_Lens.FieldOfView = settings != null ? settings.SideFieldOfView : SideFieldOfView;
 
             var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>()
                 ?? vcam.AddCinemachineComponent<CinemachineTransposer>();
 
             transposer.m_BindingMode = CinemachineTransposer.BindingMode.LockToTargetWithWorldUp;
-            transposer.m_FollowOffset = SideFollowOffset;
+            transposer.m_FollowOffset = settings != null ? settings.SideFollowOffset : SideFollowOffset;
 
             var composer = vcam.GetCinemachineComponent<CinemachineComposer>()
                 ?? vcam.AddCinemachineComponent<CinemachineComposer>();
 
-            // Aim point high in frame → thrower/tee sit low in viewport like NTM.
-            composer.m_ScreenX = 0.42f;
-            composer.m_ScreenY = 0.72f;
+            float screenX = settings != null ? settings.sideScreenX : 0.42f;
+            float screenY = settings != null ? settings.sideScreenY : 0.72f;
+
+            composer.m_ScreenX = screenX;
+            composer.m_ScreenY = screenY;
             composer.m_DeadZoneWidth = 0.06f;
             composer.m_DeadZoneHeight = 0.08f;
             composer.m_SoftZoneWidth = 0.75f;
@@ -102,32 +112,30 @@ namespace DiskGolf.Camera
         public static CinemachineVirtualCamera ConfigureFlightChaseCam(
             CinemachineVirtualCamera vcam,
             Transform disc,
-            Transform lookTarget = null)
+            Vector3 throwForward)
         {
             if (vcam == null || disc == null)
                 return vcam;
 
+            var settings = FlightCameraSettings.Resolve(vcam);
+            var chaseOffset = settings != null ? settings.ChaseOffset : FlightChaseOffset;
+
             vcam.Follow = disc;
-            vcam.LookAt = disc;
+            vcam.LookAt = null;
             vcam.Priority = FlightChasePriority;
-            vcam.m_Lens.FieldOfView = SideFieldOfView;
+            vcam.m_Lens.FieldOfView = settings != null ? settings.SideFieldOfView : SideFieldOfView;
 
-            var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>()
-                ?? vcam.AddCinemachineComponent<CinemachineTransposer>();
+            var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>();
+            if (transposer != null)
+                transposer.enabled = false;
 
-            transposer.m_BindingMode = CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp;
-            transposer.m_FollowOffset = FlightChaseOffset;
+            var composer = vcam.GetCinemachineComponent<CinemachineComposer>();
+            if (composer != null)
+                composer.enabled = false;
 
-            var composer = vcam.GetCinemachineComponent<CinemachineComposer>()
-                ?? vcam.AddCinemachineComponent<CinemachineComposer>();
-
-            composer.m_ScreenX = 0.5f;
-            composer.m_ScreenY = 0.4f;
-            composer.m_DeadZoneWidth = 0.08f;
-            composer.m_DeadZoneHeight = 0.08f;
-            composer.m_SoftZoneWidth = 0.85f;
-            composer.m_SoftZoneHeight = 0.85f;
-            composer.m_TrackedObjectOffset = new Vector3(0f, 0.35f, 0f);
+            var lockExtension = vcam.GetComponent<FlightDirectionLockExtension>()
+                ?? vcam.gameObject.AddComponent<FlightDirectionLockExtension>();
+            lockExtension.Bind(throwForward, chaseOffset);
 
             vcam.gameObject.SetActive(false);
             return vcam;

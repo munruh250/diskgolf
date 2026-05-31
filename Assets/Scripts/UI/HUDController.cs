@@ -28,11 +28,11 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI windText;
 
-        NtmRestDriveReadout _restDrive;
+        RestDriveReadout _restDrive;
 
-        NtmHoleInfoPanel _holeInfo;
+        HoleInfoPanel _holeInfo;
 
-        NtmWindWidget _windWidget;
+        WindWidget _windWidget;
 
         ThrowPhase _lastPhase;
 
@@ -42,16 +42,17 @@ namespace DiskGolf.UI
 
         void OnEnable()
         {
+            HudLayoutSettings.EnsureOnHudRoot();
             TimingMeterHud.Ensure();
             flightPresenter ??= FindObjectOfType<DiscFlightPresenter>();
 
             var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
-            _restDrive = NtmRestDriveReadout.Ensure(hudRoot);
-            _holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
-            _windWidget = NtmWindWidget.Ensure(hudRoot);
+            _restDrive = RestDriveReadout.Ensure(hudRoot);
+            _holeInfo = HoleInfoPanel.Ensure(hudRoot);
+            _windWidget = WindWidget.Ensure(hudRoot);
 
             HideLegacyLabels();
-            NtmHudLayout.Apply();
+            HudLayout.Apply();
         }
 
         void HideLegacyLabels()

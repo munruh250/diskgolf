@@ -101,7 +101,7 @@ namespace DiskGolf.Core
             if (thrower == null || basket == null)
                 return;
 
-            DiskGolf.Camera.NtmCameraRig.EnsureAimPoint(thrower, basket);
+            DiskGolf.Camera.CameraRig.EnsureAimPoint(thrower, basket);
         }
 
         void ApplyThrowerSpriteLayout()

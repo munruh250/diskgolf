@@ -4,9 +4,9 @@ using UnityEngine;
 namespace DiskGolf.UI
 {
     /// <summary>Hole number, total yardage, and par stacked above the minimap.</summary>
-    public sealed class NtmHoleInfoPanel : MonoBehaviour
+    public sealed class HoleInfoPanel : MonoBehaviour
     {
-        const string RootName = "NtmHoleInfo";
+        const string RootName = "HoleInfo";
 
         [SerializeField] TextMeshProUGUI holeNumberText;
 
@@ -14,15 +14,19 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI parText;
 
-        public static NtmHoleInfoPanel Ensure(RectTransform hudRoot)
+        public static HoleInfoPanel Ensure(RectTransform hudRoot)
         {
             if (hudRoot == null)
                 return null;
 
-            var existing = hudRoot.Find(RootName)?.GetComponent<NtmHoleInfoPanel>();
+            var existing = hudRoot.Find(RootName)?.GetComponent<HoleInfoPanel>()
+                ?? hudRoot.Find("NtmHoleInfo")?.GetComponent<HoleInfoPanel>();
             if (existing != null)
             {
-                existing.RefreshLayout();
+                if (existing.name != RootName)
+                    existing.name = RootName;
+                if (!HudLayoutSettings.ShouldPreserveLayout())
+                    existing.RefreshLayout();
                 return existing;
             }
 
@@ -30,7 +34,7 @@ namespace DiskGolf.UI
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(hudRoot, false);
 
-            var panel = go.AddComponent<NtmHoleInfoPanel>();
+            var panel = go.AddComponent<HoleInfoPanel>();
             panel.Build();
             panel.ApplyLayout();
             return panel;
@@ -71,7 +75,7 @@ namespace DiskGolf.UI
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
-            NtmHudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
+            HudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
             ApplyLineLayout(tmp, row);
             return tmp;
         }
@@ -81,13 +85,13 @@ namespace DiskGolf.UI
             if (tmp == null)
                 return;
 
-            NtmHudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
+            HudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
 
             var rt = tmp.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(0f, -row * NtmHudTypography.RowHeight);
-            rt.sizeDelta = new Vector2(NtmHudLayout.MinimapWidth + 120f, NtmHudTypography.RowHeight);
+            rt.anchoredPosition = new Vector2(0f, -row * HudTypography.RowHeight);
+            rt.sizeDelta = new Vector2(HudLayout.MinimapWidth + 120f, HudTypography.RowHeight);
         }
 
         public void ApplyLayout()
@@ -95,8 +99,8 @@ namespace DiskGolf.UI
             var rt = transform as RectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-NtmHudLayout.RightInset, -NtmHudTypography.TopInset);
-            rt.sizeDelta = new Vector2(NtmHudLayout.MinimapWidth + 120f, NtmHudLayout.HoleInfoHeight);
+            rt.anchoredPosition = new Vector2(-HudLayout.RightInset, -HudTypography.TopInset);
+            rt.sizeDelta = new Vector2(HudLayout.MinimapWidth + 120f, HudLayout.HoleInfoHeight);
         }
     }
 }
