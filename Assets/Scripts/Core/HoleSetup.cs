@@ -138,6 +138,13 @@ namespace DiskGolf.Core
         public float DistanceToBasket(Vector3 from) =>
             Vector3.Distance(from, BasketPosition) / 0.3048f;
 
+        /// <summary>Tee-to-basket length shown as the hole yardage and at the start of a hole.</summary>
+        public float HoleLengthDisplayFt => DistanceToBasket(TeePosition);
+
+        /// <summary>Lie distance to basket; at the tee uses tee-to-basket so HUD yardages stay aligned.</summary>
+        public float DisplayDistanceToBasketFt(Vector3 lieWorld) =>
+            IsNearTee(lieWorld) ? HoleLengthDisplayFt : DistanceToBasket(lieWorld);
+
         /// <summary>Distance used to pick a disc — uses configured hole length at the tee.</summary>
         public float DistanceForDiscSelection(Vector3 lieWorld)
         {

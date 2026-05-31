@@ -29,10 +29,7 @@ namespace DiskGolf.UI
 
             var existing = hudRoot.Find(RootName)?.GetComponent<NtmWindWidget>();
             if (existing != null)
-            {
-                existing.ApplyLayout();
                 return existing;
-            }
 
             var go = new GameObject(RootName, typeof(RectTransform));
             var rt = go.GetComponent<RectTransform>();
@@ -40,7 +37,6 @@ namespace DiskGolf.UI
 
             var widget = go.AddComponent<NtmWindWidget>();
             widget.Build();
-            widget.ApplyLayout();
             return widget;
         }
 
@@ -145,9 +141,12 @@ namespace DiskGolf.UI
         public void ApplyLayout()
         {
             var rt = transform as RectTransform;
+            float minimapTop = NtmHudLayout.TopInset + NtmHudLayout.HoleInfoHeight + NtmHudLayout.StackGap;
+            float windTop = minimapTop + NtmHudLayout.MinimapHeight + NtmHudLayout.StackGap;
+
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-20f, -428f);
+            rt.anchoredPosition = new Vector2(-NtmHudLayout.RightInset, -windTop);
             rt.sizeDelta = new Vector2(168f, 56f);
         }
     }

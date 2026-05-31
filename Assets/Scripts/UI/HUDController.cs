@@ -33,14 +33,13 @@ namespace DiskGolf.UI
 
         ThrowPhase _lastPhase;
 
-        float _restAtThrowStartFt;
+        Vector3 _throwOriginWorld;
 
-        float _lastCompletedDriveFt;
+        float _lastCompletedThrowFt;
 
         void OnEnable()
         {
             TimingMeterHud.Ensure();
-            NtmHudLayout.Apply();
 
             var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
             _restDrive = NtmRestDriveReadout.Ensure(hudRoot);
@@ -48,6 +47,7 @@ namespace DiskGolf.UI
             _windWidget = NtmWindWidget.Ensure(hudRoot);
 
             HideLegacyLabels();
+            NtmHudLayout.Apply();
         }
 
         void HideLegacyLabels()
@@ -74,19 +74,16 @@ namespace DiskGolf.UI
 
         void UpdatePhaseTracking()
         {
-            if (controller == null)
+            if (controller == null || discTransform == null)
                 return;
 
             var phase = controller.Phase;
 
-            if (_lastPhase != ThrowPhase.InFlight && phase == ThrowPhase.InFlight && hole != null && discTransform != null)
-                _restAtThrowStartFt = hole.DistanceToBasket(discTransform.position);
+            if (_lastPhase != ThrowPhase.InFlight && phase == ThrowPhase.InFlight)
+                _throwOriginWorld = discTransform.position;
 
-            if (_lastPhase == ThrowPhase.InFlight && phase != ThrowPhase.InFlight && hole != null && discTransform != null)
-            {
-                float restFt = hole.DistanceToBasket(discTransform.position);
-                _lastCompletedDriveFt = Mathf.Max(0f, _restAtThrowStartFt - restFt);
-            }
+            if (_lastPhase == ThrowPhase.InFlight && phase != ThrowPhase.InFlight)
+                _lastCompletedThrowFt = HorizontalThrowDistanceFt(_throwOriginWorld, discTransform.position);
 
             _lastPhase = phase;
         }
@@ -96,27 +93,24 @@ namespace DiskGolf.UI
             if (_restDrive == null || hole == null || discTransform == null)
                 return;
 
-            float restFt;
-            float driveFt;
+            float basketFt = hole.DisplayDistanceToBasketFt(discTransform.position);
+            float throwFt = ResolveThrowDistanceFt();
 
-            if (controller != null && controller.Phase == ThrowPhase.InFlight)
-            {
-                restFt = hole.DistanceToBasket(discTransform.position);
-                driveFt = Mathf.Max(0f, _restAtThrowStartFt - restFt);
-            }
-            else if (controller != null && controller.ShowsTrajectoryPreview)
-            {
-                float lieRestFt = hole.DistanceToBasket(discTransform.position);
-                driveFt = controller.TargetTrajectoryFt;
-                restFt = Mathf.Max(0f, lieRestFt - driveFt);
-            }
-            else
-            {
-                restFt = hole.DistanceToBasket(discTransform.position);
-                driveFt = _lastCompletedDriveFt;
-            }
+            _restDrive.SetValues(FeetToYards(basketFt), FeetToYards(throwFt));
+        }
 
-            _restDrive.SetValues(FeetToYards(restFt), FeetToYards(driveFt));
+        float ResolveThrowDistanceFt()
+        {
+            if (controller == null)
+                return 0f;
+
+            if (controller.Phase == ThrowPhase.InFlight)
+                return HorizontalThrowDistanceFt(_throwOriginWorld, discTransform.position);
+
+            if (controller.ShowsTrajectoryPreview)
+                return controller.TargetTrajectoryFt;
+
+            return _lastCompletedThrowFt;
         }
 
         void UpdateHoleInfo()
@@ -124,8 +118,8 @@ namespace DiskGolf.UI
             if (_holeInfo == null || hole == null)
                 return;
 
-            int totalYards = FeetToYards(hole.DistanceToBasket(hole.TeePosition));
-            _holeInfo.SetHoleInfo(hole.HoleNumber, totalYards, hole.Par);
+            int holeYards = FeetToYards(hole.HoleLengthDisplayFt);
+            _holeInfo.SetHoleInfo(hole.HoleNumber, holeYards, hole.Par);
         }
 
         void UpdateWind()
@@ -165,6 +159,13 @@ namespace DiskGolf.UI
                     ? controller.ReleaseAngle.ToString().ToUpperInvariant()
                     : "FLAT";
             }
+        }
+
+        static float HorizontalThrowDistanceFt(Vector3 from, Vector3 to)
+        {
+            from.y = 0f;
+            to.y = 0f;
+            return Vector3.Distance(from, to) / 0.3048f;
         }
 
         static int FeetToYards(float feet) => Mathf.Max(0, Mathf.RoundToInt(feet / 3f));

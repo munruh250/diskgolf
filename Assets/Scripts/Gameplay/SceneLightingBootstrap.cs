@@ -11,6 +11,7 @@ namespace DiskGolf.Gameplay
         public static void Apply()
         {
             ApplyRenderSettings();
+            ApplySkybox();
             ApplySunLight(FindSun());
             ApplyMainCameraShadows();
             EnsureShadowDistance();
@@ -36,6 +37,23 @@ namespace DiskGolf.Gameplay
             RenderSettings.ambientGroundColor = new Color(0.24f, 0.3f, 0.2f);
             RenderSettings.ambientIntensity = 1.05f;
             RenderSettings.reflectionIntensity = 0.65f;
+        }
+
+        static void ApplySkybox()
+        {
+            var skybox = LoadPrototypeSkyboxMaterial();
+            if (skybox != null)
+                RenderSettings.skybox = skybox;
+        }
+
+        static Material LoadPrototypeSkyboxMaterial()
+        {
+#if UNITY_EDITOR
+            var editorMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/PrototypeSkybox.mat");
+            if (editorMat != null)
+                return editorMat;
+#endif
+            return Resources.Load<Material>("Skybox/PrototypeSkybox");
         }
 
         static void ApplySunLight(Light sun)

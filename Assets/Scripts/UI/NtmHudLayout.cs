@@ -9,17 +9,17 @@ namespace DiskGolf.UI
     {
         const string HudRootName = "GameplayHUD";
 
-        const float MinimapWidth = 248f;
+        public const float MinimapWidth = 248f;
 
-        const float MinimapHeight = 392f;
+        public const float MinimapHeight = 392f;
 
-        const float RightInset = 20f;
+        public const float RightInset = 20f;
 
-        const float TopInset = 20f;
+        public const float TopInset = 20f;
 
-        const float StackGap = 8f;
+        public const float StackGap = 8f;
 
-        const float HoleInfoHeight = 72f;
+        public const float HoleInfoHeight = 72f;
 
         public static void Apply()
         {
@@ -71,13 +71,7 @@ namespace DiskGolf.UI
             float minimapTop = TopInset + HoleInfoHeight + StackGap;
             var holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
             if (holeInfo != null)
-            {
-                var rt = holeInfo.transform as RectTransform;
-                rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-                rt.pivot = new Vector2(1f, 1f);
-                rt.anchoredPosition = new Vector2(-RightInset, -TopInset);
-                rt.sizeDelta = new Vector2(MinimapWidth, HoleInfoHeight);
-            }
+                holeInfo.ApplyLayout();
 
             var host = GameObject.Find("MinimapHost")?.GetComponent<RectTransform>();
             if (host != null)
@@ -88,16 +82,15 @@ namespace DiskGolf.UI
                 host.sizeDelta = new Vector2(MinimapWidth, MinimapHeight);
             }
 
-            float windTop = minimapTop + MinimapHeight + StackGap;
             var wind = NtmWindWidget.Ensure(hudRoot);
             if (wind != null)
             {
-                var rt = wind.transform as RectTransform;
-                rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-                rt.pivot = new Vector2(1f, 1f);
-                rt.anchoredPosition = new Vector2(-RightInset, -windTop);
-                rt.sizeDelta = new Vector2(168f, 56f);
+                wind.ApplyLayout();
+                wind.transform.SetAsLastSibling();
             }
+
+            if (holeInfo != null && host != null)
+                holeInfo.transform.SetSiblingIndex(host.GetSiblingIndex());
         }
 
         static void HideLegacyLabels(RectTransform canvas)

@@ -21,10 +21,7 @@ namespace DiskGolf.UI
 
             var existing = hudRoot.Find(RootName)?.GetComponent<NtmHoleInfoPanel>();
             if (existing != null)
-            {
-                existing.ApplyLayout();
                 return existing;
-            }
 
             var go = new GameObject(RootName, typeof(RectTransform));
             var rt = go.GetComponent<RectTransform>();
@@ -32,7 +29,6 @@ namespace DiskGolf.UI
 
             var panel = go.AddComponent<NtmHoleInfoPanel>();
             panel.Build();
-            panel.ApplyLayout();
             return panel;
         }
 
@@ -54,7 +50,7 @@ namespace DiskGolf.UI
                 new Vector2(56f, 72f), TextAlignmentOptions.BottomLeft);
 
             yardageText = CreateText("Yardage", "250 Y", 28f, FontStyles.Bold, new Vector2(64f, 34f),
-                new Vector2(140f, 36f), TextAlignmentOptions.BottomLeft);
+                new Vector2(184f, 36f), TextAlignmentOptions.BottomLeft);
 
             parText = CreateText("Par", "PAR 3", 28f, FontStyles.Bold, new Vector2(64f, 0f),
                 new Vector2(140f, 36f), TextAlignmentOptions.BottomLeft);
@@ -86,8 +82,8 @@ namespace DiskGolf.UI
             var rt = transform as RectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-20f, -432f);
-            rt.sizeDelta = new Vector2(248f, 72f);
+            rt.anchoredPosition = new Vector2(-NtmHudLayout.RightInset, -NtmHudLayout.TopInset);
+            rt.sizeDelta = new Vector2(NtmHudLayout.MinimapWidth, NtmHudLayout.HoleInfoHeight);
         }
     }
 }
