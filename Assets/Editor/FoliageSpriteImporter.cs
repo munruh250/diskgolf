@@ -32,9 +32,6 @@ namespace DiskGolf.EditorTools
 
         static void OnDelayedImport() => EnsureImported(force: false);
 
-        [MenuItem("Disk Golf/Reimport Foliage Sheet")]
-        public static void ReimportFromMenu() => EnsureImported(force: true);
-
         static void EnsureImported(bool force)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)

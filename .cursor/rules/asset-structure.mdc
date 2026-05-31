@@ -25,7 +25,7 @@ When creating or moving **any file under `Assets/`**, follow `Assets/README.md` 
 
 - Create top-level `Materials/`, `Textures/`, or dump PNGs into `Resources/`
 - Hardcode asset paths — add constants to `ProjectArtPaths.cs`
-- Add `Resources.Load` without updating `GameplayArtCatalog` + **Refresh Gameplay Art Catalog**
+- Add `Resources.Load` without updating `GameplayArtCatalog` (catalog refreshes on editor load)
 
 ## Feature co-location examples
 

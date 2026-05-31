@@ -11,9 +11,6 @@ namespace DiskGolf.EditorTools
         [InitializeOnLoadMethod]
         static void ScheduleBuild() => EditorApplication.delayCall += () => EnsureCatalog(force: false);
 
-        [MenuItem("Disk Golf/Refresh Gameplay Art Catalog")]
-        public static void RefreshFromMenu() => EnsureCatalog(force: true);
-
         public static void EnsureCatalog(bool force)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)

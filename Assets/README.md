@@ -55,7 +55,7 @@ Do **not** add new PNGs or materials to `Resources/` without a code review. Pref
 1. `[SerializeField]` references on components/prefabs, or  
 2. `GameplayArtCatalog` entries + `ProjectArtPaths` constants
 
-After moving art or adding sprites, run **Disk Golf → Refresh Gameplay Art Catalog** in Unity.
+After moving art, the gameplay art catalog refreshes automatically on editor load.
 
 ## Code paths
 
@@ -74,10 +74,9 @@ Runtime loading goes through `RuntimeArt` / `GameplayArtCatalog`.
 ## Team workflow
 
 1. New art → feature folder under `Art/`
-2. Foliage atlas changes → **Disk Golf → Reimport Foliage Sheet** (auto-slices to `Art/Environment/Foliage/Sprites/`)
-3. After art moves → **Disk Golf → Refresh Gameplay Art Catalog**
-4. Scene hierarchy changes → **Disk Golf → Organize And Clean Up Scene**
-5. Always commit `.meta` files with assets
+2. Foliage atlas changes → save `FoliageSheet.png`; slices re-export on editor load
+3. Tune the scene directly in the Hierarchy/Inspector — no auto-setup menu runs on load
+4. Always commit `.meta` files with assets
 
 ## Cursor / AI agents
 

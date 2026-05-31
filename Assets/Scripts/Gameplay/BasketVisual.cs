@@ -60,7 +60,7 @@ namespace DiskGolf.Gameplay
             var sprite = ResolveSprite();
             if (sprite == null)
             {
-                Debug.LogWarning("[BasketVisual] Missing basket sprite. Run Disk Golf → Refresh Gameplay Art Catalog.");
+                Debug.LogWarning("[BasketVisual] Missing basket sprite. Assign a sprite or check Art/Characters/Player/Thrower.png import.");
                 return;
             }
 

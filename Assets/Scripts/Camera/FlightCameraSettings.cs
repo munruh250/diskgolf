@@ -20,14 +20,11 @@ namespace DiskGolf.Camera
         public float sideScreenY = 0.72f;
 
         [Header("In-flight chase camera")]
-        public Vector3 chaseOffset = new(0f, 3.2f, -5f);
+        public Vector3 chaseOffset = new(0f, 1.8f, -6f);
 
-        [Tooltip("0.5 = vertical center. Raise (e.g. 0.58) to lift disc above bottom HUD buttons.")]
+        [Tooltip("0.5 = vertical center. Raise slightly (e.g. 0.55) to clear bottom HUD.")]
         [Range(0.35f, 0.65f)]
-        public float targetViewportY = 0.54f;
-
-        [Range(8, 16)]
-        public int pitchSolveIterations = 12;
+        public float targetViewportY = 0.5f;
 
         public Vector3 SideFollowOffset => sideFollowOffset;
 

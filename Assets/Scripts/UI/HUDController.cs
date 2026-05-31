@@ -53,7 +53,6 @@ namespace DiskGolf.UI
             _windWidget = WindWidget.Ensure(hudRoot);
 
             HideLegacyLabels();
-            HudLayout.Apply();
         }
 
         void HideLegacyLabels()

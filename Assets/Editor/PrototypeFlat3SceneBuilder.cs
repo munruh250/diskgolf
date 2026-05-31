@@ -19,7 +19,7 @@ using UnityEngine.UI;
 
 namespace DiskGolf.EditorTools
 {
-    /// <summary>Full scene scaffold (optional). Prefer <see cref="GreyboxAutoSetup"/> auto-migration on load.</summary>
+    /// <summary>Full scene scaffold for bootstrapping a new prototype hole (editor-only, no menu entry).</summary>
     public static class PrototypeFlat3SceneBuilder
     {
         const string PrefabsDir = ProjectArtPaths.Prefabs.GameplayRoot;
@@ -27,8 +27,6 @@ namespace DiskGolf.EditorTools
         const string CoursePrefabsDir = ProjectArtPaths.Prefabs.CourseRoot;
 
         const string ScenePath = ProjectArtPaths.Scenes.PrototypeFlat3;
-
-        [MenuItem("Disk Golf/Rebuild Prototype Flat 3 Scene")] public static void MenuBuild() => Build();
 
         public static void Build()
         {
@@ -194,10 +192,7 @@ namespace DiskGolf.EditorTools
             AssignSerialized(director, "flightPresenter", presenter);
             AssignSerialized(director, "hole", hole);
 
-            var autoSetup = gm.GetComponent<GreyboxAutoSetup>() ?? gm.AddComponent<GreyboxAutoSetup>();
-            autoSetup.Apply();
             SceneHierarchy.Organize();
-            SceneContentCleanup.Apply();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);

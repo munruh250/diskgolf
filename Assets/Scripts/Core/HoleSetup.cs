@@ -79,7 +79,6 @@ namespace DiskGolf.Core
             var aim = AimDirection;
             var rot = Quaternion.LookRotation(aim, Vector3.up);
             thrower.SetPositionAndRotation(TeePosition + rot * Vector3.back * ThrowerBehindLieM, rot);
-            ApplyThrowerSpriteLayout();
             RefreshCameraAimPoint();
         }
 
@@ -92,7 +91,6 @@ namespace DiskGolf.Core
             var aim = AimDirectionFrom(discLie);
             var rot = Quaternion.LookRotation(aim, Vector3.up);
             thrower.SetPositionAndRotation(discLie + rot * Vector3.back * ThrowerBehindLieM, rot);
-            ApplyThrowerSpriteLayout();
             RefreshCameraAimPoint();
         }
 
@@ -102,15 +100,6 @@ namespace DiskGolf.Core
                 return;
 
             DiskGolf.Camera.CameraRig.EnsureAimPoint(thrower, basket);
-        }
-
-        void ApplyThrowerSpriteLayout()
-        {
-            if (thrower == null)
-                return;
-
-            var visual = thrower.GetComponent<ThrowerVisual>();
-            visual?.ApplySpriteLayout();
         }
 
         public float CircleRadiusFt => circleRadiusFt;

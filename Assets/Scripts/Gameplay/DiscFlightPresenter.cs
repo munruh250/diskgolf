@@ -54,11 +54,19 @@ namespace DiskGolf.Gameplay
             discTransform.gameObject.SetActive(true);
             discTransform.position = pos;
             ApplyDiscRotation(rot);
-            discTransform.localScale = _restScale.sqrMagnitude > 0f
-                ? _restScale
-                : new Vector3(GreyboxScale.DiscDiameterM, GreyboxScale.DiscThicknessM, GreyboxScale.DiscDiameterM);
+            EnsureRestScale();
+            discTransform.localScale = _restScale;
 
             _restYaw = discTransform.rotation.eulerAngles.y;
+        }
+
+        void EnsureRestScale()
+        {
+            if (_restScale.sqrMagnitude > 1e-6f)
+                return;
+
+            if (discTransform != null && discTransform.localScale.sqrMagnitude > 1e-6f)
+                _restScale = discTransform.localScale;
         }
 
         public void Play(FlightPath path, Action<FlightPath> onComplete)

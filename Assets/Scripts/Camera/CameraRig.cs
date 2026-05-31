@@ -19,8 +19,8 @@ namespace DiskGolf.Camera
         /// <summary>Low behind-left camera — player lands at bottom of frame.</summary>
         public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
 
-        /// <summary>Closer / lower chase — keeps the disc centered above bottom HUD.</summary>
-        public static readonly Vector3 FlightChaseOffset = new(0f, 3.2f, -5f);
+        /// <summary>Behind and slightly above the disc — LookAt keeps the disc screen-centered.</summary>
+        public static readonly Vector3 FlightChaseOffset = new(0f, 1.8f, -6f);
 
         public const float SideFieldOfView = 50f;
 

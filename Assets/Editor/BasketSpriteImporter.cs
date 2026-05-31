@@ -99,12 +99,5 @@ namespace DiskGolf.EditorTools
             texture.SetPixels(pixels);
             texture.Apply();
         }
-
-        [MenuItem("Disk Golf/Reimport Basket Sprite")]
-        public static void ReimportBasketSprite()
-        {
-            AssetDatabase.ImportAsset(ProjectArtPaths.Environment.Basket.Sprite, ImportAssetOptions.ForceUpdate);
-            Debug.Log("[Disk Golf] Reimported basket sprite.");
-        }
     }
 }

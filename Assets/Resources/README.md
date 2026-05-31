@@ -15,6 +15,6 @@ This folder must stay minimal.
 
 ## After adding or moving art
 
-Run **Disk Golf → Refresh Gameplay Art Catalog** in the Unity menu.
+The catalog is refreshed automatically when Unity loads the project.
 
 See `Assets/README.md` for the full folder guide.
