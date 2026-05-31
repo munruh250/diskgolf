@@ -43,9 +43,12 @@ namespace DiskGolf.Gameplay
             if (sun == null)
                 return;
 
+            if (RenderSettings.sun == null)
+                RenderSettings.sun = sun;
+
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.96f, 0.88f);
-            sun.intensity = 1.18f;
+            sun.intensity = 1f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.9f;
             sun.shadowBias = 0.038f;

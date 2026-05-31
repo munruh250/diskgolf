@@ -631,7 +631,7 @@ namespace DiskGolf.EditorTools
             go = new GameObject("Directional Light");
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.18f;
+            light.intensity = 1f;
             light.color = new Color(1f, 0.96f, 0.88f);
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.9f;
