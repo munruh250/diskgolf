@@ -15,11 +15,11 @@ namespace DiskGolf.UI
 
         public const float RightInset = 20f;
 
-        public const float TopInset = 20f;
+        public const float TopInset = 40f;
 
         public const float StackGap = 8f;
 
-        public const float HoleInfoHeight = 72f;
+        public const float HoleInfoHeight = NtmHudTypography.RowHeight * 3f;
 
         public static void Apply()
         {
@@ -34,8 +34,7 @@ namespace DiskGolf.UI
             StyleCanvasScaler(hud);
             ApplyMinimap();
             ApplyRightStack(canvas);
-
-            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -160f), 32f);
+            HideLegacyDiscHeightLabel(canvas);
 
             PinBottomLeft(FindTmp(canvas, "FLAT"), new Vector2(36f, 88f), 28f);
             PinBottomLeft(FindTmp(canvas, "Disc"), new Vector2(36f, 48f), 26f);
@@ -68,7 +67,7 @@ namespace DiskGolf.UI
             var hudRoot = canvas;
             NtmRestDriveReadout.Ensure(hudRoot)?.ApplyLayout();
 
-            float minimapTop = TopInset + HoleInfoHeight + StackGap;
+            float minimapTop = NtmHudTypography.TopInset + HoleInfoHeight + StackGap;
             var holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
             if (holeInfo != null)
                 holeInfo.ApplyLayout();
@@ -91,6 +90,13 @@ namespace DiskGolf.UI
 
             if (holeInfo != null && host != null)
                 holeInfo.transform.SetSiblingIndex(host.GetSiblingIndex());
+        }
+
+        static void HideLegacyDiscHeightLabel(RectTransform canvas)
+        {
+            var label = FindTmp(canvas, "DISC HEIGHT") ?? FindTmp(canvas, "DiscHeight");
+            if (label != null)
+                label.gameObject.SetActive(false);
         }
 
         static void HideLegacyLabels(RectTransform canvas)

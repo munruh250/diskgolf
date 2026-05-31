@@ -1,4 +1,5 @@
 using DiskGolf.Core;
+using DiskGolf.Gameplay;
 using TMPro;
 using UnityEngine;
 
@@ -12,6 +13,8 @@ namespace DiskGolf.UI
         [SerializeField] HoleSetup hole;
 
         [SerializeField] Transform discTransform;
+
+        [SerializeField] DiscFlightPresenter flightPresenter;
 
         [SerializeField] TextMeshProUGUI restText;
 
@@ -40,6 +43,7 @@ namespace DiskGolf.UI
         void OnEnable()
         {
             TimingMeterHud.Ensure();
+            flightPresenter ??= FindObjectOfType<DiscFlightPresenter>();
 
             var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
             _restDrive = NtmRestDriveReadout.Ensure(hudRoot);
@@ -60,6 +64,9 @@ namespace DiskGolf.UI
 
             if (windText != null)
                 windText.gameObject.SetActive(false);
+
+            if (discHeightText != null)
+                discHeightText.gameObject.SetActive(false);
         }
 
         void LateUpdate()
@@ -68,49 +75,51 @@ namespace DiskGolf.UI
             UpdateRestDrive();
             UpdateHoleInfo();
             UpdateWind();
-            UpdateDiscHeight();
             UpdateDiscAndStance();
         }
 
         void UpdatePhaseTracking()
         {
-            if (controller == null || discTransform == null)
+            if (controller == null)
                 return;
 
             var phase = controller.Phase;
+            var discPos = ResolveDiscWorldPosition();
 
             if (_lastPhase != ThrowPhase.InFlight && phase == ThrowPhase.InFlight)
-                _throwOriginWorld = discTransform.position;
+                _throwOriginWorld = discPos;
 
             if (_lastPhase == ThrowPhase.InFlight && phase != ThrowPhase.InFlight)
-                _lastCompletedThrowFt = HorizontalThrowDistanceFt(_throwOriginWorld, discTransform.position);
+                _lastCompletedThrowFt = HorizontalThrowDistanceFt(_throwOriginWorld, discPos);
 
             _lastPhase = phase;
         }
 
         void UpdateRestDrive()
         {
-            if (_restDrive == null || hole == null || discTransform == null)
+            if (_restDrive == null || hole == null)
                 return;
 
-            float basketFt = hole.DisplayDistanceToBasketFt(discTransform.position);
-            float throwFt = ResolveThrowDistanceFt();
+            var discPos = ResolveDiscWorldPosition();
+            float basketFt = hole.DisplayDistanceToBasketFt(discPos);
+            float throwFt = ResolveThrowDistanceFt(discPos);
+            int heightFt = Mathf.Max(0, Mathf.RoundToInt(discPos.y * 3.28084f));
 
-            _restDrive.SetValues(FeetToYards(basketFt), FeetToYards(throwFt));
+            _restDrive.SetValues(FeetToYards(basketFt), FeetToYards(throwFt), heightFt);
         }
 
-        float ResolveThrowDistanceFt()
+        float ResolveThrowDistanceFt(Vector3 discPos)
         {
             if (controller == null)
                 return 0f;
 
             if (controller.Phase == ThrowPhase.InFlight)
-                return HorizontalThrowDistanceFt(_throwOriginWorld, discTransform.position);
+                return HorizontalThrowDistanceFt(_throwOriginWorld, discPos);
 
-            if (controller.ShowsTrajectoryPreview)
-                return controller.TargetTrajectoryFt;
+            if (controller.Phase is ThrowPhase.Landed or ThrowPhase.Resolve)
+                return _lastCompletedThrowFt;
 
-            return _lastCompletedThrowFt;
+            return 0f;
         }
 
         void UpdateHoleInfo()
@@ -130,18 +139,9 @@ namespace DiskGolf.UI
             _windWidget.SetWind(controller.Wind);
         }
 
-        void UpdateDiscHeight()
-        {
-            if (discHeightText == null || discTransform == null)
-                return;
-
-            int heightFt = Mathf.Max(0, Mathf.RoundToInt(discTransform.position.y * 3.28084f));
-            discHeightText.text = $"DISC HEIGHT {heightFt}ft";
-        }
-
         void UpdateDiscAndStance()
         {
-            if (hole == null || discTransform == null)
+            if (hole == null)
                 return;
 
             var active = controller != null ? controller.ActiveDisc : null;
@@ -159,6 +159,23 @@ namespace DiskGolf.UI
                     ? controller.ReleaseAngle.ToString().ToUpperInvariant()
                     : "FLAT";
             }
+        }
+
+        Vector3 ResolveDiscWorldPosition()
+        {
+            if (controller != null && controller.Phase == ThrowPhase.InFlight)
+            {
+                if (flightPresenter != null && flightPresenter.DiscTransform != null)
+                    return flightPresenter.DiscTransform.position;
+
+                if (discTransform != null)
+                    return discTransform.position;
+            }
+
+            if (discTransform != null)
+                return discTransform.position;
+
+            return controller != null ? controller.CurrentDiscWorld : Vector3.zero;
         }
 
         static float HorizontalThrowDistanceFt(Vector3 from, Vector3 to)
