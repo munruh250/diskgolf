@@ -15,7 +15,7 @@ namespace DiskGolf.EditorTools
     {
         const string VersionKey = "DiskGolf.GreyboxSetupVersion";
 
-        const string PrototypeScenePath = "Assets/Scenes/PrototypeFlat3.unity";
+        const string PrototypeScenePath = ProjectArtPaths.Scenes.PrototypeFlat3;
 
         static GreyboxEditorAutoSetup() =>
             EditorApplication.delayCall += RunIfNeeded;

@@ -2,11 +2,9 @@ using UnityEngine;
 
 namespace DiskGolf.Gameplay
 {
-    /// <summary>Loads sliced foliage sprites from Resources/Foliage.</summary>
+    /// <summary>Loads sliced foliage sprites via <see cref="RuntimeArt"/> catalog.</summary>
     public static class FoliageSprites
     {
-        const string Root = "Foliage/";
-
         public const string GrassLightA = "GrassLight_A";
 
         public const string GrassDarkA = "GrassDark_A";
@@ -19,8 +17,7 @@ namespace DiskGolf.Gameplay
 
         public const string TreeRound = "TreeRound";
 
-        public static Sprite Load(string spriteName) =>
-            Resources.Load<Sprite>(Root + spriteName);
+        public static Sprite Load(string spriteName) => RuntimeArt.LoadFoliageSprite(spriteName);
 
         public static Material CreateUnlitMaterial(string spriteName)
         {

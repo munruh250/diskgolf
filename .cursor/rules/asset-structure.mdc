@@ -1,0 +1,44 @@
+---
+description: Unity asset folder layout and naming for Disk Golf project
+alwaysApply: true
+---
+
+# Asset structure (Disk Golf)
+
+When creating or moving **any file under `Assets/`**, follow `Assets/README.md` and `ProjectArtPaths.cs`.
+
+## Quick placement
+
+| Asset type | Location |
+|------------|----------|
+| Textures/sprites | `Assets/Art/<domain>/<feature>/` as `TEX_*.png` |
+| Materials | Same folder as textures: `MAT_*.mat` |
+| Prefabs | `Assets/Prefabs/Gameplay/` or `Assets/Prefabs/Course/` |
+| ScriptableObjects | `Assets/Data/<category>/` |
+| C# scripts | `Assets/Scripts/<domain>/` |
+| Editor scripts | `Assets/Editor/` |
+| Scenes (prototype) | `Assets/Scenes/Prototype/` |
+| Third-party | `Assets/ThirdParty/` |
+| UI mockups | `Assets/Art/UI/Reference/` |
+
+## Never do
+
+- Create top-level `Materials/`, `Textures/`, or dump PNGs into `Resources/`
+- Hardcode asset paths — add constants to `ProjectArtPaths.cs`
+- Add `Resources.Load` without updating `GameplayArtCatalog` + **Refresh Gameplay Art Catalog**
+
+## Feature co-location examples
+
+```
+Art/Environment/Course/Fairway/TEX_Fairway_Albedo.png
+Art/Environment/Course/Fairway/MAT_Fairway.mat
+Art/Environment/Foliage/Source/FoliageSheet.png
+Art/Environment/Foliage/Sprites/GrassLight_A.png
+Art/Characters/Player/Thrower.png
+```
+
+## After creating runtime-loaded art
+
+1. Add path to `ProjectArtPaths.cs` if new root
+2. Wire into `GameplayArtCatalogBuilder.cs` if loaded at runtime
+3. Document in `Assets/README.md` if introducing a new category

@@ -5,8 +5,6 @@ namespace DiskGolf.Gameplay
     /// <summary>NTM-style 2D thrower sprite with a hand anchor for the disc.</summary>
     public sealed class ThrowerVisual : MonoBehaviour
     {
-        const string SpriteResourcePath = "Player/Thrower";
-
         [SerializeField] Transform handAnchor;
 
         [SerializeField] Sprite throwerSprite;
@@ -82,7 +80,7 @@ namespace DiskGolf.Gameplay
             }
             else
             {
-                Debug.LogWarning("[ThrowerVisual] Missing sprite at Resources/Player/Thrower");
+                Debug.LogWarning("[ThrowerVisual] Missing thrower sprite. Run Disk Golf → Refresh Gameplay Art Catalog.");
             }
 
             spriteGo.AddComponent<ThrowerBillboard>();
@@ -111,7 +109,7 @@ namespace DiskGolf.Gameplay
             if (throwerSprite != null)
                 return throwerSprite;
 
-            throwerSprite = Resources.Load<Sprite>(SpriteResourcePath);
+            throwerSprite = RuntimeArt.LoadThrowerSprite();
             return throwerSprite;
         }
     }

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using DiskGolf.Gameplay;
 using UnityEditor;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ namespace DiskGolf.EditorTools
 {
     static class PlayerSpriteImporter
     {
-        const string AssetPath = "Assets/Resources/Player/Thrower.png";
+        const string AssetPath = ProjectArtPaths.Characters.ThrowerSprite;
 
         [InitializeOnLoadMethod]
         static void ScheduleImport() => EditorApplication.delayCall += EnsureImported;

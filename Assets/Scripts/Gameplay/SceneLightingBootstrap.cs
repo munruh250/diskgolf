@@ -46,15 +46,7 @@ namespace DiskGolf.Gameplay
                 RenderSettings.skybox = skybox;
         }
 
-        static Material LoadPrototypeSkyboxMaterial()
-        {
-#if UNITY_EDITOR
-            var editorMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/PrototypeSkybox.mat");
-            if (editorMat != null)
-                return editorMat;
-#endif
-            return Resources.Load<Material>("Skybox/PrototypeSkybox");
-        }
+        static Material LoadPrototypeSkyboxMaterial() => RuntimeArt.LoadPrototypeSkyboxMaterial();
 
         static void ApplySunLight(Light sun)
         {

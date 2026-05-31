@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
+using DiskGolf.Gameplay;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,9 +9,9 @@ namespace DiskGolf.EditorTools
     /// <summary>Exports foliage atlas regions into individual sprite PNGs.</summary>
     static class FoliageSpriteImporter
     {
-        const string SheetPath = "Assets/Resources/Foliage/FoliageSheet.png";
+        const string SheetPath = ProjectArtPaths.Environment.Foliage.Sheet;
 
-        const string OutputFolder = "Assets/Resources/Foliage";
+        const string OutputFolder = ProjectArtPaths.Environment.Foliage.SpritesRoot;
 
         const float TreePixelsPerUnit = 64f;
 
@@ -48,6 +49,8 @@ namespace DiskGolf.EditorTools
 
             foreach (var slice in Slices)
                 ConfigureSingleSpriteImporter(slice);
+
+            GameplayArtCatalogBuilder.EnsureCatalog(force: true);
         }
 
         static bool AllSlicesExist()

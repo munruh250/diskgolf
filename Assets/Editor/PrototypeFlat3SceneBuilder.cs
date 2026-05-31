@@ -22,30 +22,38 @@ namespace DiskGolf.EditorTools
     /// <summary>Full scene scaffold (optional). Prefer <see cref="GreyboxAutoSetup"/> auto-migration on load.</summary>
     public static class PrototypeFlat3SceneBuilder
     {
-        const string PrefabsDir = "Assets/Prefabs";
+        const string PrefabsDir = ProjectArtPaths.Prefabs.GameplayRoot;
 
-        const string MaterialsDir = "Assets/Materials";
+        const string CoursePrefabsDir = ProjectArtPaths.Prefabs.CourseRoot;
 
-        const string ScenePath = "Assets/Scenes/PrototypeFlat3.unity";
+        const string ScenePath = ProjectArtPaths.Scenes.PrototypeFlat3;
 
         [MenuItem("Disk Golf/Rebuild Prototype Flat 3 Scene")] public static void MenuBuild() => Build();
 
         public static void Build()
         {
             Directory.CreateDirectory(PrefabsDir);
-            Directory.CreateDirectory(MaterialsDir);
-            Directory.CreateDirectory("Assets/Scenes");
+            Directory.CreateDirectory(CoursePrefabsDir);
+            Directory.CreateDirectory(ProjectArtPaths.Scenes.PrototypeRoot);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Fairway.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Basket.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Tee.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Gameplay.DiscMaterial.Replace("/MAT_DiscOrange.mat", ""));
 
             EnsureTmpEssentials();
 
             EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough" });
 
             var fairRgb = new Color(0.2f, 0.52f, 0.26f);
-            var fairMat = SaveMaterialAsset("FairwayMat", fairRgb, $"{MaterialsDir}/FairwayMat.mat");
-            var teeMat = SaveMaterialAsset("TeeMat", new Color(0.73f, 0.57f, 0.41f), $"{MaterialsDir}/TeeMat.mat");
-            var metalMat = SaveMaterialAsset("BasketMat", new Color(0.46f, 0.49f, 0.53f), $"{MaterialsDir}/BasketMat.mat");
+            var fairMat = SaveMaterialAsset("MAT_FairwayGreybox", fairRgb,
+                ProjectArtPaths.Environment.Fairway.Root + "/MAT_FairwayGreybox.mat");
+            var teeMat = SaveMaterialAsset("MAT_Tee", new Color(0.73f, 0.57f, 0.41f),
+                ProjectArtPaths.Environment.Tee.Material);
+            var metalMat = SaveMaterialAsset("MAT_Basket", new Color(0.46f, 0.49f, 0.53f),
+                ProjectArtPaths.Environment.Basket.Material);
 
-            var discOrange = SaveMaterialAsset("DiscOrange", new Color(0.92f, 0.42f, 0.06f), $"{MaterialsDir}/DiscOrange.mat");
+            var discOrange = SaveMaterialAsset("MAT_DiscOrange", new Color(0.92f, 0.42f, 0.06f),
+                ProjectArtPaths.Gameplay.DiscMaterial);
 
             GameObject discPrefab = SaveDiscPrefab(discOrange);
             GameObject teePrefab = SaveTeePrefab(teeMat);
@@ -352,7 +360,7 @@ namespace DiskGolf.EditorTools
 
         static Material SaveMaterialAsset(string name, Color c, string assetPath)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(assetPath) ?? MaterialsDir);
+            Directory.CreateDirectory(Path.GetDirectoryName(assetPath) ?? ProjectArtPaths.ArtRoot);
             var shader = Shader.Find("Standard");
             var mat = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
             if (mat == null)
@@ -390,7 +398,7 @@ namespace DiskGolf.EditorTools
                 GreyboxScale.DiscThicknessM,
                 GreyboxScale.DiscDiameterM);
             disc.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            return SavePrefabAsset(disc, $"{PrefabsDir}/Disc.prefab");
+            return SavePrefabAsset(disc, ProjectArtPaths.Prefabs.Disc);
         }
 
         static GameObject SaveTeePrefab(Material mat)
@@ -400,7 +408,7 @@ namespace DiskGolf.EditorTools
             tee.tag = "Tee";
             tee.transform.localScale = new Vector3(2f, 0.08f, 2f);
             tee.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            return SavePrefabAsset(tee, $"{PrefabsDir}/TeePad.prefab");
+            return SavePrefabAsset(tee, ProjectArtPaths.Prefabs.TeePad);
         }
 
         static GameObject SaveBasketPrefab(Material mat)
@@ -434,7 +442,7 @@ namespace DiskGolf.EditorTools
             root.AddComponent<BasketCatchDetector>();
 
             root.tag = "Basket";
-            return SavePrefabAsset(root, $"{PrefabsDir}/Basket.prefab");
+            return SavePrefabAsset(root, ProjectArtPaths.Prefabs.Basket);
         }
 
         static GameObject SavePrefabAsset(GameObject instance, string path)
@@ -490,7 +498,7 @@ namespace DiskGolf.EditorTools
             var tmpSettings =
                 Path.Combine(projectRoot,
 
-                    "Assets/TextMesh Pro/Resources/TMP Settings.asset");
+                    ProjectArtPaths.ThirdParty.TmpSettings);
 
             if (File.Exists(tmpSettings))
                 return;
