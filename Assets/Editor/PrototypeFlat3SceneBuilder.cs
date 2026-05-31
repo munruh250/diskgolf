@@ -119,95 +119,31 @@ namespace DiskGolf.EditorTools
                 "presenter",
                 presenter);
 
-            var hudRt = HudCanvas(out _);
+            var hudCanvas = HudCanvas(out _);
 
-            HudTmpLabel(hudRt, new Vector2(0f, 130f), "Bucket Distance --- ft", 34f, out TextMeshProUGUI restUi);
-            HudTmpLabel(hudRt, new Vector2(0f, 108f), "DISC HEIGHT --- ft", 30f, out TextMeshProUGUI discHeightUi);
-            HudTmpLabel(hudRt, new Vector2(0f, 94f), "Disc", 28f, out TextMeshProUGUI discUi);
-
-            HudTmpLabel(hudRt, new Vector2(0f, 60f), "FLAT", 26f,
-                out TextMeshProUGUI stanceUi);
-
-            HudTmpLabel(hudRt,
-                new Vector2(0f,
-                    28f),
-                "WIND --- mph",
-                24f,
-
-                out TextMeshProUGUI windUi);
-
-            HudTmpLabelRow(hudRt, new Vector2(-240f, -110f),
-
-                "POWER", 18f,
-
-                TextAlignmentOptions.Top);
-
-            _ = HudSliderUi(hudRt, new Vector2(-230f,
-
-                -146f),
-
-                out Slider powerSlider);
-
-            HudTmpLabelRow(hudRt,
-
-                new Vector2(232f,
-
-                    -108f),
-
-                "HEIGHT",
-
-                18f,
-
-                TextAlignmentOptions.Top);
-
-            _ = HudSliderUi(hudRt,
-                    new Vector2(260f,
-
-                        -146f),
-
-                    out Slider heightSlider);
-
-            var zoneText =
-                HudUnityText(hudRt,
-                    new Vector2(258f,
-
-                        -188f),
-
-                    "NICE");
-
-            ZoneTextStyle(zoneText);
+            HudTmpLabel(hudCanvas, new Vector2(36f, 48f), "Disc", 28f, out TextMeshProUGUI discUi);
+            discUi.gameObject.name = "Disc";
+            HudTmpLabel(hudCanvas, new Vector2(36f, 88f), "FLAT", 26f, out TextMeshProUGUI stanceUi);
+            stanceUi.gameObject.name = "StanceLabel";
 
             var powerMb = gm.AddComponent<PowerMeterUI>();
-
-            AssignSerialized(powerMb, "slider", powerSlider);
-
             var heightMb = gm.AddComponent<HeightMeterUI>();
 
-            AssignSerialized(heightMb, "slider", heightSlider);
-
-            AssignSerialized(heightMb, "zoneLabel", zoneText);
-
             AssignSerialized(controller, "powerMeter", powerMb);
-
             AssignSerialized(controller, "heightMeter", heightMb);
 
             var banner =
-                HudTmpLabelRow(hudRt,
-                    new Vector2(0f,
-
-                        -36f),
-
+                HudTmpLabelRow(hudCanvas,
+                    new Vector2(0f, -36f),
                     "IN THE CIRCLE",
-
                     40f,
-
                     TextAlignmentOptions.Center);
 
+            banner.gameObject.name = "InTheCircleBanner";
             banner.gameObject.SetActive(false);
-
             AssignSerialized(controller, "inTheCircleBanner", banner.gameObject);
 
-            var throwLabel = HudTmpLabelRow(hudRt, Vector2.zero, "200 FEET", 64f,
+            var throwLabel = HudTmpLabelRow(hudCanvas, Vector2.zero, "200 FEET", 64f,
                 TextAlignmentOptions.Center);
             var throwRt = throwLabel.rectTransform;
             throwRt.anchorMin = throwRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -220,67 +156,40 @@ namespace DiskGolf.EditorTools
             throwLabel.gameObject.SetActive(false);
             AssignSerialized(controller, "throwResultBanner", throwBanner);
 
-            var hud = hudRt.gameObject.AddComponent<HUDController>();
-
+            var hud = hudCanvas.gameObject.AddComponent<HUDController>();
             AssignSerialized(hud, "controller", controller);
-
             AssignSerialized(hud, "hole", hole);
-
             AssignSerialized(hud, "discTransform", discTf);
-
-            AssignSerialized(hud, "restText", restUi);
-
-            AssignSerialized(hud, "discHeightText", discHeightUi);
-
             AssignSerialized(hud, "discText", discUi);
-
             AssignSerialized(hud, "stanceText", stanceUi);
 
-            AssignSerialized(hud, "windText", windUi);
-
-            SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
+            SpawnMinimap(hudCanvas, hole, discTf, courseLayout, controller);
 
             var aimPoint = CameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
+            var cameraRoot = new GameObject("Camera").transform;
 
-            var side =
-                Vcam(CameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, CameraRig.SideFollowOffset, 0f);
-
-            var flightChase =
-                Vcam(CameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, CameraRig.FlightChaseOffset, 0f);
+            var side = Vcam(CameraRig.SideSetupName, cameraRoot, throwerTf, aimPoint, CameraRig.SideFollowOffset, 0f);
+            var flightChase = Vcam(CameraRig.FlightChaseName, cameraRoot, discTf, basketTf, CameraRig.FlightChaseOffset, 0f);
 
             CameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
             CameraRig.ConfigureFlightChaseCam(flightChase, discTf, Vector3.forward);
 
-            var top =
-                Vcam("TopDownTrackCam", mainCam.transform, discTf, discTf, new Vector3(0f, 22f, 0f), 90f);
-
-            var lie = Vcam("LieZoomCam", mainCam.transform, discTf, basketTf, new Vector3(1.8f, 2.1f, -2.2f), 0f);
-
-            var putt =
-                Vcam("OverheadPuttCam", mainCam.transform, basketTf, basketTf, new Vector3(0f, 15f, 0.9f), 72f);
-
             side.gameObject.SetActive(true);
             flightChase.gameObject.SetActive(false);
-            top.gameObject.SetActive(false);
-            lie.gameObject.SetActive(false);
-            putt.gameObject.SetActive(false);
 
             HudLayout.Apply();
 
-            var directorGo = new GameObject("CameraDirector");
-            directorGo.transform.SetParent(gm.transform, false);
-
-            var director = directorGo.AddComponent<CameraDirector>();
+            var director = gm.AddComponent<CameraDirector>();
             AssignSerialized(director, "sideSetupCam", side);
             AssignSerialized(director, "flightChaseCam", flightChase);
-            AssignSerialized(director, "lieZoomCam", lie);
-            AssignSerialized(director, "overheadPuttCam", putt);
             AssignSerialized(director, "throwController", controller);
             AssignSerialized(director, "flightPresenter", presenter);
+            AssignSerialized(director, "hole", hole);
 
             var autoSetup = gm.GetComponent<GreyboxAutoSetup>() ?? gm.AddComponent<GreyboxAutoSetup>();
             autoSetup.Apply();
             SceneHierarchy.Organize();
+            SceneContentCleanup.Apply();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
@@ -677,16 +586,12 @@ namespace DiskGolf.EditorTools
 
             holder.AddComponent<GraphicRaycaster>();
 
-            var hudRootGo = new GameObject("HudRoot");
-
-            hudRootGo.transform.SetParent(holder.transform,
-                false);
-
-            var rt = hudRootGo.AddComponent<RectTransform>();
+            var rt = holder.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
+            rt.localScale = Vector3.one;
 
             return rt;
         }

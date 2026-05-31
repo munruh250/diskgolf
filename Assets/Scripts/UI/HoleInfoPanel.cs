@@ -25,8 +25,10 @@ namespace DiskGolf.UI
             {
                 if (existing.name != RootName)
                     existing.name = RootName;
+
+                existing.RepairLineLayout();
                 if (!HudLayoutSettings.ShouldPreserveLayout())
-                    existing.RefreshLayout();
+                    existing.ApplyLayout();
                 return existing;
             }
 
@@ -36,6 +38,7 @@ namespace DiskGolf.UI
 
             var panel = go.AddComponent<HoleInfoPanel>();
             panel.Build();
+            panel.RepairLineLayout();
             panel.ApplyLayout();
             return panel;
         }
@@ -59,11 +62,27 @@ namespace DiskGolf.UI
             parText = CreateLine("Par", "PAR 3", 2);
         }
 
-        void RefreshLayout()
+        public void RepairLineLayout()
         {
+            RebindFields();
             ApplyLineLayout(holeNumberText, 0);
             ApplyLineLayout(yardageText, 1);
             ApplyLineLayout(parText, 2);
+        }
+
+        void RebindFields()
+        {
+            holeNumberText ??= FindLine("HoleNumber");
+            yardageText ??= FindLine("Yardage");
+            parText ??= FindLine("Par");
+        }
+
+        TextMeshProUGUI FindLine(string name) =>
+            transform.Find(name)?.GetComponent<TextMeshProUGUI>();
+
+        void RefreshLayout()
+        {
+            RepairLineLayout();
             ApplyLayout();
         }
 
@@ -75,7 +94,7 @@ namespace DiskGolf.UI
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
-            HudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
+            tmp.gameObject.SetActive(true);
             ApplyLineLayout(tmp, row);
             return tmp;
         }
@@ -92,6 +111,7 @@ namespace DiskGolf.UI
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(0f, -row * HudTypography.RowHeight);
             rt.sizeDelta = new Vector2(HudLayout.MinimapWidth + 120f, HudTypography.RowHeight);
+            tmp.gameObject.SetActive(true);
         }
 
         public void ApplyLayout()

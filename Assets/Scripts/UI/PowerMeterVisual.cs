@@ -237,11 +237,9 @@ namespace DiskGolf.UI
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
-            tmp.fontSize = 13f * S;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(1f, 0.92f, 0.2f);
-            tmp.raycastTarget = false;
+            var labelColor = new Color(1f, 0.92f, 0.2f);
+            HudTypography.Apply(tmp, TextAlignmentOptions.Center);
+            tmp.color = labelColor;
             BindFont(tmp);
             return tmp;
         }

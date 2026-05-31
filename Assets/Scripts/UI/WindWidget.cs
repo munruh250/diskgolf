@@ -33,6 +33,7 @@ namespace DiskGolf.UI
             {
                 if (existing.name != RootName)
                     existing.name = RootName;
+                existing.ApplyTypography();
                 return existing;
             }
 
@@ -78,13 +79,24 @@ namespace DiskGolf.UI
             var speedPanel = CreatePanel("SpeedPanel", SpeedPanelColor, new Vector2(64f, 4f), new Vector2(100f, 48f));
             speedPanel.SetParent(frame, false);
 
-            var windLabel = CreateText("WindLabel", "WIND", 14f, FontStyles.Bold, new Vector2(8f, 24f),
+            var windLabel = CreateText("WindLabel", "WIND", new Vector2(8f, 24f),
                 new Vector2(84f, 20f), SpeedTextColor, TextAlignmentOptions.TopLeft);
             windLabel.transform.SetParent(speedPanel.transform, false);
 
-            speedValueText = CreateText("WindSpeed", "0m", 24f, FontStyles.Bold, new Vector2(8f, 0f),
+            speedValueText = CreateText("WindSpeed", "0m", new Vector2(8f, 0f),
                 new Vector2(84f, 28f), SpeedTextColor, TextAlignmentOptions.BottomLeft);
             speedValueText.transform.SetParent(speedPanel.transform, false);
+            ApplyTypography();
+        }
+
+        public void ApplyTypography()
+        {
+            foreach (var tmp in GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                var color = tmp.color;
+                HudTypography.Apply(tmp, tmp.alignment);
+                tmp.color = color;
+            }
         }
 
         static RectTransform CreatePanel(string name, Color color, Vector2 pos, Vector2 size)
@@ -123,7 +135,7 @@ namespace DiskGolf.UI
             head.GetComponent<Image>().color = Color.white;
         }
 
-        static TextMeshProUGUI CreateText(string name, string text, float fontSize, FontStyles style, Vector2 pos,
+        static TextMeshProUGUI CreateText(string name, string text, Vector2 pos,
             Vector2 size, Color color, TextAlignmentOptions align)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -136,10 +148,7 @@ namespace DiskGolf.UI
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
             tmp.color = color;
-            tmp.fontStyle = style;
-            tmp.fontSize = fontSize;
-            tmp.alignment = align;
-            tmp.raycastTarget = false;
+            HudTypography.Apply(tmp, align);
             return tmp;
         }
 

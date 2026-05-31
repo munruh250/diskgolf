@@ -32,6 +32,11 @@ namespace DiskGolf.Gameplay
             SceneLightingBootstrap.Apply();
             EnsureEditorConfigComponents();
 
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                SceneEditorHooks.Instance?.RunContentCleanup();
+#endif
+
             if (Application.isPlaying)
             {
                 ApplyPlayMode();
@@ -88,6 +93,7 @@ namespace DiskGolf.Gameplay
 
         void ApplyEditMode()
         {
+            SceneEditorHooks.Instance?.RunContentCleanup();
             ApplyCoreGreybox(repositionGameplayOnApply);
         }
 
@@ -377,7 +383,11 @@ namespace DiskGolf.Gameplay
 
         static void WireCameraDirector()
         {
-            var director = Object.FindObjectOfType<CameraDirector>();
+            var gameManager = GameObject.Find("GameManager");
+            var director = gameManager != null
+                ? gameManager.GetComponent<CameraDirector>()
+                : null;
+            director ??= Object.FindObjectOfType<CameraDirector>();
             if (director == null)
                 return;
 
@@ -385,7 +395,9 @@ namespace DiskGolf.Gameplay
             var so = new UnityEditor.SerializedObject(director);
             AssignRef(so, "sideSetupCam", CameraRig.FindSideSetupCam());
             AssignRef(so, "flightChaseCam", CameraRig.FindFlightChaseCam());
-            AssignRef(so, "flightPresenter", director.GetComponent<DiscFlightPresenter>());
+            AssignRef(so, "throwController", gameManager != null ? gameManager.GetComponent<ThrowController>() : null);
+            AssignRef(so, "flightPresenter", gameManager != null ? gameManager.GetComponent<DiscFlightPresenter>() : null);
+            AssignRef(so, "hole", gameManager != null ? gameManager.GetComponent<HoleSetup>() : null);
             so.ApplyModifiedPropertiesWithoutUndo();
 #else
             _ = director;

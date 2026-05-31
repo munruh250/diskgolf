@@ -167,11 +167,9 @@ namespace DiskGolf.UI
             titleRt.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, 20f * s);
             var title = titleGo.AddComponent<TextMeshProUGUI>();
             title.text = "HEIGHT";
-            title.fontSize = 16f * s;
-            title.fontStyle = FontStyles.Bold;
-            title.alignment = TextAlignmentOptions.MidlineLeft;
-            title.color = new Color(0.85f, 0.85f, 0.85f);
-            title.raycastTarget = false;
+            var titleColor = new Color(0.85f, 0.85f, 0.85f);
+            HudTypography.Apply(title, TextAlignmentOptions.MidlineLeft);
+            title.color = titleColor;
 
             var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
             if (font != null)
@@ -206,10 +204,7 @@ namespace DiskGolf.UI
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
-            tmp.fontSize = 12f * scale;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.MidlineLeft;
-            tmp.color = Color.white;
+            HudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
             tmp.raycastTarget = false;
 
             var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");

@@ -46,6 +46,52 @@ namespace DiskGolf.UI
             tmp.raycastTarget = false;
         }
 
+        /// <summary>Applies the standard HUD font size to persistent readout labels.</summary>
+        public static void ApplyToGameplayHud(RectTransform canvas)
+        {
+            if (canvas == null)
+                return;
+
+            canvas.GetComponentInChildren<RestDriveReadout>()?.RepairRowLayout();
+            canvas.GetComponentInChildren<HoleInfoPanel>()?.RepairLineLayout();
+
+            ApplyBottomLabel(canvas, "Disc");
+            ApplyBottomLabel(canvas, "StanceLabel");
+            ApplyBottomLabel(canvas, "TypeThrow");
+            ApplyBottomLabel(canvas, "FLAT");
+
+            var wind = canvas.Find("WindWidget");
+            if (wind != null)
+            {
+                foreach (var tmp in wind.GetComponentsInChildren<TextMeshProUGUI>(true))
+                {
+                    var color = tmp.color;
+                    Apply(tmp, tmp.alignment);
+                    tmp.color = color;
+                }
+            }
+
+            var meters = canvas.Find("TimingMeters");
+            if (meters != null)
+            {
+                foreach (var tmp in meters.GetComponentsInChildren<TextMeshProUGUI>(true))
+                {
+                    var color = tmp.color;
+                    Apply(tmp, tmp.alignment);
+                    tmp.color = color;
+                }
+            }
+
+            canvas.GetComponentInChildren<DiscSelectUI>()?.ApplyTypography();
+        }
+
+        static void ApplyBottomLabel(RectTransform canvas, string name)
+        {
+            var tmp = canvas.Find(name)?.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+                Apply(tmp, TextAlignmentOptions.BottomLeft);
+        }
+
         readonly struct LayoutSnapshot
         {
             public readonly float fontSize;

@@ -5,8 +5,6 @@ namespace DiskGolf.UI
 {
     public class PowerMeterUI : MonoBehaviour
     {
-        [SerializeField] UnityEngine.UI.Slider slider;
-
         TimingMeter _meter = new TimingMeter(0.8f);
         PowerMeterVisual _visual;
         bool _active;
@@ -19,12 +17,6 @@ namespace DiskGolf.UI
         public bool LastConfirmWasSweet { get; private set; }
 
         public bool IsFrozenForFlight => _frozen;
-
-        void Awake()
-        {
-            if (slider != null)
-                slider.gameObject.SetActive(false);
-        }
 
         void Start()
         {
@@ -50,9 +42,6 @@ namespace DiskGolf.UI
             LastConfirmWasSweet = false;
             ClearTargetZone();
             _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
         }
 
         public bool IsRunning => _active;
@@ -75,9 +64,6 @@ namespace DiskGolf.UI
             LastConfirmWasSweet = false;
             ClearTargetZone();
             _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
         }
 
         bool IsInSweetZone(float display01) =>
@@ -115,10 +101,6 @@ namespace DiskGolf.UI
 
             _meter.Tick(Time.deltaTime);
             float display = _meter.Value / 1.1f;
-
-            if (slider != null)
-                slider.value = display;
-
             _visual?.SetIndicator(display);
         }
     }

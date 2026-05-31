@@ -1,16 +1,10 @@
 using DiskGolf.Core;
-using DiskGolf.Flight;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
     public class HeightMeterUI : MonoBehaviour
     {
-        [SerializeField] Slider slider;
-
-        [SerializeField] Text zoneLabel;
-
         TimingMeter _meter = new TimingMeter(1f);
         HeightMeterVisual _visual;
         bool _active;
@@ -23,12 +17,6 @@ namespace DiskGolf.UI
         public bool LastConfirmWasSweet { get; private set; }
 
         public bool IsFrozenForFlight => _frozen;
-
-        void Awake()
-        {
-            if (slider != null)
-                slider.gameObject.SetActive(false);
-        }
 
         void Start()
         {
@@ -54,9 +42,6 @@ namespace DiskGolf.UI
             LastConfirmWasSweet = false;
             ClearTargetZone();
             _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
         }
 
         public bool IsRunning => _active;
@@ -79,9 +64,6 @@ namespace DiskGolf.UI
             LastConfirmWasSweet = false;
             ClearTargetZone();
             _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
         }
 
         bool IsInSweetZone(float display01) =>
@@ -106,20 +88,6 @@ namespace DiskGolf.UI
 
         public void ClearTargetZone() => _visual?.HideSweetSpot();
 
-        void RefreshZoneLabel(ThrowHeight height)
-        {
-            if (zoneLabel == null)
-                return;
-
-            zoneLabel.text = height switch
-            {
-                ThrowHeight.Low => "LOW",
-                ThrowHeight.Nice => "NICE",
-                ThrowHeight.High => "HIGH",
-                _ => "NICE"
-            };
-        }
-
         void Update()
         {
             if (_frozen)
@@ -133,12 +101,7 @@ namespace DiskGolf.UI
 
             _meter.Tick(Time.deltaTime);
             float display = _meter.Value / 1.1f;
-
-            if (slider != null)
-                slider.value = display;
-
             _visual?.SetIndicator(display);
-            RefreshZoneLabel(HeightMeterZones.FromValue(_meter.Value));
         }
     }
 }

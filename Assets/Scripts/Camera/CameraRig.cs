@@ -9,10 +9,12 @@ namespace DiskGolf.Camera
     {
         public const string SideSetupName = "SideSetupCam";
         public const string FlightChaseName = "FlightChaseCam";
-        public const string TopDownName = "TopDownTrackCam";
-        public const string LieZoomName = "LieZoomCam";
-        public const string OverheadPuttName = "OverheadPuttCam";
         public const string AimPointName = "ThrowAimPoint";
+
+        // Legacy names kept for one-time scene cleanup only.
+        public const string LegacyTopDownName = "TopDownTrackCam";
+        public const string LegacyLieZoomName = "LieZoomCam";
+        public const string LegacyOverheadPuttName = "OverheadPuttCam";
 
         /// <summary>Low behind-left camera — player lands at bottom of frame.</summary>
         public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
@@ -25,8 +27,6 @@ namespace DiskGolf.Camera
         public const int SidePriority = 20;
 
         public const int FlightChasePriority = 18;
-
-        public const int TopDownPriority = 22;
 
         public static Transform EnsureAimPoint(Transform thrower, Transform basket)
         {
@@ -145,8 +145,6 @@ namespace DiskGolf.Camera
 
         public static CinemachineVirtualCamera FindFlightChaseCam() => FindNamedVcam(FlightChaseName);
 
-        public static CinemachineVirtualCamera FindTopDownCam() => FindNamedVcam(TopDownName);
-
         /// <summary>Find first vcam by name (includes inactive objects).</summary>
         public static CinemachineVirtualCamera FindNamedVcam(string name)
         {
@@ -168,9 +166,6 @@ namespace DiskGolf.Camera
         {
             RemoveDuplicateNamed(SideSetupName);
             RemoveDuplicateNamed(FlightChaseName);
-            RemoveDuplicateNamed(TopDownName);
-            RemoveDuplicateNamed(LieZoomName);
-            RemoveDuplicateNamed(OverheadPuttName);
         }
 
         static void RemoveDuplicateNamed(string name)

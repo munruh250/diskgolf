@@ -45,6 +45,7 @@ namespace DiskGolf.UI
             HudLayoutSettings.EnsureOnHudRoot();
             TimingMeterHud.Ensure();
             flightPresenter ??= FindObjectOfType<DiscFlightPresenter>();
+            ResolveLegacyLabelRefs();
 
             var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
             _restDrive = RestDriveReadout.Ensure(hudRoot);
@@ -68,6 +69,22 @@ namespace DiskGolf.UI
 
             if (discHeightText != null)
                 discHeightText.gameObject.SetActive(false);
+        }
+
+        void ResolveLegacyLabelRefs()
+        {
+            var hud = GameObject.Find("GameplayHUD")?.transform;
+            if (hud == null)
+                return;
+
+            discText ??= FindLabel(hud, "Disc");
+            stanceText ??= FindLabel(hud, "StanceLabel") ?? FindLabel(hud, "TypeThrow") ?? FindLabel(hud, "FLAT");
+        }
+
+        static TextMeshProUGUI FindLabel(Transform root, string name)
+        {
+            var tf = root.Find(name);
+            return tf != null ? tf.GetComponent<TextMeshProUGUI>() : null;
         }
 
         void LateUpdate()

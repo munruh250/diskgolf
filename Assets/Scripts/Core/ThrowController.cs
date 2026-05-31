@@ -99,6 +99,7 @@ namespace DiskGolf.Core
         void Awake()
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
+            inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
         }
 
         void Start()

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>NTM-style centered popup when the disc stops (e.g. "200 FEET").</summary>
+    /// <summary>Centered popup when the disc stops (e.g. "200 FEET").</summary>
     public sealed class ThrowResultBannerUI : MonoBehaviour
     {
         const string HudCanvasName = "GameplayHUD";
@@ -95,7 +95,8 @@ namespace DiskGolf.UI
             tmp.outlineColor = Color.black;
             tmp.raycastTarget = false;
 
-            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("HudRoot/TMPRow");
+            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("InTheCircleBanner")
+                ?? GameObject.Find(HudCanvasName)?.transform.Find("TMPRow");
             var circleTmp = circleBanner != null ? circleBanner.GetComponent<TextMeshProUGUI>() : null;
             if (circleTmp != null && circleTmp.font != null)
                 tmp.font = circleTmp.font;

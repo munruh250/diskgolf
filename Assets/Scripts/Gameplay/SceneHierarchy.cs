@@ -23,10 +23,6 @@ namespace DiskGolf.Gameplay
             ReparentIfFound("Main Camera", cameraSection);
             ReparentIfFound(CameraRig.SideSetupName, cameraSection);
             ReparentIfFound(CameraRig.FlightChaseName, cameraSection);
-            ReparentIfFound(CameraRig.TopDownName, cameraSection);
-            ReparentIfFound(CameraRig.LieZoomName, cameraSection);
-            ReparentIfFound(CameraRig.OverheadPuttName, cameraSection);
-            ReparentIfFound("CameraDirector", cameraSection);
             ReparentIfFound("Thrower", playerSection);
             ReparentIfFound(CameraRig.AimPointName, playerSection);
 

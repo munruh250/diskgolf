@@ -37,9 +37,10 @@ namespace DiskGolf.UI
             {
                 if (existing.name != RootName)
                     existing.name = RootName;
-                existing.RebindFields();
+
+                existing.RepairRowLayout();
                 if (!HudLayoutSettings.ShouldPreserveLayout())
-                    existing.RefreshLayout();
+                    existing.ApplyLayout();
                 return existing;
             }
 
@@ -49,6 +50,7 @@ namespace DiskGolf.UI
 
             var readout = go.AddComponent<RestDriveReadout>();
             readout.Build();
+            readout.RepairRowLayout();
             readout.ApplyLayout();
             return readout;
         }
@@ -75,6 +77,15 @@ namespace DiskGolf.UI
             heightValue = CreateValue("HeightValue", "0ft", 2);
         }
 
+        public void RepairRowLayout()
+        {
+            RebindFields();
+            EnsureHeightRow();
+            ApplyRowLayout(distanceLabel, distanceValue, 0);
+            ApplyRowLayout(throwLabel, throwValue, 1);
+            ApplyRowLayout(heightLabel, heightValue, 2);
+        }
+
         void RebindFields()
         {
             distanceLabel ??= FindText("DistanceLabel", "BasketLabel", "RestLabel");
@@ -99,11 +110,7 @@ namespace DiskGolf.UI
 
         void RefreshLayout()
         {
-            RebindFields();
-            EnsureHeightRow();
-            ApplyRowLayout(distanceLabel, distanceValue, 0);
-            ApplyRowLayout(throwLabel, throwValue, 1);
-            ApplyRowLayout(heightLabel, heightValue, 2);
+            RepairRowLayout();
             ApplyLayout();
         }
 
@@ -128,12 +135,14 @@ namespace DiskGolf.UI
                 };
                 HudTypography.Apply(label, TextAlignmentOptions.MidlineLeft);
                 LayoutCell(label.rectTransform, true, row);
+                label.gameObject.SetActive(true);
             }
 
             if (value != null)
             {
                 HudTypography.Apply(value, TextAlignmentOptions.MidlineRight);
                 LayoutCell(value.rectTransform, false, row);
+                value.gameObject.SetActive(true);
             }
         }
 
@@ -172,6 +181,7 @@ namespace DiskGolf.UI
 
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
+            tmp.gameObject.SetActive(true);
             return tmp;
         }
 

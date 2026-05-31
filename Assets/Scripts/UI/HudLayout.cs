@@ -57,6 +57,7 @@ namespace DiskGolf.UI
             WindWidget.Ensure(canvas);
             TimingMeterHud.Ensure();
 
+            EnsureWidgetLabelsVisible(canvas);
             HideLegacyPowerHeightLabels(canvas);
         }
 
@@ -80,31 +81,33 @@ namespace DiskGolf.UI
 
             var flatOffset = settings != null ? settings.flatLabelOffset : new Vector2(36f, 88f);
             var discOffset = settings != null ? settings.discLabelOffset : new Vector2(36f, 48f);
-            PinBottomLeft(FindTmp(canvas, "FLAT"), flatOffset, HudTypography.FontSize);
-            PinBottomLeft(FindTmp(canvas, "Disc"), discOffset, HudTypography.FontSize - 2f);
+            PinBottomLeft(FindTmp(canvas, "StanceLabel") ?? FindTmp(canvas, "FLAT") ?? FindTmp(canvas, "TypeThrow"),
+                flatOffset);
+            PinBottomLeft(FindTmp(canvas, "Disc"), discOffset);
 
             HideLegacyPowerHeightLabels(canvas);
             ApplyRightStack(canvas);
+            EnsureWidgetLabelsVisible(canvas);
         }
 
         static void HideLegacyPowerHeightLabels(RectTransform canvas)
         {
             var powerLabel = FindTmpContains(canvas, "POWER");
-            if (powerLabel != null)
+            if (powerLabel != null && IsLegacyHudElement(powerLabel))
             {
                 PinBottomRight(powerLabel, new Vector2(-170f, 168f), 22f);
                 powerLabel.gameObject.SetActive(false);
             }
 
             var heightLabel = FindTmpContains(canvas, "HEIGHT");
-            if (heightLabel != null)
+            if (heightLabel != null && IsLegacyHudElement(heightLabel))
             {
                 PinBottomRight(heightLabel, new Vector2(-28f, 188f), 22f);
                 heightLabel.gameObject.SetActive(false);
             }
 
             var nice = FindUnityText(canvas, "NICE");
-            if (nice != null)
+            if (nice != null && IsLegacyHudElement(nice))
                 nice.gameObject.SetActive(false);
         }
 
@@ -143,24 +146,59 @@ namespace DiskGolf.UI
         static void HideLegacyDiscHeightLabel(RectTransform canvas)
         {
             var label = FindTmp(canvas, "DISC HEIGHT") ?? FindTmp(canvas, "DiscHeight");
-            if (label != null)
+            if (label != null && IsLegacyHudElement(label))
                 label.gameObject.SetActive(false);
         }
 
         static void HideLegacyLabels(RectTransform canvas)
         {
             var bucket = FindBucketDistanceLabel(canvas);
-            if (bucket != null)
+            if (bucket != null && IsLegacyHudElement(bucket))
                 bucket.gameObject.SetActive(false);
 
             var score = FindTmp(canvas, "PAR");
-            if (score != null)
+            if (score != null && IsLegacyHudElement(score))
                 score.gameObject.SetActive(false);
 
             var wind = FindTmp(canvas, "WIND");
-            if (wind != null)
+            if (wind != null && IsLegacyHudElement(wind))
                 wind.gameObject.SetActive(false);
         }
+
+        static void EnsureWidgetLabelsVisible(RectTransform canvas)
+        {
+            canvas.Find("RestDrive")?.GetComponent<RestDriveReadout>()?.RepairRowLayout();
+            canvas.Find("HoleInfo")?.GetComponent<HoleInfoPanel>()?.RepairLineLayout();
+            HudTypography.ApplyToGameplayHud(canvas);
+        }
+
+        static bool IsLegacyHudElement(Component component)
+        {
+            if (component == null)
+                return false;
+
+            var t = component.transform;
+            while (t != null)
+            {
+                switch (t.name)
+                {
+                    case "RestDrive":
+                    case "HoleInfo":
+                    case "WindWidget":
+                    case "TimingMeters":
+                    case "MinimapHost":
+                        return false;
+                }
+
+                t = t.parent;
+            }
+
+            return true;
+        }
+
+        static bool IsLegacyHudElement(TextMeshProUGUI tmp) => IsLegacyHudElement((Component)tmp);
+
+        static bool IsLegacyHudElement(Text tmp) => IsLegacyHudElement((Component)tmp);
 
         static void HideLegacySliders(RectTransform canvas)
         {
@@ -271,7 +309,7 @@ namespace DiskGolf.UI
             return null;
         }
 
-        static void PinBottomLeft(TextMeshProUGUI tmp, Vector2 offset, float fontSize)
+        static void PinBottomLeft(TextMeshProUGUI tmp, Vector2 offset)
         {
             if (tmp == null)
                 return;
@@ -281,9 +319,8 @@ namespace DiskGolf.UI
             rt.pivot = new Vector2(0f, 0f);
             rt.anchoredPosition = offset;
             rt.sizeDelta = new Vector2(420f, 40f);
-            tmp.fontSize = fontSize;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.BottomLeft;
+            HudTypography.Apply(tmp, TextAlignmentOptions.BottomLeft);
+            tmp.gameObject.SetActive(true);
         }
 
         static void PinBottomRight(TextMeshProUGUI tmp, Vector2 offset, float fontSize)

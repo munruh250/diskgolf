@@ -12,10 +12,6 @@ namespace DiskGolf.Camera
 
         [SerializeField] CinemachineVirtualCamera flightChaseCam;
 
-        [SerializeField] CinemachineVirtualCamera lieZoomCam;
-
-        [SerializeField] CinemachineVirtualCamera overheadPuttCam;
-
         [SerializeField] ThrowController throwController;
 
         [SerializeField] DiscFlightPresenter flightPresenter;
@@ -30,7 +26,6 @@ namespace DiskGolf.Camera
         {
             sideSetupCam ??= CameraRig.FindSideSetupCam();
             flightChaseCam ??= CameraRig.FindFlightChaseCam();
-            overheadPuttCam ??= CameraRig.FindNamedVcam(CameraRig.OverheadPuttName);
             hole ??= FindObjectOfType<HoleSetup>();
 
             if (flightPresenter == null && throwController != null)
@@ -73,9 +68,6 @@ namespace DiskGolf.Camera
                 SetActive(flightChaseCam, false);
 
             SetSideThrowViewActive(sideThrowView);
-
-            SetActive(lieZoomCam, false);
-            SetActive(overheadPuttCam, false);
         }
 
         void BindFlightChaseToDisc()
