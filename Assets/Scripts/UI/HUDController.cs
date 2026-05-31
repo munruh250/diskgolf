@@ -25,46 +25,130 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI windText;
 
+        NtmRestDriveReadout _restDrive;
+
+        NtmHoleInfoPanel _holeInfo;
+
+        NtmWindWidget _windWidget;
+
+        ThrowPhase _lastPhase;
+
+        float _restAtThrowStartFt;
+
+        float _lastCompletedDriveFt;
+
         void OnEnable()
         {
             TimingMeterHud.Ensure();
-            scoreText ??= NtmHudLayout.EnsureScoreLabel();
-            discHeightText ??= NtmHudLayout.EnsureDiscHeightLabel();
             NtmHudLayout.Apply();
+
+            var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
+            _restDrive = NtmRestDriveReadout.Ensure(hudRoot);
+            _holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
+            _windWidget = NtmWindWidget.Ensure(hudRoot);
+
+            HideLegacyLabels();
+        }
+
+        void HideLegacyLabels()
+        {
+            if (restText != null)
+                restText.gameObject.SetActive(false);
+
+            if (scoreText != null)
+                scoreText.gameObject.SetActive(false);
+
+            if (windText != null)
+                windText.gameObject.SetActive(false);
         }
 
         void LateUpdate()
         {
-            if (controller != null && scoreText != null)
-            {
-                scoreText.text = controller.IsHoleComplete
-                    ? HoleScore.CompletedLine(controller.StrokeCount, controller.HolePar)
-                    : HoleScore.InProgressLine(controller.StrokeCount, controller.HolePar);
-            }
+            UpdatePhaseTracking();
+            UpdateRestDrive();
+            UpdateHoleInfo();
+            UpdateWind();
+            UpdateDiscHeight();
+            UpdateDiscAndStance();
+        }
 
-            if (hole != null && discTransform != null && restText != null)
-            {
-                int restFt = Mathf.Max(0, Mathf.RoundToInt(hole.DistanceToBasket(discTransform.position)));
-
-                if (controller != null && controller.ShowsTrajectoryPreview)
-                {
-                    int targetFt = Mathf.RoundToInt(controller.TargetTrajectoryFt);
-                    restText.text = $"TARGET {targetFt}ft  ·  Bucket {restFt}ft";
-                }
-                else
-                {
-                    restText.text = $"Bucket Distance {restFt}ft";
-                }
-            }
-
-            if (hole == null || discTransform == null)
+        void UpdatePhaseTracking()
+        {
+            if (controller == null)
                 return;
 
-            if (discHeightText != null)
+            var phase = controller.Phase;
+
+            if (_lastPhase != ThrowPhase.InFlight && phase == ThrowPhase.InFlight && hole != null && discTransform != null)
+                _restAtThrowStartFt = hole.DistanceToBasket(discTransform.position);
+
+            if (_lastPhase == ThrowPhase.InFlight && phase != ThrowPhase.InFlight && hole != null && discTransform != null)
             {
-                int heightFt = Mathf.Max(0, Mathf.RoundToInt(discTransform.position.y * 3.28084f));
-                discHeightText.text = $"DISC HEIGHT {heightFt}ft";
+                float restFt = hole.DistanceToBasket(discTransform.position);
+                _lastCompletedDriveFt = Mathf.Max(0f, _restAtThrowStartFt - restFt);
             }
+
+            _lastPhase = phase;
+        }
+
+        void UpdateRestDrive()
+        {
+            if (_restDrive == null || hole == null || discTransform == null)
+                return;
+
+            float restFt;
+            float driveFt;
+
+            if (controller != null && controller.Phase == ThrowPhase.InFlight)
+            {
+                restFt = hole.DistanceToBasket(discTransform.position);
+                driveFt = Mathf.Max(0f, _restAtThrowStartFt - restFt);
+            }
+            else if (controller != null && controller.ShowsTrajectoryPreview)
+            {
+                float lieRestFt = hole.DistanceToBasket(discTransform.position);
+                driveFt = controller.TargetTrajectoryFt;
+                restFt = Mathf.Max(0f, lieRestFt - driveFt);
+            }
+            else
+            {
+                restFt = hole.DistanceToBasket(discTransform.position);
+                driveFt = _lastCompletedDriveFt;
+            }
+
+            _restDrive.SetValues(FeetToYards(restFt), FeetToYards(driveFt));
+        }
+
+        void UpdateHoleInfo()
+        {
+            if (_holeInfo == null || hole == null)
+                return;
+
+            int totalYards = FeetToYards(hole.DistanceToBasket(hole.TeePosition));
+            _holeInfo.SetHoleInfo(hole.HoleNumber, totalYards, hole.Par);
+        }
+
+        void UpdateWind()
+        {
+            if (_windWidget == null || controller == null)
+                return;
+
+            _windWidget.SetWind(controller.Wind);
+        }
+
+        void UpdateDiscHeight()
+        {
+            if (discHeightText == null || discTransform == null)
+                return;
+
+            int heightFt = Mathf.Max(0, Mathf.RoundToInt(discTransform.position.y * 3.28084f));
+            discHeightText.text = $"DISC HEIGHT {heightFt}ft";
+        }
+
+        void UpdateDiscAndStance()
+        {
+            if (hole == null || discTransform == null)
+                return;
 
             var active = controller != null ? controller.ActiveDisc : null;
 
@@ -76,15 +160,13 @@ namespace DiskGolf.UI
             }
 
             if (stanceText != null)
+            {
                 stanceText.text = controller != null
                     ? controller.ReleaseAngle.ToString().ToUpperInvariant()
                     : "FLAT";
-
-            if (windText != null && controller != null)
-            {
-                var w = controller.Wind;
-                windText.text = $"WIND {(int)Mathf.Round(w.speedMph)} mph";
             }
         }
+
+        static int FeetToYards(float feet) => Mathf.Max(0, Mathf.RoundToInt(feet / 3f));
     }
 }

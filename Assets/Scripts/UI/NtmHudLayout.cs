@@ -9,6 +9,18 @@ namespace DiskGolf.UI
     {
         const string HudRootName = "GameplayHUD";
 
+        const float MinimapWidth = 248f;
+
+        const float MinimapHeight = 392f;
+
+        const float RightInset = 20f;
+
+        const float TopInset = 20f;
+
+        const float StackGap = 8f;
+
+        const float HoleInfoHeight = 72f;
+
         public static void Apply()
         {
             var hud = GameObject.Find(HudRootName);
@@ -19,18 +31,17 @@ namespace DiskGolf.UI
             if (canvas == null)
                 return;
 
-            ApplyMinimap();
             StyleCanvasScaler(hud);
+            ApplyMinimap();
+            ApplyRightStack(canvas);
 
-            PinTopLeft(EnsureScoreLabel(canvas), new Vector2(36f, -36f), 34f);
-            PinTopLeft(FindBucketDistanceLabel(canvas), new Vector2(36f, -88f), 40f);
-            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -136f), 32f);
-            PinTopRight(FindTmp(canvas, "WIND"), new Vector2(-36f, -132f), 30f);
+            PinTopLeft(EnsureDiscHeightLabel(canvas), new Vector2(36f, -160f), 32f);
 
             PinBottomLeft(FindTmp(canvas, "FLAT"), new Vector2(36f, 88f), 28f);
             PinBottomLeft(FindTmp(canvas, "Disc"), new Vector2(36f, 48f), 26f);
 
             HideLegacySliders(canvas);
+            HideLegacyLabels(canvas);
             TimingMeterHud.Ensure();
 
             var powerLabel = FindTmpContains(canvas, "POWER");
@@ -50,6 +61,58 @@ namespace DiskGolf.UI
             var nice = FindUnityText(canvas, "NICE");
             if (nice != null)
                 nice.gameObject.SetActive(false);
+        }
+
+        static void ApplyRightStack(RectTransform canvas)
+        {
+            var hudRoot = canvas;
+            NtmRestDriveReadout.Ensure(hudRoot)?.ApplyLayout();
+
+            float minimapTop = TopInset + HoleInfoHeight + StackGap;
+            var holeInfo = NtmHoleInfoPanel.Ensure(hudRoot);
+            if (holeInfo != null)
+            {
+                var rt = holeInfo.transform as RectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+                rt.pivot = new Vector2(1f, 1f);
+                rt.anchoredPosition = new Vector2(-RightInset, -TopInset);
+                rt.sizeDelta = new Vector2(MinimapWidth, HoleInfoHeight);
+            }
+
+            var host = GameObject.Find("MinimapHost")?.GetComponent<RectTransform>();
+            if (host != null)
+            {
+                host.anchorMin = host.anchorMax = new Vector2(1f, 1f);
+                host.pivot = new Vector2(1f, 1f);
+                host.anchoredPosition = new Vector2(-RightInset, -minimapTop);
+                host.sizeDelta = new Vector2(MinimapWidth, MinimapHeight);
+            }
+
+            float windTop = minimapTop + MinimapHeight + StackGap;
+            var wind = NtmWindWidget.Ensure(hudRoot);
+            if (wind != null)
+            {
+                var rt = wind.transform as RectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+                rt.pivot = new Vector2(1f, 1f);
+                rt.anchoredPosition = new Vector2(-RightInset, -windTop);
+                rt.sizeDelta = new Vector2(168f, 56f);
+            }
+        }
+
+        static void HideLegacyLabels(RectTransform canvas)
+        {
+            var bucket = FindBucketDistanceLabel(canvas);
+            if (bucket != null)
+                bucket.gameObject.SetActive(false);
+
+            var score = FindTmp(canvas, "PAR");
+            if (score != null)
+                score.gameObject.SetActive(false);
+
+            var wind = FindTmp(canvas, "WIND");
+            if (wind != null)
+                wind.gameObject.SetActive(false);
         }
 
         static void HideLegacySliders(RectTransform canvas)
@@ -130,14 +193,7 @@ namespace DiskGolf.UI
 
         static void ApplyMinimap()
         {
-            var host = GameObject.Find("MinimapHost")?.GetComponent<RectTransform>();
-            if (host == null)
-                return;
-
-            host.anchorMin = host.anchorMax = new Vector2(1f, 1f);
-            host.pivot = new Vector2(1f, 1f);
-            host.anchoredPosition = new Vector2(-20f, -20f);
-            host.sizeDelta = new Vector2(248f, 392f);
+            // Position is finalized in ApplyRightStack.
         }
 
         static TextMeshProUGUI FindTmp(RectTransform root, string exact)
@@ -173,21 +229,6 @@ namespace DiskGolf.UI
             return null;
         }
 
-        static Slider FindSlider(RectTransform root, string name, int index = 0)
-        {
-            int i = 0;
-            foreach (var s in root.GetComponentsInChildren<Slider>(true))
-            {
-                if (s.name != name && name != null)
-                    continue;
-
-                if (i++ == index)
-                    return s;
-            }
-
-            return null;
-        }
-
         static void PinTopLeft(TextMeshProUGUI tmp, Vector2 offset, float fontSize)
         {
             if (tmp == null)
@@ -201,21 +242,6 @@ namespace DiskGolf.UI
             tmp.fontSize = fontSize;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.TopLeft;
-        }
-
-        static void PinTopRight(TextMeshProUGUI tmp, Vector2 offset, float fontSize)
-        {
-            if (tmp == null)
-                return;
-
-            var rt = tmp.rectTransform;
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = offset;
-            rt.sizeDelta = new Vector2(260f, 48f);
-            tmp.fontSize = fontSize;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.TopRight;
         }
 
         static void PinBottomLeft(TextMeshProUGUI tmp, Vector2 offset, float fontSize)
@@ -261,32 +287,6 @@ namespace DiskGolf.UI
             tmp.fontSize = (int)fontSize;
             tmp.fontStyle = FontStyle.Bold;
             tmp.alignment = TextAnchor.LowerRight;
-        }
-
-        static void PinBottomRight(Slider slider, Vector2 offset, Vector2 size)
-        {
-            if (slider == null)
-                return;
-
-            var rt = slider.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = offset;
-            rt.sizeDelta = size;
-        }
-
-        static void StyleSlider(Slider slider, Color fillColor)
-        {
-            if (slider == null)
-                return;
-
-            var fill = slider.fillRect?.GetComponent<Image>();
-            if (fill != null)
-                fill.color = fillColor;
-
-            var bg = slider.transform.Find("Background")?.GetComponent<Image>();
-            if (bg != null)
-                bg.color = new Color(0.08f, 0.08f, 0.08f, 0.92f);
         }
     }
 }

@@ -195,7 +195,7 @@ namespace DiskGolf.Gameplay
             return go.transform;
         }
 
-        static void DestroyObject(Object target)
+        static new void DestroyObject(Object target)
         {
             if (target == null)
                 return;

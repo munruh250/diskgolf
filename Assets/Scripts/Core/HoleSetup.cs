@@ -11,7 +11,10 @@ namespace DiskGolf.Core
         [SerializeField] Transform thrower;
         [SerializeField] float circleRadiusFt = 33f;
         [SerializeField] float holeLengthFt = 250f;
+        [SerializeField] int holeNumber = 1;
         [SerializeField] int par = 3;
+
+        public int HoleNumber => holeNumber;
 
         public int Par => par;
 
