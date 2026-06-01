@@ -1,0 +1,52 @@
+---
+description: Scene-authored HUD — avoid runtime UI creation and layout overrides
+globs: Assets/Scripts/UI/**/*.cs,Assets/Editor/**/*Hud*.cs,Assets/Scenes/**/*.unity
+alwaysApply: false
+---
+
+# Scene-authored HUD
+
+Gameplay HUD lives under `GameplayHUD` in the open scene. **Scene view is the source of truth.**
+
+## Default workflow
+
+1. Place and style widgets in the Scene/Inspector (`TimingMeters/PowerMeter`, `HeightMeter`, `NtmBottomBar`, etc.).
+2. Keep `HudLayoutSettings.preserveManualLayout` enabled on `GameplayHUD` (default).
+3. Use **Disk Golf → HUD → Bake Missing Scene Widgets** once to add widgets that are not yet in the scene.
+
+## Runtime rules
+
+- **Do not** call `new GameObject`, `Build()`, `EnsureBuilt()`, or `ApplyLayout()` for HUD chrome when `SceneHudAuthoring.IsActive` is true.
+- **Do** find existing scene objects and bind `[SerializeField]` references only.
+- **Do** update dynamic text/needle values; never rebuild arcs, tracks, or button chrome at runtime.
+- Runtime creation is allowed only when:
+  - The scene object is genuinely missing **and** `preserveManualLayout` is off, or
+  - The widget is ephemeral (e.g. one-shot banners) with no scene counterpart.
+
+## Examples
+
+```csharp
+// ❌ BAD — overwrites Scene-view layout every Play
+existing.EnsureBuilt();
+root.anchoredPosition = TimingMeterLayout.PowerAnchorPos;
+
+// ✅ GOOD — bind only, leave layout alone
+if (SceneHudAuthoring.IsActive)
+{
+    existing.BindSceneReferences();
+    return existing;
+}
+```
+
+## Adding a new HUD widget
+
+1. Add the GameObject hierarchy to `PrototypeFlat3.unity` (or extend the bake menu).
+2. Wire logic via serialized references on a scene component.
+3. Gate any `Ensure()` factory with `SceneHudAuthoring.IsActive`.
+
+## Disc preview (power-meter hub)
+
+- Path: `TimingMeters/PowerMeter/Pivot/ArcHub/Hub/DiscPreview`
+- Default sprite: `Assets/Art/UI/DiscPreview/TEX_Disc_Preview_Default.png`
+- Per-disc override: `DiscProfile.previewSprite`
+- Bake via **Disk Golf → HUD → Bake Missing Scene Widgets** if the hub is missing.

@@ -2,8 +2,10 @@ using DiskGolf.Core;
 using DiskGolf.Disc;
 using DiskGolf.Flight;
 using DiskGolf.Input;
+using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace DiskGolf.UI
@@ -37,9 +39,15 @@ namespace DiskGolf.UI
 
         [SerializeField] Button discButton;
 
+        [SerializeField] TextMeshProUGUI arcValue;
+
+        [SerializeField] Button arcButton;
+
         ReleaseAngle _lastStance;
 
         DiscProfile _lastDisc;
+
+        ThrowHeight _lastArc;
 
         public static NtmBottomBar Ensure(RectTransform hudRoot)
         {
@@ -54,16 +62,78 @@ namespace DiskGolf.UI
                 return existing;
             }
 
+            if (SceneHudAuthoring.IsActive)
+            {
+                Debug.LogWarning("[Disk Golf] NtmBottomBar not found on GameplayHUD. Use Disk Golf → HUD → Bake Missing Scene Widgets.");
+                return null;
+            }
+
             var bar = Build(hudRoot);
             bar.HideLegacyHud();
             return bar;
         }
+
+#if UNITY_EDITOR
+        public static NtmBottomBar CreateForScene(RectTransform hudRoot)
+        {
+            if (hudRoot == null)
+                return null;
+
+            var existing = hudRoot.Find(RootName)?.GetComponent<NtmBottomBar>();
+            if (existing != null)
+            {
+                existing.BakeSceneUpgrades();
+                existing.HideLegacyHud();
+                return existing;
+            }
+
+            var bar = Build(hudRoot);
+            bar.HideLegacyHud();
+            return bar;
+        }
+
+        /// <summary>Editor bake: add ARC section and wire buttons on an existing bar.</summary>
+        public void BakeSceneUpgrades()
+        {
+            ResolveOptionalReferences();
+
+            if (arcButton != null)
+            {
+                WireButtons();
+                Refresh();
+                return;
+            }
+
+            var root = transform as RectTransform;
+            float innerH = root.sizeDelta.y > 1f ? root.sizeDelta.y - 8f * S : 52f * S - 8f * S;
+            float x = ComputeArcSectionStartX(root);
+            float sectionGap = 12f * S;
+
+            x += sectionGap;
+            x = AddSectionLabel(root, "ARC", x, innerH, 44f * S);
+            AddClickableInset(root, "ArcButton", x, innerH, 96f * S, out arcButton, out arcValue);
+
+            WireButtons();
+            Refresh();
+            UnityEditor.EditorUtility.SetDirty(this);
+        }
+
+        float ComputeArcSectionStartX(RectTransform root)
+        {
+            var discBtn = root.Find("DiscButton") as RectTransform;
+            if (discBtn != null)
+                return discBtn.anchoredPosition.x + discBtn.sizeDelta.x;
+
+            return 420f * S;
+        }
+#endif
 
         void Awake() => BindReferences();
 
         void OnEnable()
         {
             BindReferences();
+            WireButtons();
             Refresh();
         }
 
@@ -71,8 +141,9 @@ namespace DiskGolf.UI
         {
             var stance = input != null ? input.ReleaseAngle : ReleaseAngle.Flat;
             var disc = bag?.Active;
+            var arc = input != null ? input.ArcHeight : ThrowHeight.Nice;
 
-            if (stance != _lastStance || disc != _lastDisc)
+            if (stance != _lastStance || disc != _lastDisc || arc != _lastArc)
                 Refresh();
         }
 
@@ -85,6 +156,49 @@ namespace DiskGolf.UI
             bag ??= throwController != null
                 ? throwController.GetComponent<DiscBag>()
                 : FindObjectOfType<DiscBag>();
+
+            ResolveOptionalReferences();
+            WireButtons();
+        }
+
+        void ResolveOptionalReferences()
+        {
+            var root = transform as RectTransform;
+            if (root == null)
+                return;
+
+            stanceButton ??= root.Find("StanceButton")?.GetComponent<Button>();
+            discButton ??= root.Find("DiscButton")?.GetComponent<Button>();
+            stanceValue ??= root.Find("StanceButton/Value")?.GetComponent<TextMeshProUGUI>();
+            discValue ??= root.Find("DiscButton/Value")?.GetComponent<TextMeshProUGUI>();
+            arcButton ??= root.Find("ArcButton")?.GetComponent<Button>();
+            arcValue ??= root.Find("ArcButton/Value")?.GetComponent<TextMeshProUGUI>();
+        }
+
+        void WireButtons()
+        {
+            ConfigureButton(stanceButton, CycleStance);
+            ConfigureButton(discButton, CycleDisc);
+            ConfigureButton(arcButton, CycleArc);
+        }
+
+        static void ConfigureButton(Button button, UnityEngine.Events.UnityAction action)
+        {
+            if (button == null)
+                return;
+
+            var nav = button.navigation;
+            nav.mode = Navigation.Mode.None;
+            button.navigation = nav;
+
+            button.onClick.RemoveListener(action);
+            button.onClick.AddListener(action);
+        }
+
+        static void ClearUiFocus()
+        {
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         void HideLegacyHud()
@@ -114,6 +228,7 @@ namespace DiskGolf.UI
         {
             _lastStance = input != null ? input.ReleaseAngle : ReleaseAngle.Flat;
             _lastDisc = bag?.Active;
+            _lastArc = input != null ? input.ArcHeight : ThrowHeight.Nice;
 
             if (stanceValue != null)
                 stanceValue.text = StanceLabel(_lastStance);
@@ -125,7 +240,18 @@ namespace DiskGolf.UI
                 else
                     discValue.text = $"{_lastDisc.displayName} · {MaxDistanceYards(_lastDisc)}Y";
             }
+
+            if (arcValue != null)
+                arcValue.text = ArcLabel(_lastArc);
         }
+
+        static string ArcLabel(ThrowHeight height) =>
+            height switch
+            {
+                ThrowHeight.Low => "LOW",
+                ThrowHeight.High => "HIGH",
+                _ => "NORMAL",
+            };
 
         static string StanceLabel(ReleaseAngle angle) =>
             angle switch
@@ -145,12 +271,42 @@ namespace DiskGolf.UI
         {
             input?.CycleReleaseAngle();
             Refresh();
+            ReleaseUiFocus();
         }
 
         void CycleDisc()
         {
-            bag?.CycleNext();
+            bag?.CycleCategoryNext();
             Refresh();
+            ReleaseUiFocus();
+        }
+
+        void CycleArc()
+        {
+            input?.CycleArcHeight();
+
+            var aim = throwController != null
+                ? throwController.GetComponent<ThrowAimAdjust>()
+                : FindObjectOfType<ThrowAimAdjust>();
+            if (aim != null && input != null)
+                aim.SetPlannedHeight(input.ArcHeight);
+
+            Refresh();
+            ReleaseUiFocus();
+        }
+
+        void ReleaseUiFocus()
+        {
+            ClearUiFocus();
+            StartCoroutine(ClearUiFocusNextFrame());
+        }
+
+        static IEnumerator ClearUiFocusNextFrame()
+        {
+            yield return null;
+
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         static NtmBottomBar Build(RectTransform hudRoot)
@@ -183,10 +339,11 @@ namespace DiskGolf.UI
             x += sectionGap;
 
             x = bar.AddSectionLabel(root, "DISC", x, innerH, 52f * S);
-            x = bar.AddClickableInset(root, "DiscButton", x, innerH, 200f * S, out bar.discButton, out bar.discValue);
+            x = bar.AddClickableInset(root, "DiscButton", x, innerH, 168f * S, out bar.discButton, out bar.discValue);
+            x += sectionGap;
 
-            bar.stanceButton.onClick.AddListener(bar.CycleStance);
-            bar.discButton.onClick.AddListener(bar.CycleDisc);
+            x = bar.AddSectionLabel(root, "ARC", x, innerH, 44f * S);
+            bar.AddClickableInset(root, "ArcButton", x, innerH, 96f * S, out bar.arcButton, out bar.arcValue);
 
             bar.BindReferences();
             bar.Refresh();

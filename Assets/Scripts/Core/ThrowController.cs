@@ -147,10 +147,7 @@ namespace DiskGolf.Core
             }
 
             if (heightMeter != null && !heightMeter.IsRunning && !heightMeter.IsFrozenForFlight)
-            {
-                float heightCenter = FlightSimulator.HeightMeterCenter(aimAdjust.PlannedHeight);
-                heightMeter.PreviewTargetZone(heightCenter, 0.1f);
-            }
+                heightMeter.PreviewTargetZone(AccuracyMeterZones.MeterCenter, AccuracyMeterZones.MeterWidth);
         }
 
         void SyncDiscToHand()
@@ -195,12 +192,11 @@ namespace DiskGolf.Core
                 case ThrowPhase.HeightMeter:
                     if (input.ConfirmPressed)
                     {
-                        float heightRaw =
-                            heightMeter != null ? heightMeter.Confirm() : 0.55f;
+                        float accuracyRaw =
+                            heightMeter != null ? heightMeter.Confirm() : AccuracyMeterZones.MeterCenter;
 
-                        var height = HeightMeterZones.FromValue(heightRaw);
-
-                        ExecuteThrow(_confirmedPower, height);
+                        var accuracy = AccuracyMeterZones.FromValue(accuracyRaw);
+                        ExecuteThrow(_confirmedPower, accuracy);
                     }
 
                     break;
@@ -278,9 +274,16 @@ namespace DiskGolf.Core
 
         void BeginHeightMeter()
         {
-            float center = FlightSimulator.HeightMeterCenter(aimAdjust.PlannedHeight);
-            heightMeter?.SetTargetZone(center, 0.1f);
+            heightMeter?.SetTargetZone(AccuracyMeterZones.MeterCenter, AccuracyMeterZones.MeterWidth);
             heightMeter?.Begin();
+        }
+
+        void SyncArcHeightToAim()
+        {
+            if (input == null || aimAdjust == null)
+                return;
+
+            aimAdjust.SetPlannedHeight(input.ArcHeight);
         }
 
         void HandlePutting()
@@ -305,7 +308,7 @@ namespace DiskGolf.Core
             _state.Advance();
         }
 
-        void ExecuteThrow(float power, ThrowHeight height)
+        void ExecuteThrow(float power, AccuracyZone accuracy)
         {
             if (presenter == null || hole == null)
                 return;
@@ -319,7 +322,10 @@ namespace DiskGolf.Core
             if (isPutt)
                 bag.SelectIndex(0);
 
+            SyncArcHeightToAim();
+            var height = aimAdjust.PlannedHeight;
             var aim = aimAdjust.AimDirection(hole, _discPosition);
+            AccuracyMeterZones.ApplyToThrow(ref aim, ref power, accuracy);
             _lastThrowAim = aim;
             var release = isPutt ? ReleaseAngle.Flat : input.ReleaseAngle;
 
@@ -562,8 +568,12 @@ namespace DiskGolf.Core
                         _trackedDisc = bag.Active;
                     }
 
+                    input?.ResetArcHeight();
+
                     if (hole != null && bag?.Active != null)
                         aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
+
+                    SyncArcHeightToAim();
 
                     break;
             }
@@ -612,6 +622,8 @@ namespace DiskGolf.Core
                 hole.PositionThrowerAtTee();
                 _discPosition = hole.DiscHoldPosition;
 
+                input?.ResetArcHeight();
+
                 if (bag != null)
                 {
                     bag.SelectForDistance(hole.DistanceForDiscSelection(_discPosition));
@@ -620,6 +632,8 @@ namespace DiskGolf.Core
 
                 if (bag?.Active != null)
                     aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
+
+                SyncArcHeightToAim();
             }
 
             presenter?.SetPositionAndRotation(hole.DiscHoldPosition, hole.DiscHoldRotation);

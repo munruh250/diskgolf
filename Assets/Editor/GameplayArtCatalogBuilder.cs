@@ -40,6 +40,8 @@ namespace DiskGolf.EditorTools
             catalog.thrower = LoadSprite(ProjectArtPaths.Characters.ThrowerSprite);
             catalog.prototypeSkybox = AssetDatabase.LoadAssetAtPath<Material>(
                 ProjectArtPaths.Environment.Skybox.Material);
+            catalog.discPreviewDefault = LoadSprite(ProjectArtPaths.Ui.DiscPreview.DefaultSprite);
+            catalog.discDefault = AssetDatabase.LoadAssetAtPath<Material>(ProjectArtPaths.Gameplay.DiscMaterial);
 
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();

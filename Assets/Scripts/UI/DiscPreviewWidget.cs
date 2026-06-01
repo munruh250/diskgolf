@@ -5,165 +5,151 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Renders the active disc prefab into the power-meter hub circle (NTM ball window).</summary>
+    /// <summary>NTM-style disc icon in the power-meter hub; swaps with the active bag disc.</summary>
     public sealed class DiscPreviewWidget : MonoBehaviour
     {
-        const int PreviewLayer = 31;
+        static readonly Color TeeBackdrop = new(0.1f, 0.34f, 0.12f, 1f);
 
-        const int TextureSize = 128;
+        static float S => TimingMeterLayout.UiScale;
 
-        static readonly Color Backdrop = new(0.1f, 0.34f, 0.12f, 1f);
+        [SerializeField] Image display;
 
-        [SerializeField] RawImage display;
+        [SerializeField] Sprite defaultSprite;
 
         [SerializeField] DiscBag bag;
 
-        UnityEngine.Camera _camera;
+        DiscProfile _lastApplied;
 
-        RenderTexture _target;
-
-        Transform _stage;
-
-        GameObject _discInstance;
-
-        DiscProfile _lastDisc;
-
-        public static DiscPreviewWidget Ensure(RectTransform hubParent, DiscBag bagRef)
+        void OnEnable()
         {
-            if (hubParent == null)
+            BindReferences();
+            if (bag != null)
+                bag.SelectionChanged += OnDiscChanged;
+            Refresh();
+        }
+
+        void OnDisable()
+        {
+            if (bag != null)
+                bag.SelectionChanged -= OnDiscChanged;
+        }
+
+        void OnDiscChanged(DiscProfile _) => Refresh();
+
+        public void BindReferences()
+        {
+            display ??= GetComponent<Image>();
+            bag ??= FindObjectOfType<DiscBag>();
+            defaultSprite ??= RuntimeArt.LoadDiscPreviewSprite();
+            Refresh();
+        }
+
+        public void Refresh()
+        {
+            if (display == null)
+                return;
+
+            var profile = bag != null ? bag.Active : null;
+            display.sprite = ResolveSprite(profile);
+            display.color = ResolveTint(profile);
+            display.enabled = display.sprite != null;
+        }
+
+        Sprite ResolveSprite(DiscProfile profile)
+        {
+            if (profile != null && profile.previewSprite != null)
+                return profile.previewSprite;
+
+            return defaultSprite ?? RuntimeArt.LoadDiscPreviewSprite();
+        }
+
+        static Color ResolveTint(DiscProfile profile)
+        {
+            if (profile != null && profile.discMaterial != null)
+                return profile.discMaterial.color;
+
+            return Color.white;
+        }
+
+        /// <summary>Creates the NTM hub + disc preview under an existing ArcHub (editor bake only).</summary>
+        public static DiscPreviewWidget BakeIntoArcHub(RectTransform arcHub, Sprite fallbackSprite)
+        {
+            if (arcHub == null)
                 return null;
 
-            var existing = hubParent.GetComponentInChildren<DiscPreviewWidget>(true);
-            if (existing != null)
-            {
-                existing.bag = bagRef;
-                existing.EnsureBuilt(hubParent);
-                return existing;
-            }
+            var hub = EnsureHub(arcHub);
+            var widget = hub.GetComponentInChildren<DiscPreviewWidget>(true);
+            if (widget == null)
+                widget = CreatePreviewImage(hub);
 
-            var go = new GameObject("DiscPreview", typeof(RectTransform), typeof(RawImage));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(hubParent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = hubParent.sizeDelta * 0.92f;
+            widget.defaultSprite = fallbackSprite ?? RuntimeArt.LoadDiscPreviewSprite();
+            widget.BindReferences();
 
-            var widget = go.AddComponent<DiscPreviewWidget>();
-            widget.display = go.GetComponent<RawImage>();
-            widget.display.raycastTarget = false;
-            widget.bag = bagRef;
-            widget.EnsureBuilt(hubParent);
+            var needle = arcHub.Find("Needle");
+            if (needle != null)
+                needle.SetAsLastSibling();
+
             return widget;
         }
 
-        void OnDestroy()
+        static RectTransform EnsureHub(RectTransform arcHub)
         {
-            if (_target != null)
-            {
-                _target.Release();
-                _target = null;
-            }
+            var existing = arcHub.Find("Hub") as RectTransform;
+            if (existing != null)
+                return existing;
 
-            if (_camera != null)
-                Destroy(_camera.gameObject);
+            var hubGo = new GameObject("Hub", typeof(RectTransform));
+            var hubRt = hubGo.GetComponent<RectTransform>();
+            hubRt.SetParent(arcHub, false);
+            hubRt.anchorMin = hubRt.anchorMax = new Vector2(0.5f, 0f);
+            hubRt.pivot = new Vector2(0.5f, 0.5f);
+            hubRt.anchoredPosition = Vector2.zero;
+            hubRt.sizeDelta = new Vector2(38f * S, 38f * S);
 
-            if (_stage != null)
-                Destroy(_stage.gameObject);
+            var backdropGo = new GameObject("HubBackdrop", typeof(RectTransform), typeof(Image));
+            var backdropRt = backdropGo.GetComponent<RectTransform>();
+            backdropRt.SetParent(hubRt, false);
+            backdropRt.anchorMin = Vector2.zero;
+            backdropRt.anchorMax = Vector2.one;
+            backdropRt.offsetMin = new Vector2(2f * S, 2f * S);
+            backdropRt.offsetMax = new Vector2(-2f * S, -2f * S);
+            var backdropImg = backdropGo.GetComponent<Image>();
+            backdropImg.sprite = ArcRingBuilder.WhiteSprite;
+            backdropImg.color = TeeBackdrop;
+            backdropImg.raycastTarget = false;
+
+            var ringGo = new GameObject("HubRing", typeof(RectTransform), typeof(Image));
+            var ringRt = ringGo.GetComponent<RectTransform>();
+            ringRt.SetParent(hubRt, false);
+            ringRt.anchorMin = Vector2.zero;
+            ringRt.anchorMax = Vector2.one;
+            ringRt.offsetMin = ringRt.offsetMax = Vector2.zero;
+            var ringImg = ringGo.GetComponent<Image>();
+            ringImg.sprite = ArcRingBuilder.WhiteSprite;
+            ringImg.color = new Color(0.06f, 0.06f, 0.06f, 0.98f);
+            ringImg.raycastTarget = false;
+
+            hubRt.SetSiblingIndex(2);
+            return hubRt;
         }
 
-        void LateUpdate()
+        static DiscPreviewWidget CreatePreviewImage(RectTransform hub)
         {
-            var active = bag != null ? bag.Active : null;
-            if (active != _lastDisc)
-            {
-                _lastDisc = active;
-                RebuildDiscMesh();
-            }
+            var go = new GameObject("DiscPreview", typeof(RectTransform), typeof(Image));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(hub, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = hub.sizeDelta * 0.82f;
 
-            if (_camera != null && _discInstance != null)
-                _camera.Render();
-        }
+            var img = go.GetComponent<Image>();
+            img.preserveAspect = true;
+            img.raycastTarget = false;
 
-        public void EnsureBuilt(RectTransform hubParent)
-        {
-            bag ??= FindObjectOfType<DiscBag>();
-
-            if (_stage == null)
-                BuildStage();
-
-            if (display != null && _target != null)
-                display.texture = _target;
-
-            RebuildDiscMesh();
-        }
-
-        void BuildStage()
-        {
-            _target = new RenderTexture(TextureSize, TextureSize, 16, RenderTextureFormat.ARGB32);
-            _target.antiAliasing = 2;
-
-            var stageGo = new GameObject("DiscPreviewStage");
-            stageGo.hideFlags = HideFlags.HideAndDontSave;
-            _stage = stageGo.transform;
-            _stage.position = new Vector3(1000f, 1000f, 1000f);
-
-            var camGo = new GameObject("DiscPreviewCamera");
-            camGo.hideFlags = HideFlags.HideAndDontSave;
-            camGo.transform.SetParent(_stage, false);
-            _camera = camGo.AddComponent<UnityEngine.Camera>();
-            _camera.clearFlags = CameraClearFlags.SolidColor;
-            _camera.backgroundColor = Backdrop;
-            _camera.cullingMask = 1 << PreviewLayer;
-            _camera.orthographic = true;
-            _camera.orthographicSize = 0.14f;
-            _camera.nearClipPlane = 0.01f;
-            _camera.farClipPlane = 4f;
-            _camera.targetTexture = _target;
-            _camera.transform.localPosition = new Vector3(0.05f, 0.35f, -0.55f);
-            _camera.transform.localRotation = Quaternion.Euler(28f, 0f, 0f);
-        }
-
-        void RebuildDiscMesh()
-        {
-            if (_discInstance != null)
-            {
-                Destroy(_discInstance);
-                _discInstance = null;
-            }
-
-            var source = ResolveDiscSource();
-            if (source == null || _stage == null)
-                return;
-
-            _discInstance = Instantiate(source, _stage);
-            _discInstance.name = "PreviewDisc";
-            SetLayerRecursively(_discInstance, PreviewLayer);
-            _discInstance.transform.localPosition = Vector3.zero;
-            _discInstance.transform.localRotation = Quaternion.Euler(12f, 35f, 0f);
-            _discInstance.transform.localScale = Vector3.one;
-        }
-
-        static GameObject ResolveDiscSource()
-        {
-            var presenter = FindObjectOfType<DiscFlightPresenter>();
-            if (presenter?.DiscTransform != null)
-                return presenter.DiscTransform.gameObject;
-
-#if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
-                ProjectArtPaths.Prefabs.Disc);
-#else
-            return null;
-#endif
-        }
-
-        static void SetLayerRecursively(GameObject go, int layer)
-        {
-            go.layer = layer;
-
-            foreach (Transform child in go.transform)
-                SetLayerRecursively(child.gameObject, layer);
+            var widget = go.AddComponent<DiscPreviewWidget>();
+            widget.display = img;
+            return widget;
         }
     }
 }

@@ -34,6 +34,12 @@ namespace DiskGolf.UI
             }
         }
 
+        void Awake()
+        {
+            _instance = this;
+            BindMeters();
+        }
+
         public static TimingMeterHud Ensure()
         {
             var hudGo = GameObject.Find(HudRootName);
@@ -46,20 +52,44 @@ namespace DiskGolf.UI
 
             FixCanvasRect(canvas);
 
-            if (_instance == null)
+            _instance = hudGo.GetComponent<TimingMeterHud>();
+            if (SceneHudAuthoring.IsActive)
             {
-                _instance = hudGo.GetComponent<TimingMeterHud>();
                 if (_instance == null)
-                    _instance = hudGo.AddComponent<TimingMeterHud>();
-                _instance.RefreshMeters(canvas);
-            }
-            else if (_instance._power == null || !_instance._power
-                     || _instance._height == null || !_instance._height)
-            {
-                _instance.RefreshMeters(canvas);
+                {
+                    Debug.LogWarning("[Disk Golf] TimingMeterHud missing from GameplayHUD. Add the component in the scene.");
+                    return null;
+                }
+
+                _instance.BindMeters();
+                return _instance;
             }
 
+            if (_instance == null)
+                _instance = hudGo.AddComponent<TimingMeterHud>();
+
+            if (_instance._power == null || !_instance._power
+                || _instance._height == null || !_instance._height)
+                _instance.RefreshMeters(canvas);
+
             return _instance;
+        }
+
+        public void BindMeters()
+        {
+            var canvas = transform as RectTransform;
+            var root = canvas.Find(MetersRootName);
+            if (root == null)
+                return;
+
+            _power = root.Find(PowerMeterVisual.VisualNameForFind)?.GetComponent<PowerMeterVisual>()
+                ?? root.Find("NtmPowerMeter")?.GetComponent<PowerMeterVisual>();
+            _height = root.Find(HeightMeterVisual.VisualNameForFind)?.GetComponent<HeightMeterVisual>()
+                ?? root.Find("NtmHeightMeter")?.GetComponent<HeightMeterVisual>();
+
+            _power?.BindSceneReferences();
+            _height?.BindSceneReferences();
+            _power?.DiscPreview?.Refresh();
         }
 
         void RefreshMeters(RectTransform canvas)
@@ -99,8 +129,6 @@ namespace DiskGolf.UI
                 _instance = null;
         }
 
-        void Build(RectTransform canvas) => RefreshMeters(canvas);
-
         static void UpgradeStaleMeter(RectTransform root, string meterName, System.Func<Transform, bool> isCurrent)
         {
             var existing = root.Find(meterName);
@@ -121,6 +149,9 @@ namespace DiskGolf.UI
         {
             if (canvas.localScale.sqrMagnitude < 0.01f)
                 canvas.localScale = Vector3.one;
+
+            if (SceneHudAuthoring.IsActive)
+                return;
 
             canvas.anchorMin = Vector2.zero;
             canvas.anchorMax = Vector2.one;

@@ -10,13 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9d2553205636444c394e641830e43a0c, type: 3}
-  m_Name: P2
+  m_Name: Distance
   m_EditorClassIdentifier: 
-  displayName: Putter
-  category: 0
-  speed: 2
-  glide: 3
-  turn: 0
-  fade: 1
-  maxDistanceFt: 80
+  displayName: Distance
+  category: 3
+  previewSprite: {fileID: 0}
+  discMaterial: {fileID: 2100000, guid: e3f4a5b6c7d8490123456789abcdef01, type: 2}
+  speed: 12
+  glide: 5
+  turn: -1
+  fade: 3
+  maxDistanceFt: 450
   meterSpeedMod: 1

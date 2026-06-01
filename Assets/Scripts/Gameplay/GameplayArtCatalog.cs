@@ -24,6 +24,10 @@ namespace DiskGolf.Gameplay
 
         public Material prototypeSkybox;
 
+        public Sprite discPreviewDefault;
+
+        public Material discDefault;
+
         public Sprite GetFoliageSprite(string spriteName) =>
             spriteName switch
             {

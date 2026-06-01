@@ -1,4 +1,5 @@
 using DiskGolf.Disc;
+using DiskGolf.Gameplay;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -62,6 +63,10 @@ namespace DiskGolf.UI
 
         [SerializeField] TextMeshProUGUI label100;
 
+        DiscPreviewWidget _discPreview;
+
+        public DiscPreviewWidget DiscPreview => _discPreview;
+
         public static PowerMeterVisual Ensure(Transform parent)
         {
             if (parent == null)
@@ -73,15 +78,53 @@ namespace DiskGolf.UI
             {
                 if (existing.name != VisualName)
                     existing.name = VisualName;
-                existing.EnsureBuilt();
+
+                if (SceneHudAuthoring.IsActive)
+                    existing.BindSceneReferences();
+                else
+                    existing.EnsureBuilt();
                 return existing;
+            }
+
+            if (SceneHudAuthoring.IsActive)
+            {
+                Debug.LogWarning("[Disk Golf] PowerMeter not found under TimingMeters. Author it in the scene instead of creating at runtime.");
+                return null;
             }
 
             return Build(parent);
         }
 
+        public void BindSceneReferences()
+        {
+            pivot ??= transform.Find("Pivot") as RectTransform;
+            if (pivot == null)
+                return;
+
+            var arcHub = pivot.Find("ArcHub");
+            if (arcHub == null)
+                return;
+
+            needle ??= arcHub.Find("Needle") as RectTransform;
+            sweetSpotRoot ??= arcHub.Find("SweetSpot") as RectTransform;
+            label50 ??= arcHub.Find("50%")?.GetComponent<TextMeshProUGUI>();
+            label100 ??= arcHub.Find("100%")?.GetComponent<TextMeshProUGUI>();
+
+            var hub = arcHub.Find("Hub") as RectTransform;
+            _discPreview = hub != null
+                ? hub.GetComponentInChildren<DiscPreviewWidget>(true)
+                : null;
+            _discPreview?.BindReferences();
+        }
+
         public void EnsureBuilt()
         {
+            if (SceneHudAuthoring.IsActive)
+            {
+                BindSceneReferences();
+                return;
+            }
+
             ApplyRootLayout();
 
             if (pivot != null && pivot.Find("ArcHub/" + LayoutMarker) != null)
@@ -230,18 +273,7 @@ namespace DiskGolf.UI
             hubRt.anchoredPosition = Vector2.zero;
             hubRt.sizeDelta = new Vector2(38f * S, 38f * S);
 
-            var ringGo = new GameObject("HubRing", typeof(RectTransform), typeof(Image));
-            var ringRt = ringGo.GetComponent<RectTransform>();
-            ringRt.SetParent(hubRt, false);
-            ringRt.anchorMin = Vector2.zero;
-            ringRt.anchorMax = Vector2.one;
-            ringRt.offsetMin = ringRt.offsetMax = Vector2.zero;
-            var ringImg = ringGo.GetComponent<Image>();
-            ringImg.sprite = ArcRingBuilder.WhiteSprite;
-            ringImg.color = new Color(0.06f, 0.06f, 0.06f, 0.98f);
-            ringImg.raycastTarget = false;
-
-            DiscPreviewWidget.Ensure(hubRt, Object.FindObjectOfType<DiscBag>());
+            DiscPreviewWidget.BakeIntoArcHub(pivotRt, RuntimeArt.LoadDiscPreviewSprite());
         }
 
         void EnsureShotPowerTitle(RectTransform root)

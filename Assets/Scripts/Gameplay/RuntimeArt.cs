@@ -87,5 +87,29 @@ namespace DiskGolf.Gameplay
             return null;
 #endif
         }
+
+        public static Sprite LoadDiscPreviewSprite()
+        {
+            if (Catalog?.discPreviewDefault != null)
+                return Catalog.discPreviewDefault;
+
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Sprite>(ProjectArtPaths.Ui.DiscPreview.DefaultSprite);
+#else
+            return null;
+#endif
+        }
+
+        public static Material LoadDiscMaterial()
+        {
+            if (Catalog?.discDefault != null)
+                return Catalog.discDefault;
+
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Material>(ProjectArtPaths.Gameplay.DiscMaterial);
+#else
+            return null;
+#endif
+        }
     }
 }

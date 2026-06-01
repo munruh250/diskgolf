@@ -12,7 +12,7 @@ namespace DiskGolf.UI
         public static HudLayoutSettings Active { get; private set; }
 
         [Header("Editor workflow")]
-        [Tooltip("Keep RectTransform positions you set in the Scene/Inspector when entering Play Mode.")]
+        [Tooltip("Keep RectTransform positions you set in the Scene/Inspector when entering Play Mode. Timing meters, bottom bar, and other HUD chrome will not be rebuilt or repositioned.")]
         public bool preserveManualLayout = true;
 
         [Tooltip("Re-apply the default coded layout when Play starts (only if Preserve Manual Layout is off).")]

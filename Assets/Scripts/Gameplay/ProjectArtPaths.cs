@@ -71,12 +71,27 @@ namespace DiskGolf.Gameplay
 
         public static class Gameplay
         {
-            public const string DiscMaterial = ArtRoot + "/Gameplay/Disc/MAT_DiscOrange.mat";
+            public const string DiscRoot = ArtRoot + "/Gameplay/Disc";
+
+            public const string DiscMaterial = DiscRoot + "/MAT_DiscOrange.mat";
+
+            public const string DiscMaterialBlue = DiscRoot + "/MAT_DiscBlue.mat";
+
+            public const string DiscMaterialYellow = DiscRoot + "/MAT_DiscYellow.mat";
+
+            public const string DiscMaterialRed = DiscRoot + "/MAT_DiscRed.mat";
         }
 
         public static class Ui
         {
             public const string ReferenceRoot = ArtRoot + "/UI/Reference";
+
+            public static class DiscPreview
+            {
+                public const string Root = ArtRoot + "/UI/DiscPreview";
+
+                public const string DefaultSprite = Root + "/TEX_Disc_Preview_Default.png";
+            }
         }
 
         public static class Prefabs

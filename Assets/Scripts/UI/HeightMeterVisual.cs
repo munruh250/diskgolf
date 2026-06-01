@@ -4,32 +4,48 @@ using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Vertical height meter with LOW / NICE / HIGH zones.</summary>
+    /// <summary>Vertical accuracy meter with red / yellow / green / yellow / red zones.</summary>
     public sealed class HeightMeterVisual : MonoBehaviour
     {
         const string VisualName = "HeightMeter";
 
         public static string VisualNameForFind => VisualName;
 
-        public static bool IsCurrentLayout(Transform meterRoot)
+        public static bool IsCurrentLayout(Transform meterRoot) =>
+            IsAccuracyLayout(meterRoot);
+
+        public static bool IsAccuracyLayout(Transform meterRoot)
         {
             if (meterRoot == null)
                 return false;
 
             var rt = meterRoot as RectTransform;
-            if (rt == null)
+            if (rt == null || meterRoot.Find("Track/Frame") == null)
                 return false;
 
-            return rt.sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f
-                && rt.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f
-                && meterRoot.Find("Track/Frame") != null;
+            var title = meterRoot.Find("Title")?.GetComponent<TextMeshProUGUI>();
+            if (title == null || title.text != "ACCURACY")
+                return false;
+
+            int zoneCount = 0;
+            var track = meterRoot.Find("Track");
+            if (track == null)
+                return false;
+
+            foreach (Transform child in track)
+            {
+                if (child.name == "Zone")
+                    zoneCount++;
+            }
+
+            return zoneCount >= 5;
         }
 
-        static readonly Color LowColor = new(0.22f, 0.48f, 0.92f, 0.95f);
+        static readonly Color RedColor = new(0.92f, 0.22f, 0.14f, 0.95f);
 
-        static readonly Color NiceColor = new(0.18f, 0.78f, 0.28f, 0.95f);
+        static readonly Color YellowColor = new(1f, 0.92f, 0.18f, 0.95f);
 
-        static readonly Color HighColor = new(0.22f, 0.48f, 0.92f, 0.95f);
+        static readonly Color GreenColor = new(0.18f, 0.78f, 0.28f, 0.95f);
 
         [SerializeField] RectTransform track;
 
@@ -48,15 +64,53 @@ namespace DiskGolf.UI
             {
                 if (existing.name != VisualName)
                     existing.name = VisualName;
-                existing.EnsureBuilt();
+
+                if (SceneHudAuthoring.IsActive)
+                    existing.BindSceneReferences();
+                else
+                    existing.EnsureBuilt();
                 return existing;
+            }
+
+            if (SceneHudAuthoring.IsActive)
+            {
+                Debug.LogWarning("[Disk Golf] HeightMeter not found under TimingMeters. Author it in the scene instead of creating at runtime.");
+                return null;
             }
 
             return Build(parent);
         }
 
+        public void BindSceneReferences()
+        {
+            track ??= transform.Find("Track") as RectTransform;
+            if (track == null)
+                return;
+
+            indicator ??= track.Find("Indicator") as RectTransform;
+            sweetSpot ??= track.Find("SweetSpot") as RectTransform;
+        }
+
+        /// <summary>Editor bake: rebuild track as 5-zone accuracy meter if layout is outdated.</summary>
+        public void BakeAccuracyLayoutEditor()
+        {
+            if (IsAccuracyLayout(transform))
+            {
+                BindSceneReferences();
+                return;
+            }
+
+            RebuildHeight();
+        }
+
         public void EnsureBuilt()
         {
+            if (SceneHudAuthoring.IsActive)
+            {
+                BindSceneReferences();
+                return;
+            }
+
             ApplyRootLayout();
 
             var root = transform as RectTransform;
@@ -154,9 +208,11 @@ namespace DiskGolf.UI
             frameImg.color = new Color(0.06f, 0.06f, 0.06f, 0.94f);
             frameImg.raycastTarget = false;
 
-            AddZone(trackRt, 0f, 0.33f, LowColor);
-            AddZone(trackRt, 0.33f, 0.66f, NiceColor);
-            AddZone(trackRt, 0.66f, 1f, HighColor);
+            AddZone(trackRt, 0f, 0.2f, RedColor);
+            AddZone(trackRt, 0.2f, 0.4f, YellowColor);
+            AddZone(trackRt, 0.4f, 0.6f, GreenColor);
+            AddZone(trackRt, 0.6f, 0.8f, YellowColor);
+            AddZone(trackRt, 0.8f, 1f, RedColor);
 
             var sweetGo = new GameObject("SweetSpot", typeof(RectTransform), typeof(Image));
             var sweetRt = sweetGo.GetComponent<RectTransform>();
@@ -182,10 +238,6 @@ namespace DiskGolf.UI
             indicatorGo.GetComponent<Image>().raycastTarget = false;
             indicator = indicatorRt;
 
-            AddZoneLabel(trackRt, 0.165f, "LOW", s);
-            AddZoneLabel(trackRt, 0.5f, "NICE", s);
-            AddZoneLabel(trackRt, 0.835f, "HIGH", s);
-
             var titleGo = new GameObject("Title", typeof(RectTransform));
             var titleRt = titleGo.GetComponent<RectTransform>();
             titleRt.SetParent(root, false);
@@ -194,7 +246,7 @@ namespace DiskGolf.UI
             titleRt.anchoredPosition = new Vector2(0f, 6f * s);
             titleRt.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, 20f * s);
             var title = titleGo.AddComponent<TextMeshProUGUI>();
-            title.text = "HEIGHT";
+            title.text = "ACCURACY";
             var titleColor = new Color(0.85f, 0.85f, 0.85f);
             HudTypography.Apply(title, TextAlignmentOptions.MidlineLeft);
             title.color = titleColor;

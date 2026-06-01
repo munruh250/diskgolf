@@ -7,6 +7,20 @@ namespace DiskGolf.Input
     {
         public ReleaseAngle ReleaseAngle { get; private set; } = ReleaseAngle.Flat;
 
+        public ThrowHeight ArcHeight { get; private set; } = ThrowHeight.Nice;
+
+        public void ResetArcHeight() => ArcHeight = ThrowHeight.Nice;
+
+        public void CycleArcHeight()
+        {
+            ArcHeight = ArcHeight switch
+            {
+                ThrowHeight.Nice => ThrowHeight.High,
+                ThrowHeight.High => ThrowHeight.Low,
+                _ => ThrowHeight.Nice,
+            };
+        }
+
         public void CycleReleaseAngle()
         {
             ReleaseAngle = ReleaseAngle switch

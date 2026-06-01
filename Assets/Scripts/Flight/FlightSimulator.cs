@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DiskGolf.Core;
 using DiskGolf.Disc;
 using UnityEngine;
 
@@ -166,15 +167,10 @@ namespace DiskGolf.Flight
             return Mathf.Clamp(targetDistanceFt / maxReach * 1.1f, 0f, 1.1f);
         }
 
-        /// <summary>Slider-normalized center (0–1) for the height timing meter.</summary>
-        public static float HeightMeterCenter(ThrowHeight height) =>
-            height switch
-            {
-                ThrowHeight.Low => 0.16f,
-                ThrowHeight.Nice => 0.5f,
-                ThrowHeight.High => 0.84f,
-                _ => 0.5f,
-            };
+        /// <summary>Slider-normalized center (0–1) for the accuracy timing meter sweet spot.</summary>
+        public static float HeightMeterCenter(ThrowHeight height) => AccuracyMeterZones.MeterCenter;
+
+        public static float AccuracyMeterCenter => AccuracyMeterZones.MeterCenter;
 
         /// <summary>Convert a putt meter reading into travel distance using the putting scale.</summary>
         public static float PuttDistanceFromMeter(float meterValue) =>

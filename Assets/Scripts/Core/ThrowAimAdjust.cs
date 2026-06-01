@@ -35,6 +35,8 @@ namespace DiskGolf.Core
             RecalculateTarget(hole, lie, disc);
         }
 
+        public void SetPlannedHeight(ThrowHeight height) => _plannedHeight = height;
+
         public void RecalculateTarget(HoleSetup hole, Vector3 lie, DiscProfile disc)
         {
             if (hole == null || disc == null)
@@ -48,7 +50,6 @@ namespace DiskGolf.Core
             float baseline = alongBasket;
 
             TargetDistanceFt = Mathf.Clamp(baseline + _distanceOffsetFt, MinTargetDistanceFt, maxReach);
-            _plannedHeight = SuggestHeightForTarget(TargetDistanceFt, maxReach);
         }
 
         public Vector3 AimDirection(HoleSetup hole, Vector3 lie)
@@ -87,19 +88,6 @@ namespace DiskGolf.Core
                 return hole.DistanceToBasket(lie);
 
             return Mathf.Max(0f, Vector3.Dot(toBasket.normalized, aim.normalized) * toBasket.magnitude / 0.3048f);
-        }
-
-        static ThrowHeight SuggestHeightForTarget(float targetFt, float maxReach)
-        {
-            float ratio = targetFt / Mathf.Max(maxReach, 1f);
-
-            if (ratio > 0.82f)
-                return ThrowHeight.High;
-
-            if (ratio < 0.42f)
-                return ThrowHeight.Low;
-
-            return ThrowHeight.Nice;
         }
     }
 }
