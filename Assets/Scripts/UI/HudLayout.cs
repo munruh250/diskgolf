@@ -56,6 +56,7 @@ namespace DiskGolf.UI
             HoleInfoPanel.Ensure(canvas);
             WindWidget.Ensure(canvas);
             TimingMeterHud.Ensure();
+            NtmBottomBar.Ensure(canvas);
 
             EnsureWidgetLabelsVisible(canvas);
             HideLegacyPowerHeightLabels(canvas);

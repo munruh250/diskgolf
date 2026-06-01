@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace DiskGolf.Camera
 {
-    /// <summary>Camera flow: side throw view → locked-direction chase for the whole flight.</summary>
+    /// <summary>Camera flow: side throw view → flight chase while disc is in the air and through the feet callout.</summary>
     public class CameraDirector : MonoBehaviour
     {
         [SerializeField] CinemachineVirtualCamera sideSetupCam;
@@ -22,6 +22,8 @@ namespace DiskGolf.Camera
 
         Vector3 _lockedThrowForward = Vector3.forward;
 
+        CinemachineBrain _brain;
+
         void Awake()
         {
             sideSetupCam ??= CameraRig.FindSideSetupCam();
@@ -30,6 +32,14 @@ namespace DiskGolf.Camera
 
             if (flightPresenter == null && throwController != null)
                 flightPresenter = throwController.GetComponent<DiscFlightPresenter>();
+
+            CacheBrain();
+        }
+
+        void CacheBrain()
+        {
+            var mainCam = UnityEngine.Camera.main;
+            _brain = mainCam != null ? mainCam.GetComponent<CinemachineBrain>() : null;
         }
 
         void Start()
@@ -52,22 +62,74 @@ namespace DiskGolf.Camera
                 throwController.PhaseChanged -= OnPhase;
         }
 
+        /// <summary>
+        /// Instant cut to behind-the-thrower side view after the thrower has been relocated.
+        /// Call when the feet callout ends so we never blend through the outbound flight heading.
+        /// </summary>
+        public void SnapToSideThrowView()
+        {
+            if (sideSetupCam == null)
+                return;
+
+            CacheBrain();
+            BindSideThrowCam();
+
+            var savedBlend = _brain != null ? _brain.m_DefaultBlend : default;
+
+            if (_brain != null)
+            {
+                _brain.m_DefaultBlend = new CinemachineBlendDefinition(
+                    CinemachineBlendDefinition.Style.Cut,
+                    0f);
+            }
+
+            SetPriority(flightChaseCam, 0);
+            SetActive(flightChaseCam, false);
+            SetPriority(sideSetupCam, CameraRig.SidePriority);
+            SetActive(sideSetupCam, true);
+
+            sideSetupCam.PreviousStateIsValid = false;
+            if (flightChaseCam != null)
+                flightChaseCam.PreviousStateIsValid = false;
+
+            if (_brain != null)
+            {
+                _brain.ManualUpdate();
+                _brain.m_DefaultBlend = savedBlend;
+            }
+        }
+
         void OnPhase(ThrowPhase phase)
         {
+            var previous = _phase;
             _phase = phase;
 
             bool sideThrowView = phase is ThrowPhase.Aiming
                 or ThrowPhase.PowerMeter
                 or ThrowPhase.HeightMeter
-                or ThrowPhase.Putting
-                or ThrowPhase.Landed;
+                or ThrowPhase.Putting;
 
-            if (phase == ThrowPhase.InFlight)
+            bool flightChaseView = phase is ThrowPhase.InFlight or ThrowPhase.Landed;
+
+            bool cutFromLanded = previous == ThrowPhase.Landed && sideThrowView;
+
+            if (flightChaseView)
                 BindFlightChaseToDisc();
             else
                 SetActive(flightChaseCam, false);
 
-            SetSideThrowViewActive(sideThrowView);
+            if (sideThrowView)
+            {
+                if (cutFromLanded)
+                    SnapToSideThrowView();
+                else
+                    SetSideThrowViewActive(true);
+            }
+            else
+            {
+                SetPriority(sideSetupCam, 0);
+                SetActive(sideSetupCam, false);
+            }
         }
 
         void BindFlightChaseToDisc()
@@ -135,6 +197,7 @@ namespace DiskGolf.Camera
             if (thrower == null)
                 return;
 
+            hole.RefreshCameraAimPoint();
             CameraRig.BindSideThrowCam(sideSetupCam, thrower, hole.BasketTransform);
         }
 

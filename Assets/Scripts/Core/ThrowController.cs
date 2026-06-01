@@ -5,6 +5,7 @@ using DiskGolf.Flight;
 using DiskGolf.Gameplay;
 using DiskGolf.Input;
 using DiskGolf.UI;
+using DiskGolf.Camera;
 using UnityEngine;
 
 namespace DiskGolf.Core
@@ -34,6 +35,8 @@ namespace DiskGolf.Core
         [SerializeField] SweetSpotBannerUI sweetSpotBanner;
 
         [SerializeField] ThrowAimAdjust aimAdjust;
+
+        CameraDirector _cameraDirector;
 
         readonly ThrowStateMachine _state = new ThrowStateMachine();
         WindSettings _wind;
@@ -100,6 +103,7 @@ namespace DiskGolf.Core
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
             inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
+            _cameraDirector ??= FindObjectOfType<CameraDirector>();
         }
 
         void Start()
@@ -355,8 +359,6 @@ namespace DiskGolf.Core
             else if (wps != null && wps.Count > 0)
                 _discPosition = wps[wps.Count - 1].Position;
 
-            PrepareNextShotView();
-
             _state.Advance(); // InFlight → Landed
 
             EndMeterFlightDisplay();
@@ -415,6 +417,9 @@ namespace DiskGolf.Core
                 return;
             }
 
+            RelocateThrowerForNextShot();
+            SnapSideCameraForNextShot();
+
             if (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt)
             {
                 _state.EnterPutting();
@@ -430,8 +435,14 @@ namespace DiskGolf.Core
             if (_state.Phase != ThrowPhase.Landed)
                 return;
 
-            _state.Advance(); // Landed → Resolve
-            _state.Advance(); // Resolve → Aiming
+            EnableCircleBanner(false);
+            _state.TransitionTo(ThrowPhase.Aiming);
+        }
+
+        void SnapSideCameraForNextShot()
+        {
+            _cameraDirector ??= FindObjectOfType<CameraDirector>();
+            _cameraDirector?.SnapToSideThrowView();
         }
 
         void ResolvePutOutcome(float restFt)
@@ -442,10 +453,24 @@ namespace DiskGolf.Core
                 return;
             }
 
+            RelocateThrowerForNextShot();
+            SnapSideCameraForNextShot();
+
             if (hole != null && restFt <= hole.CircleRadiusFt)
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
+        }
+
+        void RelocateThrowerForNextShot()
+        {
+            if (hole == null)
+                return;
+
+            if (hole.IsNearTee(_discPosition))
+                hole.PositionThrowerAtTee();
+            else
+                hole.PositionThrowerAtLie(_discPosition);
         }
 
         bool IsDiscHoled(Vector3 discWorld) =>
@@ -513,9 +538,6 @@ namespace DiskGolf.Core
                     heightMeter?.Stop();
                     EnableCircleBanner(true);
 
-                    if (hole != null)
-                        hole.PositionThrowerAtLie(_discPosition);
-
                     SyncDiscToHand();
 
                     break;
@@ -532,14 +554,7 @@ namespace DiskGolf.Core
                     EnableCircleBanner(false);
 
                     if (hole != null && presenter != null)
-                    {
-                        if (hole.IsNearTee(_discPosition))
-                            hole.PositionThrowerAtTee();
-                        else
-                            hole.PositionThrowerAtLie(_discPosition);
-
                         SyncDiscToHand();
-                    }
 
                     if (hole != null && bag != null)
                     {
@@ -648,17 +663,6 @@ namespace DiskGolf.Core
         {
             powerMeter?.EndFlightDisplay();
             heightMeter?.EndFlightDisplay();
-        }
-
-        void PrepareNextShotView()
-        {
-            if (hole == null)
-                return;
-
-            if (hole.IsNearTee(_discPosition))
-                hole.PositionThrowerAtTee();
-            else
-                hole.PositionThrowerAtLie(_discPosition);
         }
 
         public FlightPath GetPreviewPath()

@@ -51,6 +51,7 @@ namespace DiskGolf.UI
             _restDrive = RestDriveReadout.Ensure(hudRoot);
             _holeInfo = HoleInfoPanel.Ensure(hudRoot);
             _windWidget = WindWidget.Ensure(hudRoot);
+            NtmBottomBar.Ensure(hudRoot);
 
             HideLegacyLabels();
         }
@@ -159,6 +160,9 @@ namespace DiskGolf.UI
         void UpdateDiscAndStance()
         {
             if (hole == null)
+                return;
+
+            if (GameObject.Find("GameplayHUD")?.transform.Find("NtmBottomBar") != null)
                 return;
 
             var active = controller != null ? controller.ActiveDisc : null;

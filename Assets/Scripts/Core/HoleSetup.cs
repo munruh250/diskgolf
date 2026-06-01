@@ -47,7 +47,7 @@ namespace DiskGolf.Core
                 if (thrower == null)
                     return Quaternion.identity;
 
-                var forward = AimDirection;
+                var forward = thrower.forward;
                 forward.y = 0f;
 
                 if (forward.sqrMagnitude < 1e-6f)
@@ -70,7 +70,7 @@ namespace DiskGolf.Core
 
         const float ThrowerBehindLieM = 0.55f;
 
-        /// <summary>Place thrower at tee facing the basket (first throw / reset).</summary>
+        /// <summary>Place thrower at tee facing the basket so side camera sits behind the throw line.</summary>
         public void PositionThrowerAtTee()
         {
             if (thrower == null || teePad == null || basket == null)
@@ -82,7 +82,7 @@ namespace DiskGolf.Core
             RefreshCameraAimPoint();
         }
 
-        /// <summary>Place thrower behind the disc lie for the next throw.</summary>
+        /// <summary>Place thrower behind the disc lie, facing the basket for the next throw.</summary>
         public void PositionThrowerAtLie(Vector3 discLie)
         {
             if (thrower == null)

@@ -142,6 +142,9 @@ namespace DiskGolf.UI
             if (hud == null)
                 return;
 
+            if (hud.Find("NtmBottomBar") != null)
+                return;
+
             var go = new GameObject("DiscSelectRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             buttonRow = go.GetComponent<RectTransform>();
             buttonRow.SetParent(hud, false);

@@ -11,6 +11,20 @@ namespace DiskGolf.UI
 
         public static string VisualNameForFind => VisualName;
 
+        public static bool IsCurrentLayout(Transform meterRoot)
+        {
+            if (meterRoot == null)
+                return false;
+
+            var rt = meterRoot as RectTransform;
+            if (rt == null)
+                return false;
+
+            return rt.sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f
+                && rt.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f
+                && meterRoot.Find("Track/Frame") != null;
+        }
+
         static readonly Color LowColor = new(0.22f, 0.48f, 0.92f, 0.95f);
 
         static readonly Color NiceColor = new(0.18f, 0.78f, 0.28f, 0.95f);
@@ -48,7 +62,8 @@ namespace DiskGolf.UI
             var root = transform as RectTransform;
             if (track != null
                 && root.sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f
-                && root.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f)
+                && root.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f
+                && track.Find("Frame") != null)
                 return;
 
             if (track != null)
@@ -123,8 +138,21 @@ namespace DiskGolf.UI
             trackRt.anchorMax = new Vector2(0f, 1f);
             trackRt.pivot = new Vector2(0f, 0.5f);
             trackRt.anchoredPosition = Vector2.zero;
-            trackRt.sizeDelta = new Vector2(TimingMeterLayout.HeightTrackWidth, -8f * s);
+            trackRt.sizeDelta = new Vector2(TimingMeterLayout.HeightTrackWidth, -4f * s);
             track = trackRt;
+
+            var frameGo = new GameObject("Frame", typeof(RectTransform), typeof(Image));
+            var frameRt = frameGo.GetComponent<RectTransform>();
+            frameRt.SetParent(trackRt, false);
+            frameRt.anchorMin = Vector2.zero;
+            frameRt.anchorMax = Vector2.one;
+            frameRt.offsetMin = new Vector2(-3f * s, -3f * s);
+            frameRt.offsetMax = new Vector2(3f * s, 3f * s);
+            frameGo.transform.SetAsFirstSibling();
+            var frameImg = frameGo.GetComponent<Image>();
+            frameImg.sprite = ArcRingBuilder.WhiteSprite;
+            frameImg.color = new Color(0.06f, 0.06f, 0.06f, 0.94f);
+            frameImg.raycastTarget = false;
 
             AddZone(trackRt, 0f, 0.33f, LowColor);
             AddZone(trackRt, 0.33f, 0.66f, NiceColor);

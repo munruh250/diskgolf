@@ -1,3 +1,4 @@
+using DiskGolf.Disc;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,6 +24,23 @@ namespace DiskGolf.UI
         const string LayoutMarker = "TrackColorV4";
 
         public static string VisualNameForFind => VisualName;
+
+        public static bool IsCurrentLayout(Transform meterRoot)
+        {
+            if (meterRoot == null || meterRoot.Find("Pivot/ArcHub/" + LayoutMarker) == null)
+                return false;
+
+            var rt = meterRoot as RectTransform;
+            if (rt == null)
+                return false;
+
+            var hub = meterRoot.Find("Pivot/ArcHub/Hub");
+            return rt.sizeDelta.x >= TimingMeterLayout.PowerWidth - 1f
+                && rt.sizeDelta.y >= TimingMeterLayout.PowerTotal - 1f
+                && Vector2.Distance(rt.anchoredPosition, TimingMeterLayout.PowerAnchorPos) < 1f
+                && meterRoot.Find("ShotPowerTitle") != null
+                && hub != null && hub.Find("DiscPreview") != null;
+        }
 
         static float ArcRadius => TimingMeterLayout.ArcRadius;
 
@@ -69,8 +87,12 @@ namespace DiskGolf.UI
             if (pivot != null && pivot.Find("ArcHub/" + LayoutMarker) != null)
             {
                 var root = transform as RectTransform;
+                var hub = pivot.Find("ArcHub/Hub");
                 if (root.sizeDelta.x >= TimingMeterLayout.PowerWidth - 1f
-                    && Vector2.Distance(root.anchoredPosition, TimingMeterLayout.PowerAnchorPos) < 1f)
+                    && root.sizeDelta.y >= TimingMeterLayout.PowerTotal - 1f
+                    && Vector2.Distance(root.anchoredPosition, TimingMeterLayout.PowerAnchorPos) < 1f
+                    && root.Find("ShotPowerTitle") != null
+                    && hub != null && hub.Find("DiscPreview") != null)
                     return;
             }
 
@@ -113,6 +135,7 @@ namespace DiskGolf.UI
             BuildArcArt(arcHub);
             CreateNeedleAndSweetSpot(arcHub);
             BuildArcLabels(arcHub);
+            EnsureShotPowerTitle(root);
 
             SetNeedleVisible(false);
         }
@@ -157,6 +180,7 @@ namespace DiskGolf.UI
             BuildArcArt(arcHub);
             CreateNeedleAndSweetSpot(arcHub);
             BuildArcLabels(arcHub);
+            EnsureShotPowerTitle(root);
 
             SetNeedleVisible(false);
         }
@@ -198,17 +222,50 @@ namespace DiskGolf.UI
                 0.5f,
                 34);
 
-            var hubGo = new GameObject("Hub", typeof(RectTransform), typeof(Image));
+            var hubGo = new GameObject("Hub", typeof(RectTransform));
             var hubRt = hubGo.GetComponent<RectTransform>();
             hubRt.SetParent(pivotRt, false);
             hubRt.anchorMin = hubRt.anchorMax = new Vector2(0.5f, 0f);
             hubRt.pivot = new Vector2(0.5f, 0.5f);
             hubRt.anchoredPosition = Vector2.zero;
-            hubRt.sizeDelta = new Vector2(34f * S, 34f * S);
-            var hubImg = hubGo.GetComponent<Image>();
-            hubImg.sprite = ArcRingBuilder.WhiteSprite;
-            hubImg.color = new Color(0.12f, 0.38f, 0.14f, 0.95f);
-            hubImg.raycastTarget = false;
+            hubRt.sizeDelta = new Vector2(38f * S, 38f * S);
+
+            var ringGo = new GameObject("HubRing", typeof(RectTransform), typeof(Image));
+            var ringRt = ringGo.GetComponent<RectTransform>();
+            ringRt.SetParent(hubRt, false);
+            ringRt.anchorMin = Vector2.zero;
+            ringRt.anchorMax = Vector2.one;
+            ringRt.offsetMin = ringRt.offsetMax = Vector2.zero;
+            var ringImg = ringGo.GetComponent<Image>();
+            ringImg.sprite = ArcRingBuilder.WhiteSprite;
+            ringImg.color = new Color(0.06f, 0.06f, 0.06f, 0.98f);
+            ringImg.raycastTarget = false;
+
+            DiscPreviewWidget.Ensure(hubRt, Object.FindObjectOfType<DiscBag>());
+        }
+
+        void EnsureShotPowerTitle(RectTransform root)
+        {
+            var existing = root.Find("ShotPowerTitle");
+            if (existing != null)
+                return;
+
+            var titleGo = new GameObject("ShotPowerTitle", typeof(RectTransform));
+            var titleRt = titleGo.GetComponent<RectTransform>();
+            titleRt.SetParent(root, false);
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0f, 1f);
+            titleRt.pivot = new Vector2(0f, 1f);
+            titleRt.anchoredPosition = new Vector2(4f * S, -2f * S);
+            titleRt.sizeDelta = new Vector2(TimingMeterLayout.PowerWidth * 0.55f, 22f * S);
+
+            var tmp = titleGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = "SHOT-POWER";
+            tmp.fontSize = HudTypography.FontSize * 0.68f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = new Color(1f, 0.92f, 0.18f);
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.raycastTarget = false;
+            BindFont(tmp);
         }
 
         void BuildArcLabels(RectTransform pivotRt)

@@ -7,6 +7,16 @@ namespace DiskGolf.Input
     {
         public ReleaseAngle ReleaseAngle { get; private set; } = ReleaseAngle.Flat;
 
+        public void CycleReleaseAngle()
+        {
+            ReleaseAngle = ReleaseAngle switch
+            {
+                ReleaseAngle.Flat => ReleaseAngle.Hyzer,
+                ReleaseAngle.Hyzer => ReleaseAngle.Anhyzer,
+                _ => ReleaseAngle.Flat,
+            };
+        }
+
         void Update()
         {
             if (UnityEngine.Input.GetKeyDown(KeyCode.Z)) ReleaseAngle = ReleaseAngle.Hyzer;

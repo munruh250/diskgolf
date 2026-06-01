@@ -18,20 +18,28 @@ namespace DiskGolf.UI
 
         public bool IsFrozenForFlight => _frozen;
 
+        HeightMeterVisual Visual
+        {
+            get
+            {
+                if (_visual == null || !_visual)
+                    _visual = TimingMeterHud.Height;
+                return _visual;
+            }
+        }
+
         void Start()
         {
-            _visual = TimingMeterHud.Height;
-            _visual?.SetChromeVisible(true);
-            _visual?.SetNeedleVisible(false);
+            Visual?.SetChromeVisible(true);
+            Visual?.SetNeedleVisible(false);
         }
 
         public void Begin()
         {
-            _visual ??= TimingMeterHud.Height;
             _meter.Reset();
             _active = true;
-            _visual?.SetChromeVisible(true);
-            _visual?.SetNeedleVisible(true);
+            Visual?.SetChromeVisible(true);
+            Visual?.SetNeedleVisible(true);
         }
 
         public void Stop()
@@ -41,7 +49,7 @@ namespace DiskGolf.UI
             _hasSweetZone = false;
             LastConfirmWasSweet = false;
             ClearTargetZone();
-            _visual?.SetNeedleVisible(false);
+            Visual?.SetNeedleVisible(false);
         }
 
         public bool IsRunning => _active;
@@ -52,8 +60,8 @@ namespace DiskGolf.UI
             _frozen = true;
             _frozenDisplay = _meter.Value / 1.1f;
             LastConfirmWasSweet = IsInSweetZone(_frozenDisplay);
-            _visual?.SetIndicator(_frozenDisplay);
-            _visual?.SetNeedleVisible(true);
+            Visual?.SetIndicator(_frozenDisplay);
+            Visual?.SetNeedleVisible(true);
             return _meter.Confirm();
         }
 
@@ -63,7 +71,7 @@ namespace DiskGolf.UI
             _hasSweetZone = false;
             LastConfirmWasSweet = false;
             ClearTargetZone();
-            _visual?.SetNeedleVisible(false);
+            Visual?.SetNeedleVisible(false);
         }
 
         bool IsInSweetZone(float display01) =>
@@ -71,11 +79,10 @@ namespace DiskGolf.UI
 
         public void SetTargetZone(float center01, float width01)
         {
-            _visual ??= TimingMeterHud.Height;
             _sweetCenter = center01;
             _sweetWidth = width01;
             _hasSweetZone = true;
-            _visual?.SetSweetSpot(center01, width01);
+            Visual?.SetSweetSpot(center01, width01);
         }
 
         public void PreviewTargetZone(float center01, float width01)
@@ -86,13 +93,13 @@ namespace DiskGolf.UI
             SetTargetZone(center01, width01);
         }
 
-        public void ClearTargetZone() => _visual?.HideSweetSpot();
+        public void ClearTargetZone() => Visual?.HideSweetSpot();
 
         void Update()
         {
             if (_frozen)
             {
-                _visual?.SetIndicator(_frozenDisplay);
+                Visual?.SetIndicator(_frozenDisplay);
                 return;
             }
 
@@ -101,7 +108,7 @@ namespace DiskGolf.UI
 
             _meter.Tick(Time.deltaTime);
             float display = _meter.Value / 1.1f;
-            _visual?.SetIndicator(display);
+            Visual?.SetIndicator(display);
         }
     }
 }
