@@ -1,11 +1,56 @@
+using DiskGolf.Gameplay;
 using TMPro;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace DiskGolf.UI
 {
     /// <summary>Shared HUD text sizing — reads from HudLayoutSettings when present.</summary>
     public static class HudTypography
     {
+        static TMP_FontAsset _defaultFont;
+
+        public static TMP_FontAsset DefaultFont
+        {
+            get
+            {
+                if (_defaultFont != null)
+                    return _defaultFont;
+
+                _defaultFont = Resources.Load<TMP_FontAsset>(ProjectArtPaths.ThirdParty.PixelEmulatorSdfResource);
+
+#if UNITY_EDITOR
+                _defaultFont ??= AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+                    ProjectArtPaths.ThirdParty.PixelEmulatorSdf);
+#endif
+
+                return _defaultFont;
+            }
+        }
+
+        public static void BindFont(TextMeshProUGUI tmp)
+        {
+            if (tmp == null)
+                return;
+
+            var font = DefaultFont;
+            if (font != null)
+                tmp.font = font;
+        }
+
+        public static void BindFont(TextMeshPro tmp)
+        {
+            if (tmp == null)
+                return;
+
+            var font = DefaultFont;
+            if (font != null)
+                tmp.font = font;
+        }
+
         public static float FontSize => Settings.fontSize;
 
         public static float RowHeight => Settings.rowHeight;
@@ -44,6 +89,7 @@ namespace DiskGolf.UI
             tmp.enableWordWrapping = false;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.raycastTarget = false;
+            BindFont(tmp);
         }
 
         /// <summary>Applies the standard HUD font size to persistent readout labels.</summary>

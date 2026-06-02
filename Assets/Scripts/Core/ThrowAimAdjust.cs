@@ -7,9 +7,9 @@ namespace DiskGolf.Core
     /// <summary>Pre-throw aim: arrow keys shift trajectory target before the timing meters.</summary>
     public sealed class ThrowAimAdjust : MonoBehaviour
     {
-        const float YawStepDeg = 2.5f;
+        const float LateralStepFt = 3f;
 
-        const float DistanceStepFt = 15f;
+        const float DistanceStepFt = 3f;
 
         const float MinTargetDistanceFt = 10f;
 
@@ -61,11 +61,13 @@ namespace DiskGolf.Core
         public void ApplyHeldInput(HoleSetup hole, Vector3 lie, DiscProfile disc,
             bool left, bool right, bool up, bool down)
         {
+            float yawStepDeg = YawStepDegreesForLateral(TargetDistanceFt);
+
             if (left)
-                _yawOffsetDeg -= YawStepDeg;
+                _yawOffsetDeg -= yawStepDeg;
 
             if (right)
-                _yawOffsetDeg += YawStepDeg;
+                _yawOffsetDeg += yawStepDeg;
 
             _yawOffsetDeg = Mathf.Clamp(_yawOffsetDeg, -maxYawDegrees, maxYawDegrees);
 
@@ -77,6 +79,9 @@ namespace DiskGolf.Core
 
             RecalculateTarget(hole, lie, disc);
         }
+
+        static float YawStepDegreesForLateral(float targetDistanceFt) =>
+            Mathf.Rad2Deg * (LateralStepFt / Mathf.Max(targetDistanceFt, MinTargetDistanceFt));
 
         static float DistanceAlongAim(HoleSetup hole, Vector3 lie, Vector3 aim)
         {

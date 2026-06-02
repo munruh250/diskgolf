@@ -111,5 +111,14 @@ namespace DiskGolf.Gameplay
             return null;
 #endif
         }
+
+        public static Sprite LoadWindIconSprite()
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Sprite>(ProjectArtPaths.Ui.WindIcon);
+#else
+            return null;
+#endif
+        }
     }
 }

@@ -19,6 +19,11 @@ namespace DiskGolf.Camera
         /// <summary>Low behind-left camera — player lands at bottom of frame.</summary>
         public static readonly Vector3 SideFollowOffset = new(-0.85f, 1.22f, -5.1f);
 
+        /// <summary>Behind and above the landing target — ~3/4 angle between side-on and top-down.</summary>
+        public static readonly Vector3 TargetZoomOffset = new(0f, 7f, -9f);
+
+        public const float TargetZoomFieldOfView = 44f;
+
         /// <summary>Behind and slightly above the disc — LookAt keeps the disc screen-centered.</summary>
         public static readonly Vector3 FlightChaseOffset = new(0f, 1.8f, -6f);
 
@@ -107,6 +112,95 @@ namespace DiskGolf.Camera
 
             var aimPoint = EnsureAimPoint(thrower, basket);
             ConfigureSideThrowCam(vcam, thrower, aimPoint);
+        }
+
+        public static void BindTargetZoomCam(
+            CinemachineVirtualCamera vcam,
+            Transform thrower,
+            Vector3 targetWorld)
+        {
+            if (vcam == null || thrower == null)
+                return;
+
+            var settings = FlightCameraSettings.Resolve(vcam);
+            var pose = ComputeTargetZoomPose(thrower, targetWorld, settings);
+            var forward = targetWorld - thrower.position;
+            forward.y = 0f;
+
+            if (forward.sqrMagnitude < 1e-6f)
+                forward = thrower.forward;
+
+            forward.Normalize();
+
+            var aimPoint = PlaceAimPoint(thrower, pose.LookAt, forward);
+
+            vcam.Follow = aimPoint;
+            vcam.LookAt = aimPoint;
+            vcam.Priority = SidePriority;
+            vcam.m_Lens.FieldOfView = settings != null ? settings.TargetZoomFieldOfView : TargetZoomFieldOfView;
+
+            var transposer = vcam.GetCinemachineComponent<CinemachineTransposer>()
+                ?? vcam.AddCinemachineComponent<CinemachineTransposer>();
+
+            transposer.enabled = true;
+            transposer.m_BindingMode = CinemachineTransposer.BindingMode.LockToTargetWithWorldUp;
+            transposer.m_FollowOffset = settings != null ? settings.TargetZoomOffset : TargetZoomOffset;
+
+            var composer = vcam.GetCinemachineComponent<CinemachineComposer>()
+                ?? vcam.AddCinemachineComponent<CinemachineComposer>();
+
+            composer.enabled = true;
+            composer.m_ScreenX = 0.5f;
+            composer.m_ScreenY = 0.52f;
+            composer.m_DeadZoneWidth = 0.04f;
+            composer.m_DeadZoneHeight = 0.06f;
+            composer.m_SoftZoneWidth = 0.65f;
+            composer.m_SoftZoneHeight = 0.60f;
+            composer.m_TrackedObjectOffset = Vector3.zero;
+
+            vcam.gameObject.SetActive(true);
+        }
+
+        public static TrajectoryZoomPose ComputeTargetZoomPose(
+            Transform thrower,
+            Vector3 landing,
+            FlightCameraSettings settings)
+        {
+            var forward = landing - thrower.position;
+            forward.y = 0f;
+
+            if (forward.sqrMagnitude < 1e-6f)
+                forward = thrower != null ? thrower.forward : Vector3.forward;
+
+            forward.Normalize();
+
+            var lookAt = landing + Vector3.up * 0.2f;
+            var offset = settings != null ? settings.TargetZoomOffset : TargetZoomOffset;
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var position = lookAt + rotation * offset;
+            return new TrajectoryZoomPose(position, lookAt);
+        }
+
+        public static Transform PlaceAimPoint(Transform thrower, Vector3 worldPos, Vector3 forward)
+        {
+            var go = GameObject.Find(AimPointName) ?? CreateAimPointObject();
+            var t = go.transform;
+
+            if (thrower != null && t.parent != thrower.parent)
+            {
+                var parent = GameObject.Find(SceneHierarchy.PlayerThrower)?.transform
+                    ?? thrower.parent;
+                if (parent != null)
+                    t.SetParent(parent, true);
+            }
+
+            t.position = worldPos;
+            forward.y = 0f;
+
+            if (forward.sqrMagnitude > 1e-6f)
+                t.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+
+            return t;
         }
 
         public static CinemachineVirtualCamera ConfigureFlightChaseCam(

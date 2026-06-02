@@ -84,8 +84,7 @@ namespace DiskGolf.UI
 
             _power = root.Find(PowerMeterVisual.VisualNameForFind)?.GetComponent<PowerMeterVisual>()
                 ?? root.Find("NtmPowerMeter")?.GetComponent<PowerMeterVisual>();
-            _height = root.Find(HeightMeterVisual.VisualNameForFind)?.GetComponent<HeightMeterVisual>()
-                ?? root.Find("NtmHeightMeter")?.GetComponent<HeightMeterVisual>();
+            _height = HeightMeterVisual.FindMeterRoot(root)?.GetComponent<HeightMeterVisual>();
 
             _power?.BindSceneReferences();
             _height?.BindSceneReferences();
@@ -108,8 +107,8 @@ namespace DiskGolf.UI
 
             root.SetAsLastSibling();
 
-            UpgradeStaleMeter(root, PowerMeterVisual.VisualNameForFind, PowerMeterVisual.IsCurrentLayout);
-            UpgradeStaleMeter(root, HeightMeterVisual.VisualNameForFind, HeightMeterVisual.IsCurrentLayout);
+            UpgradeStaleMeter(root, parent => parent.Find(PowerMeterVisual.VisualNameForFind), PowerMeterVisual.IsCurrentLayout);
+            UpgradeStaleMeter(root, HeightMeterVisual.FindMeterRoot, HeightMeterVisual.IsCurrentLayout);
 
             _power = PowerMeterVisual.Ensure(root);
             _height = HeightMeterVisual.Ensure(root);
@@ -129,9 +128,12 @@ namespace DiskGolf.UI
                 _instance = null;
         }
 
-        static void UpgradeStaleMeter(RectTransform root, string meterName, System.Func<Transform, bool> isCurrent)
+        static void UpgradeStaleMeter(
+            RectTransform root,
+            System.Func<Transform, Transform> findMeter,
+            System.Func<Transform, bool> isCurrent)
         {
-            var existing = root.Find(meterName);
+            var existing = findMeter(root);
             if (existing == null || isCurrent(existing))
                 return;
 

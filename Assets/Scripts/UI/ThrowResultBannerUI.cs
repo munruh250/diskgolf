@@ -101,11 +101,7 @@ namespace DiskGolf.UI
             if (circleTmp != null && circleTmp.font != null)
                 tmp.font = circleTmp.font;
             else
-            {
-                var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-                if (font != null)
-                    tmp.font = font;
-            }
+                HudTypography.BindFont(tmp);
         }
 
         public void ShowThrowDistance(float distanceFt)

@@ -1,12 +1,15 @@
+using System.Collections;
 using Cinemachine;
 using DiskGolf.Core;
+using DiskGolf.Flight;
 using DiskGolf.Gameplay;
+using DiskGolf.UI;
 using UnityEngine;
 
 namespace DiskGolf.Camera
 {
     /// <summary>Camera flow: side throw view → flight chase while disc is in the air and through the feet callout.</summary>
-    public class CameraDirector : MonoBehaviour
+    public sealed class CameraDirector : MonoBehaviour
     {
         [SerializeField] CinemachineVirtualCamera sideSetupCam;
 
@@ -20,9 +23,27 @@ namespace DiskGolf.Camera
 
         ThrowPhase _phase;
 
+        bool _trajectoryZoomActive;
+
+        bool _zoomAtEnd;
+
+        Coroutine _zoomRoutine;
+
+        TrajectoryZoomDriver _zoomDriver;
+
+        TrajectoryZoomExtension _zoomExtension;
+
+        CinemachineTransposer _sideTransposer;
+
+        CinemachineComposer _sideComposer;
+
+        TrajectoryLandingMarker _landingMarker;
+
         Vector3 _lockedThrowForward = Vector3.forward;
 
         CinemachineBrain _brain;
+
+        public bool TrajectoryZoomActive => _trajectoryZoomActive;
 
         void Awake()
         {
@@ -33,7 +54,26 @@ namespace DiskGolf.Camera
             if (flightPresenter == null && throwController != null)
                 flightPresenter = throwController.GetComponent<DiscFlightPresenter>();
 
+            EnsureZoomComponents();
             CacheBrain();
+        }
+
+        void EnsureZoomComponents()
+        {
+            if (sideSetupCam == null)
+                return;
+
+            _zoomExtension = sideSetupCam.GetComponent<TrajectoryZoomExtension>()
+                ?? sideSetupCam.gameObject.AddComponent<TrajectoryZoomExtension>();
+            _zoomExtension.enabled = false;
+
+            _sideTransposer = sideSetupCam.GetCinemachineComponent<CinemachineTransposer>();
+            _sideComposer = sideSetupCam.GetCinemachineComponent<CinemachineComposer>();
+
+            _zoomDriver = GetComponent<TrajectoryZoomDriver>()
+                ?? gameObject.AddComponent<TrajectoryZoomDriver>();
+
+            _landingMarker = TrajectoryLandingMarker.Ensure();
         }
 
         void CacheBrain()
@@ -62,6 +102,167 @@ namespace DiskGolf.Camera
                 throwController.PhaseChanged -= OnPhase;
         }
 
+        public void ToggleTrajectoryZoom(FlightPath path, Vector3 targetWorld, float yards)
+        {
+            if (sideSetupCam == null)
+                return;
+
+            if (_trajectoryZoomActive)
+            {
+                StopZoomRoutine();
+                _trajectoryZoomActive = false;
+                _zoomAtEnd = false;
+                _landingMarker?.SetVisible(false);
+                StartZoomRoutine(ExitZoomRoutine(path, targetWorld));
+                return;
+            }
+
+            _trajectoryZoomActive = true;
+            _zoomAtEnd = false;
+            _landingMarker?.UpdateLanding(targetWorld, yards);
+            StartZoomRoutine(EnterZoomRoutine(path, targetWorld));
+        }
+
+        public void RefreshTrajectoryZoom(FlightPath path, Vector3 targetWorld, float yards)
+        {
+            if (!_trajectoryZoomActive)
+                return;
+
+            _landingMarker?.UpdateLanding(targetWorld, yards);
+
+            if (_zoomDriver != null && path?.Waypoints != null)
+            {
+                _zoomDriver.Waypoints = path.Waypoints;
+                _zoomDriver.Landing = targetWorld;
+            }
+
+            if (_zoomAtEnd && !_zoomDriver.IsDriving)
+                ApplyFinalZoom(targetWorld);
+        }
+
+        public void ClearTrajectoryZoom()
+        {
+            StopZoomRoutine();
+            _trajectoryZoomActive = false;
+            _zoomAtEnd = false;
+            _landingMarker?.SetVisible(false);
+            SetPathDriveActive(false);
+
+            if (sideSetupCam != null)
+                BindSideThrowCam();
+        }
+
+        void StartZoomRoutine(IEnumerator routine)
+        {
+            StopZoomRoutine();
+            _zoomRoutine = StartCoroutine(routine);
+        }
+
+        void StopZoomRoutine()
+        {
+            if (_zoomRoutine == null)
+                return;
+
+            StopCoroutine(_zoomRoutine);
+            _zoomRoutine = null;
+        }
+
+        IEnumerator EnterZoomRoutine(FlightPath path, Vector3 targetWorld)
+        {
+            hole ??= FindObjectOfType<HoleSetup>();
+            var thrower = hole != null ? hole.Thrower : null;
+            if (thrower == null || path?.Waypoints == null || path.Waypoints.Count < 2)
+            {
+                ApplyFinalZoom(targetWorld);
+                _zoomAtEnd = true;
+                yield break;
+            }
+
+            _zoomDriver.BindThrower(thrower);
+            _zoomDriver.Waypoints = path.Waypoints;
+            _zoomDriver.Landing = targetWorld;
+            _zoomDriver.PathT = 0f;
+
+            SetPathDriveActive(true);
+            SetPriority(sideSetupCam, CameraRig.SidePriority);
+            SetActive(sideSetupCam, true);
+
+            var settings = FlightCameraSettings.Resolve(this);
+            float duration = settings != null ? settings.TrajectoryZoomTravelSeconds : 1.85f;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                _zoomDriver.PathT = Smooth01(Mathf.Clamp01(elapsed / duration));
+                yield return null;
+            }
+
+            _zoomDriver.PathT = 1f;
+            SetPathDriveActive(false);
+            ApplyFinalZoom(targetWorld);
+            _zoomAtEnd = true;
+            _zoomRoutine = null;
+        }
+
+        IEnumerator ExitZoomRoutine(FlightPath path, Vector3 targetWorld)
+        {
+            hole ??= FindObjectOfType<HoleSetup>();
+            var thrower = hole != null ? hole.Thrower : null;
+
+            if (thrower != null && path?.Waypoints != null && path.Waypoints.Count >= 2)
+            {
+                _zoomDriver.BindThrower(thrower);
+                _zoomDriver.Waypoints = path.Waypoints;
+                _zoomDriver.Landing = targetWorld;
+
+                SetPathDriveActive(true);
+
+                var settings = FlightCameraSettings.Resolve(this);
+                float duration = settings != null ? settings.TrajectoryZoomExitSeconds : 0.9f;
+                float startT = _zoomDriver.PathT;
+                float elapsed = 0f;
+
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    _zoomDriver.PathT = Mathf.Lerp(startT, 0f, Smooth01(Mathf.Clamp01(elapsed / duration)));
+                    yield return null;
+                }
+            }
+
+            SetPathDriveActive(false);
+            BindSideThrowCam();
+            _zoomRoutine = null;
+        }
+
+        void SetPathDriveActive(bool on)
+        {
+            if (_zoomDriver != null)
+                _zoomDriver.IsDriving = on;
+
+            if (_zoomExtension != null)
+                _zoomExtension.enabled = on;
+
+            if (_sideTransposer != null)
+                _sideTransposer.enabled = !on;
+
+            if (_sideComposer != null)
+                _sideComposer.enabled = !on;
+        }
+
+        void ApplyFinalZoom(Vector3 targetWorld)
+        {
+            hole ??= FindObjectOfType<HoleSetup>();
+            var thrower = hole != null ? hole.Thrower : null;
+            if (thrower == null)
+                return;
+
+            CameraRig.BindTargetZoomCam(sideSetupCam, thrower, targetWorld);
+        }
+
+        static float Smooth01(float t) => t * t * (3f - 2f * t);
+
         /// <summary>
         /// Instant cut to behind-the-thrower side view after the thrower has been relocated.
         /// Call when the feet callout ends so we never blend through the outbound flight heading.
@@ -71,6 +272,7 @@ namespace DiskGolf.Camera
             if (sideSetupCam == null)
                 return;
 
+            ClearTrajectoryZoom();
             CacheBrain();
             BindSideThrowCam();
 
@@ -112,6 +314,9 @@ namespace DiskGolf.Camera
             bool flightChaseView = phase is ThrowPhase.InFlight or ThrowPhase.Landed;
 
             bool cutFromLanded = previous == ThrowPhase.Landed && sideThrowView;
+
+            if (!sideThrowView)
+                ClearTrajectoryZoom();
 
             if (flightChaseView)
                 BindFlightChaseToDisc();
@@ -177,7 +382,9 @@ namespace DiskGolf.Camera
 
         void SetSideThrowViewActive(bool on)
         {
-            if (on)
+            if (on && _trajectoryZoomActive && _zoomAtEnd)
+                ApplyFinalZoom(throwController != null ? throwController.GetPreviewTargetWorld() : default);
+            else if (on && !_trajectoryZoomActive)
                 BindSideThrowCam();
 
             SetPriority(sideSetupCam, on ? CameraRig.SidePriority : 0);
@@ -192,6 +399,7 @@ namespace DiskGolf.Camera
             if (sideSetupCam == null)
                 return;
 
+            SetPathDriveActive(false);
             hole ??= FindObjectOfType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
             if (thrower == null)

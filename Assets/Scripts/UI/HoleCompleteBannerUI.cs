@@ -136,9 +136,7 @@ namespace DiskGolf.UI
                 return;
             }
 
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
+            HudTypography.BindFont(tmp);
         }
 
         static RectTransform FindHudCanvas()

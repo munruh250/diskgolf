@@ -9,7 +9,21 @@ namespace DiskGolf.UI
     {
         const string VisualName = "HeightMeter";
 
+        const string AccuracyVisualName = "AccuracyMeter";
+
+        const string LegacyVisualName = "NtmHeightMeter";
+
         public static string VisualNameForFind => VisualName;
+
+        public static Transform FindMeterRoot(Transform parent)
+        {
+            if (parent == null)
+                return null;
+
+            return parent.Find(VisualName)
+                ?? parent.Find(AccuracyVisualName)
+                ?? parent.Find(LegacyVisualName);
+        }
 
         public static bool IsCurrentLayout(Transform meterRoot) =>
             IsAccuracyLayout(meterRoot);
@@ -58,8 +72,7 @@ namespace DiskGolf.UI
             if (parent == null)
                 return null;
 
-            var existing = parent.Find(VisualName)?.GetComponent<HeightMeterVisual>()
-                ?? parent.Find("NtmHeightMeter")?.GetComponent<HeightMeterVisual>();
+            var existing = FindMeterRoot(parent)?.GetComponent<HeightMeterVisual>();
             if (existing != null)
             {
                 if (existing.name != VisualName)
@@ -163,8 +176,23 @@ namespace DiskGolf.UI
 
         public void SetNeedleVisible(bool visible)
         {
-            if (indicator != null)
-                indicator.gameObject.SetActive(visible);
+            if (indicator == null)
+                return;
+
+            indicator.gameObject.SetActive(visible);
+            if (visible)
+                EnsureIndicatorDrawOrder();
+        }
+
+        void EnsureIndicatorDrawOrder()
+        {
+            if (indicator == null)
+                return;
+
+            indicator.SetAsLastSibling();
+            var img = indicator.GetComponent<Image>();
+            if (img != null)
+                img.color = Color.white;
         }
 
         static HeightMeterVisual Build(Transform parent)
@@ -251,10 +279,6 @@ namespace DiskGolf.UI
             HudTypography.Apply(title, TextAlignmentOptions.MidlineLeft);
             title.color = titleColor;
 
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                title.font = font;
-
             SetNeedleVisible(false);
         }
 
@@ -286,10 +310,6 @@ namespace DiskGolf.UI
             tmp.text = text;
             HudTypography.Apply(tmp, TextAlignmentOptions.MidlineLeft);
             tmp.raycastTarget = false;
-
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
         }
 
         public void SetIndicator(float normalized01)
@@ -301,6 +321,7 @@ namespace DiskGolf.UI
             float s = TimingMeterLayout.UiScale;
             indicator.anchorMin = indicator.anchorMax = new Vector2(0f, normalized01);
             indicator.anchoredPosition = new Vector2(-4f * s, 0f);
+            EnsureIndicatorDrawOrder();
         }
 
         public void SetSweetSpot(float center01, float width01)
@@ -317,6 +338,8 @@ namespace DiskGolf.UI
                 TimingMeterLayout.HeightTrackWidth + 4f * TimingMeterLayout.UiScale,
                 Mathf.Max(12f * TimingMeterLayout.UiScale, width01 * trackHeight));
             sweetSpot.gameObject.SetActive(true);
+            sweetSpot.SetAsLastSibling();
+            EnsureIndicatorDrawOrder();
         }
 
         public void HideSweetSpot()

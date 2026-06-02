@@ -84,7 +84,11 @@ namespace DiskGolf.Gameplay
 
         public static class Ui
         {
-            public const string ReferenceRoot = ArtRoot + "/UI/Reference";
+            public const string Root = ArtRoot + "/UI";
+
+            public const string ReferenceRoot = Root + "/Reference";
+
+            public const string WindIcon = Root + "/windicon.png";
 
             public static class DiscPreview
             {
@@ -111,6 +115,18 @@ namespace DiskGolf.Gameplay
         {
             public const string PrototypeRoot = "Assets/Scenes/Prototype";
 
+            public const string MenuRoot = "Assets/Scenes/Menu";
+
+            public const string Intro = MenuRoot + "/Intro.unity";
+
+            public const string MainMenu = MenuRoot + "/MainMenu.unity";
+
+            public const string CharacterSelect = MenuRoot + "/CharacterSelect.unity";
+
+            public const string CourseSelect = MenuRoot + "/CourseSelect.unity";
+
+            public const string Settings = MenuRoot + "/Settings.unity";
+
             public const string PrototypeFlat3 = PrototypeRoot + "/PrototypeFlat3.unity";
         }
 
@@ -125,6 +141,13 @@ namespace DiskGolf.Gameplay
             public const string TextMeshProRoot = "Assets/ThirdParty/TextMesh Pro";
 
             public const string TmpSettings = TextMeshProRoot + "/Resources/TMP Settings.asset";
+
+            public const string TmpResourcesRoot = TextMeshProRoot + "/Resources/Fonts & Materials";
+
+            public const string PixelEmulatorSdf = TmpResourcesRoot + "/Pixel Emulator SDF.asset";
+
+            /// <summary>Resources.Load key (any Resources/Fonts &amp; Materials folder).</summary>
+            public const string PixelEmulatorSdfResource = "Fonts & Materials/Pixel Emulator SDF";
         }
     }
 }

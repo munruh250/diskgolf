@@ -419,11 +419,6 @@ namespace DiskGolf.UI
             return x + width + 6f * S;
         }
 
-        static void BindFont(TextMeshProUGUI tmp)
-        {
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
-        }
+        static void BindFont(TextMeshProUGUI tmp) => HudTypography.BindFont(tmp);
     }
 }

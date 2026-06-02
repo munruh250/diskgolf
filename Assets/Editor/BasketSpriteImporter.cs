@@ -23,7 +23,7 @@ namespace DiskGolf.EditorTools
             importer.mipmapEnabled = false;
             importer.filterMode = FilterMode.Bilinear;
             importer.spritePivot = new Vector2(0.5f, 0f);
-            importer.spritePixelsToUnits = 220f;
+            importer.spritePixelsPerUnit = 220f;
             importer.isReadable = true;
         }
 

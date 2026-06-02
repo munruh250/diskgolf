@@ -1,4 +1,5 @@
 using DiskGolf.Flight;
+using DiskGolf.Gameplay;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,7 +21,14 @@ namespace DiskGolf.UI
 
         [SerializeField] RectTransform arrowRoot;
 
+        [SerializeField] Image windIcon;
+
         [SerializeField] TextMeshProUGUI speedValueText;
+
+        void Awake()
+        {
+            BindSceneReferences();
+        }
 
         public static WindWidget Ensure(RectTransform hudRoot)
         {
@@ -33,6 +41,7 @@ namespace DiskGolf.UI
             {
                 if (existing.name != RootName)
                     existing.name = RootName;
+                existing.BindSceneReferences();
                 existing.ApplyTypography();
                 return existing;
             }
@@ -46,8 +55,23 @@ namespace DiskGolf.UI
             return widget;
         }
 
+        public void BindSceneReferences()
+        {
+            var frame = transform.Find("Frame");
+            if (frame != null)
+            {
+                var arrowPanel = frame.Find("ArrowPanel");
+                arrowRoot ??= arrowPanel?.Find("ArrowRoot") as RectTransform;
+                speedValueText ??= frame.Find("SpeedPanel/WindSpeed")?.GetComponent<TextMeshProUGUI>();
+            }
+
+            EnsureWindIcon();
+        }
+
         public void SetWind(WindSettings wind)
         {
+            EnsureWindIcon();
+
             if (arrowRoot != null)
             {
                 float angle = Mathf.Atan2(wind.direction.x, wind.direction.y) * Mathf.Rad2Deg;
@@ -74,7 +98,7 @@ namespace DiskGolf.UI
             arrowRoot.anchoredPosition = Vector2.zero;
             arrowRoot.sizeDelta = new Vector2(32f, 32f);
 
-            CreateArrowHead(arrowRoot);
+            EnsureWindIcon();
 
             var speedPanel = CreatePanel("SpeedPanel", SpeedPanelColor, new Vector2(64f, 4f), new Vector2(100f, 48f));
             speedPanel.SetParent(frame, false);
@@ -87,6 +111,55 @@ namespace DiskGolf.UI
                 new Vector2(84f, 28f), SpeedTextColor, TextAlignmentOptions.BottomLeft);
             speedValueText.transform.SetParent(speedPanel.transform, false);
             ApplyTypography();
+        }
+
+        void EnsureWindIcon()
+        {
+            if (arrowRoot == null)
+                return;
+
+            windIcon ??= arrowRoot.Find("WindIcon")?.GetComponent<Image>();
+            if (windIcon == null)
+            {
+                HideLegacyArrowArt();
+                windIcon = CreateWindIcon(arrowRoot);
+            }
+
+            var sprite = RuntimeArt.LoadWindIconSprite();
+            if (sprite != null)
+            {
+                windIcon.sprite = sprite;
+                windIcon.enabled = true;
+            }
+
+            windIcon.preserveAspect = true;
+            windIcon.color = Color.white;
+            windIcon.raycastTarget = false;
+        }
+
+        static Image CreateWindIcon(RectTransform parent)
+        {
+            var go = new GameObject("WindIcon", typeof(RectTransform), typeof(Image));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(4f, 4f);
+            rt.offsetMax = new Vector2(-4f, -4f);
+            return go.GetComponent<Image>();
+        }
+
+        void HideLegacyArrowArt()
+        {
+            if (arrowRoot == null)
+                return;
+
+            foreach (var childName in new[] { "Shaft", "Head" })
+            {
+                var legacy = arrowRoot.Find(childName);
+                if (legacy != null)
+                    legacy.gameObject.SetActive(false);
+            }
         }
 
         public void ApplyTypography()
@@ -112,27 +185,6 @@ namespace DiskGolf.UI
             image.color = color;
             image.raycastTarget = false;
             return rt;
-        }
-
-        static void CreateArrowHead(RectTransform parent)
-        {
-            var shaft = new GameObject("Shaft", typeof(RectTransform), typeof(Image));
-            var shaftRt = shaft.GetComponent<RectTransform>();
-            shaftRt.SetParent(parent, false);
-            shaftRt.anchorMin = shaftRt.anchorMax = new Vector2(0.5f, 0.5f);
-            shaftRt.pivot = new Vector2(0.5f, 0.5f);
-            shaftRt.anchoredPosition = new Vector2(0f, -2f);
-            shaftRt.sizeDelta = new Vector2(6f, 22f);
-            shaft.GetComponent<Image>().color = Color.white;
-
-            var head = new GameObject("Head", typeof(RectTransform), typeof(Image));
-            var headRt = head.GetComponent<RectTransform>();
-            headRt.SetParent(parent, false);
-            headRt.anchorMin = headRt.anchorMax = new Vector2(0.5f, 0.5f);
-            headRt.pivot = new Vector2(0.5f, 0f);
-            headRt.anchoredPosition = new Vector2(0f, 10f);
-            headRt.sizeDelta = new Vector2(16f, 14f);
-            head.GetComponent<Image>().color = Color.white;
         }
 
         static TextMeshProUGUI CreateText(string name, string text, Vector2 pos,

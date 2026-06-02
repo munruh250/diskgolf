@@ -33,12 +33,12 @@ namespace DiskGolf.Input
 
         void Update()
         {
-            if (UnityEngine.Input.GetKeyDown(KeyCode.Z)) ReleaseAngle = ReleaseAngle.Hyzer;
-
             if (UnityEngine.Input.GetKeyDown(KeyCode.X)) ReleaseAngle = ReleaseAngle.Flat;
 
             if (UnityEngine.Input.GetKeyDown(KeyCode.C)) ReleaseAngle = ReleaseAngle.Anhyzer;
         }
+
+        public bool TrajectoryZoomTogglePressed => UnityEngine.Input.GetKeyDown(KeyCode.Z);
 
         public bool ConfirmPressed => UnityEngine.Input.GetKeyDown(KeyCode.Space);
 

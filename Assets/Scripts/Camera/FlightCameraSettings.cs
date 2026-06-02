@@ -19,6 +19,18 @@ namespace DiskGolf.Camera
         [Range(0f, 1f)]
         public float sideScreenY = 0.72f;
 
+        [Header("Trajectory target zoom (Z toggle)")]
+        public Vector3 targetZoomOffset = new(0f, 7f, -9f);
+
+        [Range(30f, 70f)]
+        public float targetZoomFieldOfView = 44f;
+
+        [Min(0.5f)]
+        public float trajectoryZoomTravelSeconds = 1.85f;
+
+        [Min(0.25f)]
+        public float trajectoryZoomExitSeconds = 0.9f;
+
         [Header("In-flight chase camera")]
         public Vector3 chaseOffset = new(0f, 1.8f, -6f);
 
@@ -31,6 +43,14 @@ namespace DiskGolf.Camera
         public float SideFieldOfView => sideFieldOfView;
 
         public Vector3 ChaseOffset => chaseOffset;
+
+        public Vector3 TargetZoomOffset => targetZoomOffset;
+
+        public float TargetZoomFieldOfView => targetZoomFieldOfView;
+
+        public float TrajectoryZoomTravelSeconds => trajectoryZoomTravelSeconds;
+
+        public float TrajectoryZoomExitSeconds => trajectoryZoomExitSeconds;
 
         public float TargetViewportY => targetViewportY;
 

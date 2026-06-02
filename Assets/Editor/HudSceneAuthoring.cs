@@ -75,10 +75,11 @@ namespace DiskGolf.EditorTools
 
         static bool UpgradeAccuracyMeter(RectTransform hud)
         {
-            var visual = hud.Find("TimingMeters/HeightMeter")?.GetComponent<HeightMeterVisual>();
+            var meters = hud.Find("TimingMeters");
+            var visual = HeightMeterVisual.FindMeterRoot(meters)?.GetComponent<HeightMeterVisual>();
             if (visual == null)
             {
-                Debug.LogWarning("[Disk Golf] TimingMeters/HeightMeter not found — accuracy meter was not upgraded.");
+                Debug.LogWarning("[Disk Golf] TimingMeters accuracy meter not found — accuracy meter was not upgraded.");
                 return false;
             }
 

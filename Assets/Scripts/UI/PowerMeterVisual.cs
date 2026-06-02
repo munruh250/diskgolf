@@ -191,8 +191,23 @@ namespace DiskGolf.UI
 
         public void SetNeedleVisible(bool visible)
         {
-            if (needle != null)
-                needle.gameObject.SetActive(visible);
+            if (needle == null)
+                return;
+
+            needle.gameObject.SetActive(visible);
+            if (visible)
+                EnsureNeedleDrawOrder();
+        }
+
+        void EnsureNeedleDrawOrder()
+        {
+            if (needle == null)
+                return;
+
+            needle.SetAsLastSibling();
+            var img = needle.GetComponent<Image>();
+            if (img != null)
+                img.color = Color.white;
         }
 
         static PowerMeterVisual Build(Transform parent)
@@ -329,7 +344,7 @@ namespace DiskGolf.UI
             var labelColor = new Color(1f, 0.92f, 0.2f);
             HudTypography.Apply(tmp, TextAlignmentOptions.Center);
             tmp.color = labelColor;
-            BindFont(tmp);
+            HudTypography.BindFont(tmp);
             return tmp;
         }
 
@@ -358,12 +373,7 @@ namespace DiskGolf.UI
             sweetGo.SetActive(false);
         }
 
-        static void BindFont(TextMeshProUGUI tmp)
-        {
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
-        }
+        static void BindFont(TextMeshProUGUI tmp) => HudTypography.BindFont(tmp);
 
         public void SetIndicator(float normalized01)
         {
@@ -372,6 +382,7 @@ namespace DiskGolf.UI
 
             float angle = Mathf.Lerp(ArcStartDeg, ArcEndDeg, Mathf.Clamp01(normalized01));
             needle.localRotation = Quaternion.Euler(0f, 0f, angle - 90f);
+            EnsureNeedleDrawOrder();
         }
 
         public void SetSweetSpot(float center01, float width01)
@@ -396,8 +407,7 @@ namespace DiskGolf.UI
 
             sweetSpotRoot.gameObject.SetActive(true);
             sweetSpotRoot.SetAsLastSibling();
-            if (needle != null)
-                needle.SetAsLastSibling();
+            EnsureNeedleDrawOrder();
         }
 
         public void HideSweetSpot()

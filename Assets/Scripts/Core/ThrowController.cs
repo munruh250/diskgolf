@@ -93,6 +93,8 @@ namespace DiskGolf.Core
 
         public float TargetTrajectoryFt => aimAdjust != null ? aimAdjust.TargetDistanceFt : 0f;
 
+        public float PreviewDistanceYards => aimAdjust != null ? aimAdjust.TargetDistanceFt / 3f : 0f;
+
         public bool IsPreThrowPhase => _state.Phase is ThrowPhase.Aiming
             or ThrowPhase.PowerMeter
             or ThrowPhase.HeightMeter;
@@ -127,7 +129,38 @@ namespace DiskGolf.Core
                 return;
 
             SyncDiscToHand();
+            HandlePreThrowAimInput();
             RefreshMeterPreview();
+            RefreshTrajectoryZoomCamera();
+        }
+
+        void HandlePreThrowAimInput()
+        {
+            if (input == null || bag?.Active == null || aimAdjust == null)
+                return;
+
+            if (!input.AimLeft && !input.AimRight && !input.AimUp && !input.AimDown)
+                return;
+
+            aimAdjust.ApplyHeldInput(
+                hole,
+                _discPosition,
+                bag.Active,
+                input.AimLeft,
+                input.AimRight,
+                input.AimUp,
+                input.AimDown);
+        }
+
+        void RefreshTrajectoryZoomCamera()
+        {
+            if (_cameraDirector == null || !_cameraDirector.TrajectoryZoomActive)
+                return;
+
+            _cameraDirector.RefreshTrajectoryZoom(
+                GetPreviewPath(),
+                GetPreviewTargetWorld(),
+                PreviewDistanceYards);
         }
 
         void RefreshMeterPreview()
@@ -172,6 +205,14 @@ namespace DiskGolf.Core
 
             if (_holeCompletePending)
                 return;
+
+            if (ShowsTrajectoryPreview && input.TrajectoryZoomTogglePressed)
+            {
+                _cameraDirector?.ToggleTrajectoryZoom(
+                    GetPreviewPath(),
+                    GetPreviewTargetWorld(),
+                    PreviewDistanceYards);
+            }
 
             switch (_state.Phase)
             {
@@ -240,18 +281,6 @@ namespace DiskGolf.Core
                 aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
             }
 
-            if (bag.Active != null)
-            {
-                aimAdjust.ApplyHeldInput(
-                    hole,
-                    _discPosition,
-                    bag.Active,
-                    input.AimLeft,
-                    input.AimRight,
-                    input.AimUp,
-                    input.AimDown);
-            }
-
             if (input.ConfirmPressed)
             {
                 BeginThrowMeters();
@@ -288,18 +317,6 @@ namespace DiskGolf.Core
 
         void HandlePutting()
         {
-            if (bag.Active != null)
-            {
-                aimAdjust.ApplyHeldInput(
-                    hole,
-                    _discPosition,
-                    bag.Active,
-                    input.AimLeft,
-                    input.AimRight,
-                    input.AimUp,
-                    input.AimDown);
-            }
-
             if (!input.ConfirmPressed)
                 return;
 
@@ -615,6 +632,7 @@ namespace DiskGolf.Core
 
             _strokeCount = 0;
             _throwFromPutting = false;
+            _cameraDirector?.ClearTrajectoryZoom();
 
             if (hole != null)
             {
@@ -699,6 +717,21 @@ namespace DiskGolf.Core
                 _wind,
                 _discPosition,
                 aim));
+        }
+
+        public Vector3 GetPreviewTargetWorld()
+        {
+            var path = GetPreviewPath();
+            var wps = path?.Waypoints;
+
+            if (wps != null && wps.Count > 0)
+                return wps[wps.Count - 1].Position;
+
+            if (hole == null || aimAdjust == null)
+                return _discPosition;
+
+            var aim = aimAdjust.AimDirection(hole, _discPosition);
+            return _discPosition + aim * (aimAdjust.TargetDistanceFt * 0.3048f);
         }
     }
 }

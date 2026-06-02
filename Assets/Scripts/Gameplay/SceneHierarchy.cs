@@ -80,6 +80,7 @@ namespace DiskGolf.Gameplay
             {
                 RenameChild(meters, "NtmPowerMeter", "PowerMeter");
                 RenameChild(meters, "NtmHeightMeter", "HeightMeter");
+                RenameChild(meters, "AccuracyMeter", "HeightMeter");
             }
         }
 

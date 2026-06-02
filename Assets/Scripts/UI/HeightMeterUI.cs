@@ -23,7 +23,12 @@ namespace DiskGolf.UI
             get
             {
                 if (_visual == null || !_visual)
+                {
                     _visual = TimingMeterHud.Height;
+                    if (_visual == null)
+                        _visual = FindObjectOfType<HeightMeterVisual>(true);
+                }
+
                 return _visual;
             }
         }
@@ -82,7 +87,11 @@ namespace DiskGolf.UI
             _sweetCenter = center01;
             _sweetWidth = width01;
             _hasSweetZone = true;
-            Visual?.SetSweetSpot(center01, width01);
+
+            if (GameSessionSettings.ShowMeterSweetSpots)
+                Visual?.SetSweetSpot(center01, width01);
+            else
+                Visual?.HideSweetSpot();
         }
 
         public void PreviewTargetZone(float center01, float width01)

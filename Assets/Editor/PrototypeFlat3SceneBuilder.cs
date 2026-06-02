@@ -638,10 +638,7 @@ namespace DiskGolf.EditorTools
 
         static void TryBindTmpFont(TextMeshProUGUI tmp)
         {
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-
-            if (font != null)
-                tmp.font = font;
+            HudTypography.BindFont(tmp);
         }
 
         static GameObject HudSliderUi(RectTransform root, Vector2 anchored, out Slider slider)
