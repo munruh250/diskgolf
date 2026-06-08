@@ -9,8 +9,6 @@ namespace DiskGolf.Core
     {
         const float MinTargetDistanceFt = 10f;
 
-        const float YawHoldRateDegPerSec = 22f;
-
         const float DistanceHoldRateFtPerSec = 12f;
 
         [SerializeField] float maxYawDegrees = 90f;
@@ -71,11 +69,12 @@ namespace DiskGolf.Core
             if (deltaTime <= 0f)
                 return;
 
+            float yawRateDegPerSec = YawHoldRateForTargetDistance(TargetDistanceFt);
             float yawDelta = 0f;
             if (left)
-                yawDelta -= YawHoldRateDegPerSec * deltaTime;
+                yawDelta -= yawRateDegPerSec * deltaTime;
             if (right)
-                yawDelta += YawHoldRateDegPerSec * deltaTime;
+                yawDelta += yawRateDegPerSec * deltaTime;
 
             if (Mathf.Abs(yawDelta) > 0f)
             {
@@ -93,6 +92,13 @@ namespace DiskGolf.Core
 
             if (Mathf.Abs(yawDelta) > 0f || Mathf.Abs(distanceDelta) > 0f)
                 RecalculateTarget(hole, lie, disc);
+        }
+
+        /// <summary>Match left/right arc motion to the up/down hold rate at the current target distance.</summary>
+        static float YawHoldRateForTargetDistance(float targetDistanceFt)
+        {
+            float radiusFt = Mathf.Max(targetDistanceFt, MinTargetDistanceFt);
+            return DistanceHoldRateFtPerSec / (radiusFt * Mathf.Deg2Rad);
         }
 
         static float DistanceAlongAim(HoleSetup hole, Vector3 lie, Vector3 aim)

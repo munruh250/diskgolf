@@ -39,6 +39,10 @@ namespace DiskGolf.UI
 
         public static float PowerTotal => ArcRadius * 2f + 40f * UiScale;
 
+        public const float PowerMeterPortraitWidth = 461f;
+
+        public const float PowerMeterPortraitHeight = 499f;
+
         /// <summary>Match height meter to power arc so blue bars read like NTM.</summary>
         public static float HeightTotal => PowerTotal;
 

@@ -39,7 +39,7 @@ namespace DiskGolf.EditorTools
                 settings.preserveManualLayout = true;
             }
 
-            EnsureDiscPreviewInPowerMeter(hud);
+            EnsurePowerMeterPortrait(hud);
             bool addedHoleBanner = EnsureScoreBanners(hud);
             WireThrowControllerBannerRefs(hud);
             HudTypography.ApplyToGameplayHud(hud);
@@ -150,19 +150,17 @@ namespace DiskGolf.EditorTools
             return !wasCurrent;
         }
 
-        static void EnsureDiscPreviewInPowerMeter(RectTransform hud)
+        static void EnsurePowerMeterPortrait(RectTransform hud)
         {
             var arcHub = hud.Find("TimingMeters/PowerMeter/Pivot/ArcHub") as RectTransform;
             if (arcHub == null)
             {
-                Debug.LogWarning("[Disk Golf] PowerMeter ArcHub not found — disc preview hub was not created.");
+                Debug.LogWarning("[Disk Golf] PowerMeter ArcHub not found — player portrait was not created.");
                 return;
             }
 
-            if (arcHub.Find("Hub") == null)
-                DiscPreviewWidget.BakeIntoArcHub(arcHub, RuntimeArt.LoadDiscPreviewSprite());
-            else
-                arcHub.GetComponentInChildren<DiscPreviewWidget>(true)?.BindReferences();
+            PowerMeterPortraitWidget.EnsureInArcHub(arcHub);
+            EditorUtility.SetDirty(arcHub.gameObject);
         }
     }
 }

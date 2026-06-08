@@ -41,6 +41,10 @@ namespace DiskGolf.Core
 
         [SerializeField] ThrowAimAdjust aimAdjust;
 
+        [SerializeField] float basketCelebrationDelaySeconds = 2f;
+
+        [SerializeField] AudioClip basketChainSfx;
+
         CameraDirector _cameraDirector;
 
         readonly ThrowStateMachine _state = new ThrowStateMachine();
@@ -418,12 +422,20 @@ namespace DiskGolf.Core
         void FinishThrowCommon(FlightPath completedPath, bool allowEnterPutting)
         {
             var wps = completedPath?.Waypoints;
+            bool holed = presenter != null && presenter.LastFlightHoled;
 
             if (presenter != null)
             {
-                float originGroundY = wps != null && wps.Count > 0 ? wps[0].Position.y : _discPosition.y;
-                _discPosition = DiscLieGround.SnapLie(presenter.LandedPosition, originGroundY);
-                presenter.SetPosition(_discPosition);
+                if (holed)
+                {
+                    _discPosition = presenter.LandedPosition;
+                }
+                else
+                {
+                    float originGroundY = wps != null && wps.Count > 0 ? wps[0].Position.y : _discPosition.y;
+                    _discPosition = DiscLieGround.SnapLie(presenter.LandedPosition, originGroundY);
+                    presenter.SetPosition(_discPosition);
+                }
             }
             else if (wps != null && wps.Count > 0)
                 _discPosition = DiscLieGround.SnapLie(wps[wps.Count - 1].Position, wps[0].Position.y);
@@ -434,7 +446,7 @@ namespace DiskGolf.Core
 
             if (IsDiscHoled(_discPosition))
             {
-                CompleteHole();
+                BeginHoleComplete();
                 return;
             }
 
@@ -531,7 +543,7 @@ namespace DiskGolf.Core
         {
             if (hole != null && (restFt <= HoledToleranceFt || IsDiscHoled(_discPosition)))
             {
-                CompleteHole();
+                BeginHoleComplete();
                 yield break;
             }
 
@@ -562,7 +574,7 @@ namespace DiskGolf.Core
             (presenter != null && presenter.LastFlightHoled)
             || BasketCatchDetector.ContainsPoint(discWorld, GreyboxScale.DiscDiameterM * 0.45f);
 
-        void CompleteHole()
+        void BeginHoleComplete()
         {
             _postThrowPending = false;
 
@@ -585,21 +597,25 @@ namespace DiskGolf.Core
             _throwPresentationReady = false;
             ApplyThrowPresentationVisibility();
 
-            presenter?.SetPosition(hole.BasketPosition);
-            _discPosition = hole.BasketPosition;
-
             _holeCompletePending = true;
-            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
-            holeCompleteBanner?.Show(_strokeCount, HolePar);
 
             if (_holeCompleteRoutine != null)
                 StopCoroutine(_holeCompleteRoutine);
 
-            _holeCompleteRoutine = StartCoroutine(HoleCompleteRoutine());
+            _holeCompleteRoutine = StartCoroutine(HoleCompleteSequence());
         }
 
-        IEnumerator HoleCompleteRoutine()
+        IEnumerator HoleCompleteSequence()
         {
+            float delay = Mathf.Max(0f, basketCelebrationDelaySeconds);
+            if (delay > 0f)
+                yield return new WaitForSeconds(delay);
+
+            PlayBasketChainSfx();
+
+            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
+            holeCompleteBanner?.Show(_strokeCount, HolePar);
+
             float wait = holeCompleteBanner != null ? holeCompleteBanner.DisplaySeconds : 3.5f;
             float elapsed = 0f;
 
@@ -611,6 +627,15 @@ namespace DiskGolf.Core
 
             _holeCompleteRoutine = null;
             ResetHole();
+        }
+
+        void PlayBasketChainSfx()
+        {
+            var clip = basketChainSfx != null
+                ? basketChainSfx
+                : Resources.Load<AudioClip>("Audio/BasketChain");
+
+            GameplayAudio.PlayOneShot(clip);
         }
 
         void OnPhaseChangedInternal(ThrowPhase phase)

@@ -88,7 +88,7 @@ namespace DiskGolf.UI
 
             _power?.BindSceneReferences();
             _height?.BindSceneReferences();
-            _power?.DiscPreview?.Refresh();
+            _power?.PlayerPortrait?.Refresh();
         }
 
         void RefreshMeters(RectTransform canvas)
