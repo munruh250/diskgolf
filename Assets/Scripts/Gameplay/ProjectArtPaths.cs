@@ -41,6 +41,15 @@ namespace DiskGolf.Gameplay
                 public const string Material = Root + "/MAT_Rough.mat";
             }
 
+            public static class Green
+            {
+                public const string Root = ArtRoot + "/Environment/Course/Green";
+
+                public const string Albedo = Root + "/TEX_Green_Albedo.png";
+
+                public const string Material = Root + "/MAT_Green.mat";
+            }
+
             public static class Tee
             {
                 public const string Root = ArtRoot + "/Environment/Course/Tee";
@@ -89,6 +98,12 @@ namespace DiskGolf.Gameplay
             public const string WindIcon = Root + "/windicon.png";
 
             public static string ScoreBanner(string fileName) => $"{Root}/{fileName}.png";
+
+            public const string HappyCharacterPose = Root + "/Happy Character Pose.png";
+
+            public const string SadCharacterPose = Root + "/Sad Character Pose.png";
+
+            public const string HoleSummaryBackground = ReferenceRoot + "/HoleSummaryScore.png";
 
             public static class DiscPreview
             {

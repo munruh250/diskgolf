@@ -31,9 +31,13 @@ namespace DiskGolf.Core
 
         [SerializeField] OnTheGreenBannerUI onTheGreenBanner;
 
+        [SerializeField] LieLandingBannerUI lieLandingBanner;
+
         [SerializeField] ThrowResultBannerUI throwResultBanner;
 
         [SerializeField] HoleCompleteBannerUI holeCompleteBanner;
+
+        [SerializeField] HoleCompleteCutsceneUI holeCompleteCutscene;
 
         [SerializeField] ThrowSummaryBannerUI throwSummaryBanner;
 
@@ -42,6 +46,8 @@ namespace DiskGolf.Core
         [SerializeField] ThrowAimAdjust aimAdjust;
 
         [SerializeField] float basketCelebrationDelaySeconds = 2f;
+
+        [SerializeField] float holeCompleteCutsceneSeconds = 3f;
 
         [SerializeField] AudioClip basketChainSfx;
 
@@ -122,6 +128,7 @@ namespace DiskGolf.Core
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
             holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
             onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+            lieLandingBanner ??= LieLandingBannerUI.Ensure();
             inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
             if (inTheCircleBanner != null)
                 inTheCircleBanner.SetActive(false);
@@ -446,9 +453,12 @@ namespace DiskGolf.Core
 
             if (IsDiscHoled(_discPosition))
             {
+                _cameraDirector?.HoldLandingCameraUntilThrowSummary();
                 BeginHoleComplete();
                 return;
             }
+
+            _cameraDirector?.HoldLandingCameraUntilThrowSummary();
 
             _pendingRestFt = hole != null ? hole.DistanceToBasket(_discPosition) : float.PositiveInfinity;
             _pendingAllowPutting = allowEnterPutting;
@@ -467,23 +477,59 @@ namespace DiskGolf.Core
 
         IEnumerator PostThrowRoutine(FlightPath completedPath)
         {
+            float wait = ShowLandingCallout(completedPath);
+            yield return new WaitForSeconds(wait);
+
+            HideLandingCallout();
+
+            yield return CompletePostThrowTransitionRoutine();
+            _postThrowRoutine = null;
+        }
+
+        float ShowLandingCallout(FlightPath completedPath)
+        {
+            const float defaultWait = 2.25f;
+            float wait = defaultWait;
+
+            bool onGreen = IsDiscOnGreenSurface(_discPosition)
+                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
+            if (onGreen)
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.Show();
+                wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : defaultWait;
+            }
+            else if (hole != null && !hole.IsNearTee(_discPosition))
+            {
+                float fallbackGroundY = _discPosition.y - DiscLieGround.DiscRestLift;
+                var lie = DiscLieGround.SampleLieType(_discPosition, fallbackGroundY);
+                if (lie is LieType.Fairway or LieType.Rough)
+                {
+                    lieLandingBanner ??= LieLandingBannerUI.Ensure();
+                    lieLandingBanner?.Show(lie);
+                    wait = lieLandingBanner != null ? lieLandingBanner.DisplaySeconds : defaultWait;
+                }
+            }
+
             if (completedPath != null)
             {
                 throwResultBanner ??= ThrowResultBannerUI.Ensure();
                 throwResultBanner?.ShowThrowDistance(completedPath.TotalDistanceFt);
             }
 
-            float wait = throwResultBanner != null ? throwResultBanner.DisplaySeconds : 2.75f;
-            float elapsed = 0f;
+            if (onGreen && onTheGreenBanner != null && onTheGreenBanner.gameObject.activeSelf)
+                onTheGreenBanner.transform.SetAsLastSibling();
+            else if (lieLandingBanner != null && lieLandingBanner.gameObject.activeSelf)
+                lieLandingBanner.transform.SetAsLastSibling();
 
-            while (elapsed < wait && _postThrowPending)
-            {
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
+            return wait;
+        }
 
-            yield return CompletePostThrowTransitionRoutine();
-            _postThrowRoutine = null;
+        void HideLandingCallout()
+        {
+            throwResultBanner?.Hide();
+            HideOnTheGreenBanner();
+            HideLieLandingBanner();
         }
 
         IEnumerator CompletePostThrowTransitionRoutine()
@@ -492,7 +538,6 @@ namespace DiskGolf.Core
                 yield break;
 
             _postThrowPending = false;
-            throwResultBanner?.Hide();
 
             if (_pendingWasPut)
             {
@@ -500,28 +545,23 @@ namespace DiskGolf.Core
                 yield break;
             }
 
-            bool inCircle = _pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt;
-            if (inCircle)
-            {
-                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-                onTheGreenBanner?.ShowBriefly();
-
-                float wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : 2.25f;
-                yield return new WaitForSeconds(wait);
-
-                onTheGreenBanner?.Hide();
-            }
-
             _throwPresentationReady = false;
             ApplyThrowPresentationVisibility();
 
             RelocateThrowerForNextShot();
-            SnapSideCameraForNextShot();
 
-            if (inCircle)
+            bool onGreen = IsDiscOnGreenSurface(_discPosition)
+                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
+            if (onGreen)
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
+        }
+
+        static bool IsDiscOnGreenSurface(Vector3 discPosition)
+        {
+            float fallbackGroundY = discPosition.y - DiscLieGround.DiscRestLift;
+            return DiscLieGround.SampleLieType(discPosition, fallbackGroundY) == LieType.Green;
         }
 
         void ResumeAimingFromLanded()
@@ -531,12 +571,6 @@ namespace DiskGolf.Core
 
             EnableCircleBanner(false);
             _state.TransitionTo(ThrowPhase.Aiming);
-        }
-
-        void SnapSideCameraForNextShot()
-        {
-            _cameraDirector ??= FindObjectOfType<CameraDirector>();
-            _cameraDirector?.SnapToSideThrowView();
         }
 
         IEnumerator ResolvePutOutcomeRoutine(float restFt)
@@ -551,9 +585,8 @@ namespace DiskGolf.Core
             ApplyThrowPresentationVisibility();
 
             RelocateThrowerForNextShot();
-            SnapSideCameraForNextShot();
 
-            if (hole != null && restFt <= hole.CircleRadiusFt)
+            if (hole != null && (IsDiscOnGreenSurface(_discPosition) || restFt <= hole.CircleRadiusFt))
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
@@ -593,6 +626,7 @@ namespace DiskGolf.Core
             throwResultBanner?.Hide();
             EndMeterFlightDisplay();
             HideOnTheGreenBanner();
+            HideLieLandingBanner();
             HideThrowSummaryBanner();
             _throwPresentationReady = false;
             ApplyThrowPresentationVisibility();
@@ -613,17 +647,16 @@ namespace DiskGolf.Core
 
             PlayBasketChainSfx();
 
-            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
-            holeCompleteBanner?.Show(_strokeCount, HolePar);
+            holeCompleteCutscene ??= HoleCompleteCutsceneUI.Ensure();
+            holeCompleteCutscene?.Show(_strokeCount, HolePar, holeCompleteCutsceneSeconds);
 
-            float wait = holeCompleteBanner != null ? holeCompleteBanner.DisplaySeconds : 3.5f;
-            float elapsed = 0f;
+            float wait = holeCompleteCutscene != null
+                ? holeCompleteCutscene.DisplaySeconds
+                : holeCompleteCutsceneSeconds;
+            yield return new WaitForSeconds(Mathf.Max(0f, wait));
 
-            while (elapsed < wait && _holeCompletePending)
-            {
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
+            holeCompleteCutscene?.Hide();
+            holeCompleteBanner?.Hide();
 
             _holeCompleteRoutine = null;
             ResetHole();
@@ -703,6 +736,8 @@ namespace DiskGolf.Core
 
         IEnumerator ThrowPresentationSequence()
         {
+            _cameraDirector?.ReleaseLandingCameraHold();
+
             throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
 
             if (throwSummaryBanner == null)
@@ -766,6 +801,7 @@ namespace DiskGolf.Core
             }
 
             HideOnTheGreenBanner();
+            HideLieLandingBanner();
         }
 
         void HideOnTheGreenBanner()
@@ -775,6 +811,12 @@ namespace DiskGolf.Core
 
             if (inTheCircleBanner != null)
                 inTheCircleBanner.SetActive(false);
+        }
+
+        void HideLieLandingBanner()
+        {
+            lieLandingBanner ??= LieLandingBannerUI.Ensure();
+            lieLandingBanner?.Hide();
         }
 
         public void ResetHole()
@@ -803,7 +845,10 @@ namespace DiskGolf.Core
 
             throwResultBanner?.Hide();
             holeCompleteBanner?.Hide();
+            holeCompleteCutscene?.Hide();
             HideThrowSummaryBanner();
+            HideLieLandingBanner();
+            _cameraDirector?.ClearLandingCameraHold();
             _throwPresentationReady = false;
             ApplyThrowPresentationVisibility();
             sweetSpotBanner?.Hide();

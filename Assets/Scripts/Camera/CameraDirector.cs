@@ -41,6 +41,16 @@ namespace DiskGolf.Camera
 
         Vector3 _lockedThrowForward = Vector3.forward;
 
+        LandingCameraFreezeExtension _freezeExtension;
+
+        Vector3 _frozenPosition;
+
+        Quaternion _frozenRotation = Quaternion.identity;
+
+        bool _landingCameraFrozen;
+
+        bool _holdLandingCameraUntilThrowSummary;
+
         CinemachineBrain _brain;
 
         public bool TrajectoryZoomActive => _trajectoryZoomActive;
@@ -332,6 +342,91 @@ namespace DiskGolf.Camera
             }
         }
 
+        public void HoldLandingCameraUntilThrowSummary()
+        {
+            _holdLandingCameraUntilThrowSummary = true;
+            FreezeLandingCamera();
+        }
+
+        public void ReleaseLandingCameraHold()
+        {
+            if (!_holdLandingCameraUntilThrowSummary)
+                return;
+
+            _holdLandingCameraUntilThrowSummary = false;
+            UnfreezeLandingCamera();
+            SnapToSideThrowView();
+        }
+
+        public void ClearLandingCameraHold()
+        {
+            _holdLandingCameraUntilThrowSummary = false;
+            UnfreezeLandingCamera();
+        }
+
+        public void FreezeLandingCamera()
+        {
+            if (flightChaseCam == null || _landingCameraFrozen)
+                return;
+
+            EnsureFreezeExtension();
+            CacheBrain();
+
+            var cam = UnityEngine.Camera.main;
+            if (cam != null)
+            {
+                _frozenPosition = cam.transform.position;
+                _frozenRotation = cam.transform.rotation;
+            }
+
+            _landingCameraFrozen = true;
+            _freezeExtension.IsFrozen = true;
+            _freezeExtension.FrozenPosition = _frozenPosition;
+            _freezeExtension.FrozenRotation = _frozenRotation;
+
+            flightChaseCam.Follow = null;
+            flightChaseCam.LookAt = null;
+            SetFlightDirectionLockEnabled(false);
+            SetPriority(flightChaseCam, CameraRig.FlightChasePriority);
+            SetActive(flightChaseCam, true);
+            SetPriority(sideSetupCam, 0);
+            SetActive(sideSetupCam, false);
+
+            _brain?.ManualUpdate();
+        }
+
+        void UnfreezeLandingCamera()
+        {
+            if (!_landingCameraFrozen)
+                return;
+
+            _landingCameraFrozen = false;
+
+            if (_freezeExtension != null)
+                _freezeExtension.IsFrozen = false;
+
+            SetFlightDirectionLockEnabled(true);
+        }
+
+        void SetFlightDirectionLockEnabled(bool on)
+        {
+            if (flightChaseCam == null)
+                return;
+
+            var lockExt = flightChaseCam.GetComponent<FlightDirectionLockExtension>();
+            if (lockExt != null)
+                lockExt.enabled = on;
+        }
+
+        void EnsureFreezeExtension()
+        {
+            if (flightChaseCam == null)
+                return;
+
+            _freezeExtension ??= flightChaseCam.GetComponent<LandingCameraFreezeExtension>()
+                ?? flightChaseCam.gameObject.AddComponent<LandingCameraFreezeExtension>();
+        }
+
         void OnPhase(ThrowPhase phase)
         {
             var previous = _phase;
@@ -342,9 +437,12 @@ namespace DiskGolf.Camera
                 or ThrowPhase.HeightMeter
                 or ThrowPhase.Putting;
 
-            bool flightChaseView = phase is ThrowPhase.InFlight or ThrowPhase.Landed;
+            bool holdLandingCamera = _holdLandingCameraUntilThrowSummary
+                && phase is ThrowPhase.Aiming or ThrowPhase.Putting;
 
-            bool cutFromLanded = previous == ThrowPhase.Landed && sideThrowView;
+            bool flightChaseView = phase is ThrowPhase.InFlight or ThrowPhase.Landed || holdLandingCamera;
+
+            bool cutFromLanded = previous == ThrowPhase.Landed && sideThrowView && !holdLandingCamera;
 
             if (!sideThrowView)
                 ClearTrajectoryZoom();
@@ -354,14 +452,14 @@ namespace DiskGolf.Camera
             else
                 SetActive(flightChaseCam, false);
 
-            if (sideThrowView)
+            if (sideThrowView && !holdLandingCamera)
             {
                 if (cutFromLanded)
                     SnapToSideThrowView();
                 else
                     SetSideThrowViewActive(true);
             }
-            else
+            else if (!sideThrowView)
             {
                 SetPriority(sideSetupCam, 0);
                 SetActive(sideSetupCam, false);
@@ -374,6 +472,13 @@ namespace DiskGolf.Camera
 
             if (flightChaseCam == null)
                 return;
+
+            if (_landingCameraFrozen)
+            {
+                SetPriority(flightChaseCam, CameraRig.FlightChasePriority);
+                SetActive(flightChaseCam, true);
+                return;
+            }
 
             var disc = flightPresenter != null ? flightPresenter.DiscTransform : null;
             if (disc != null)

@@ -9,6 +9,10 @@ namespace DiskGolf.UI
     {
         public static Sprite OnTheGreen => Load("ScoreBanner_OnTheGreen");
 
+        public static Sprite Fairway => Load("ScoreBanner_Fairway");
+
+        public static Sprite Rough => Load("ScoreBanner_Rough");
+
         public static HoleCompleteScoreKind ResolveKind(int strokes, int par)
         {
             if (strokes == 1)

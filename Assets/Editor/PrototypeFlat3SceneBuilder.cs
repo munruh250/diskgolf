@@ -40,7 +40,7 @@ namespace DiskGolf.EditorTools
 
             EnsureTmpEssentials();
 
-            EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough" });
+            EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough", "Green" });
 
             var fairRgb = new Color(0.2f, 0.52f, 0.26f);
             var fairMat = SaveMaterialAsset("MAT_FairwayGreybox", fairRgb,
@@ -62,7 +62,7 @@ namespace DiskGolf.EditorTools
             DirLight(out _);
 
             var fairPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            fairPlane.name = "FairwayPlane";
+            fairPlane.name = "Fairway1";
             fairPlane.tag = "Fairway";
             DestroyColliderImmediate(fairPlane);
             fairPlane.transform.position = Vector3.forward * (76.2f * 0.5f);
@@ -535,8 +535,8 @@ namespace DiskGolf.EditorTools
                 DestroyColliderImmediate(slab);
             }
 
-            Stripe("RoughBorder_L", Vector3.left * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
-            Stripe("RoughBorder_R", Vector3.right * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
+            Stripe("Rough1", Vector3.left * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
+            Stripe("Rough2", Vector3.right * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
         }
 
         static void DirLight(out GameObject go)

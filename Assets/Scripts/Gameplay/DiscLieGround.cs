@@ -1,3 +1,4 @@
+using DiskGolf.Flight;
 using UnityEngine;
 
 namespace DiskGolf.Gameplay
@@ -19,9 +20,26 @@ namespace DiskGolf.Gameplay
             return new Vector3(worldPos.x, groundY + DiscRestLift, worldPos.z);
         }
 
+        public static LieType SampleLieType(Vector3 worldPos, float fallbackGroundY)
+        {
+            if (!TrySampleClosestGroundHit(worldPos, out RaycastHit hit))
+                return LieType.Fairway;
+
+            return ClassifyGroundCollider(hit.collider);
+        }
+
         public static float SampleGroundY(Vector3 worldPos, float fallbackGroundY)
         {
-            float courseGroundY = ResolveCourseGroundY(fallbackGroundY);
+            if (TrySampleClosestGroundHit(worldPos, out RaycastHit hit))
+                return hit.point.y;
+
+            return ResolveCourseGroundY(fallbackGroundY);
+        }
+
+        static bool TrySampleClosestGroundHit(Vector3 worldPos, out RaycastHit closestHit)
+        {
+            closestHit = default;
+            float courseGroundY = ResolveCourseGroundY(worldPos.y);
 
             var origin = worldPos + Vector3.up * RayStartLift;
             int count = Physics.RaycastNonAlloc(
@@ -33,7 +51,6 @@ namespace DiskGolf.Gameplay
                 QueryTriggerInteraction.Ignore);
 
             float closest = float.PositiveInfinity;
-            float groundY = courseGroundY;
             bool foundGround = false;
 
             for (int i = 0; i < count; i++)
@@ -50,12 +67,46 @@ namespace DiskGolf.Gameplay
                     continue;
 
                 closest = hit.distance;
-                groundY = hit.point.y;
+                closestHit = hit;
                 foundGround = true;
             }
 
-            return foundGround ? groundY : courseGroundY;
+            if (!foundGround)
+            {
+                closestHit = default;
+                return false;
+            }
+
+            return true;
         }
+
+        static LieType ClassifyGroundCollider(Collider collider)
+        {
+            if (collider == null)
+                return LieType.Fairway;
+
+            if (collider.CompareTag("Green") || IsGreenName(collider.name))
+                return LieType.Green;
+
+            if (collider.CompareTag("Rough"))
+                return LieType.Rough;
+
+            if (collider.CompareTag("Fairway") || IsFairwayName(collider.name))
+                return LieType.Fairway;
+
+            if (collider.CompareTag("Tee"))
+                return LieType.Tee;
+
+            return LieType.Fairway;
+        }
+
+        static bool IsFairwayName(string objectName) =>
+            !string.IsNullOrEmpty(objectName)
+            && (objectName.StartsWith("Fairway") || objectName == CourseLayout.LegacyFairwayObjectName);
+
+        static bool IsGreenName(string objectName) =>
+            !string.IsNullOrEmpty(objectName)
+            && objectName.StartsWith("Green", System.StringComparison.OrdinalIgnoreCase);
 
         static float ResolveCourseGroundY(float fallbackGroundY)
         {
@@ -68,11 +119,20 @@ namespace DiskGolf.Gameplay
 
         static Transform FindFairwayTransform()
         {
-            var underCourse = GameObject.Find(CourseLayout.RootName)?.transform?.Find(CourseLayout.FairwayObjectName);
+            var underCourse = GameObject.Find(CourseLayout.RootName)?.transform;
             if (underCourse != null)
-                return underCourse;
+            {
+                var fairway = underCourse.Find(CourseLayout.FairwayObjectName);
+                if (fairway != null)
+                    return fairway;
 
-            return GameObject.Find(CourseLayout.FairwayObjectName)?.transform;
+                fairway = underCourse.Find(CourseLayout.LegacyFairwayObjectName);
+                if (fairway != null)
+                    return fairway;
+            }
+
+            return GameObject.Find(CourseLayout.FairwayObjectName)?.transform
+                ?? GameObject.Find(CourseLayout.LegacyFairwayObjectName)?.transform;
         }
 
         public static void EnsureGroundCollider(Transform surface)

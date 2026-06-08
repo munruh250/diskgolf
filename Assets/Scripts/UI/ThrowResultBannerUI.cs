@@ -76,13 +76,8 @@ namespace DiskGolf.UI
             return hud != null ? hud.GetComponent<RectTransform>() : null;
         }
 
-        static void ConfigureBannerRect(RectTransform rt)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(900f, 140f);
-        }
+        static void ConfigureBannerRect(RectTransform rt) =>
+            PostThrowCalloutLayout.ApplyFeetLabelRect(rt);
 
         public static void ApplyStyle(TextMeshProUGUI tmp)
         {
@@ -90,9 +85,9 @@ namespace DiskGolf.UI
             tmp.fontSize = 64f;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.42f, 0.96f, 0.52f);
-            tmp.outlineWidth = 0.32f;
-            tmp.outlineColor = Color.black;
+            tmp.color = Color.black;
+            tmp.outlineWidth = 0f;
+            tmp.ForceMeshUpdate();
             tmp.raycastTarget = false;
 
             var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("InTheCircleBanner")
@@ -113,6 +108,8 @@ namespace DiskGolf.UI
 
             int feet = Mathf.Max(0, Mathf.RoundToInt(distanceFt));
             label.text = $"{feet} FEET";
+            ApplyStyle(label);
+            ConfigureBannerRect(transform as RectTransform);
             transform.SetAsLastSibling();
             gameObject.SetActive(true);
         }

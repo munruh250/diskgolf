@@ -1,15 +1,15 @@
 using System.Collections;
+using DiskGolf.Flight;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Brief centered score banner when the disc lands in the circle.</summary>
-    public sealed class OnTheGreenBannerUI : MonoBehaviour
+    /// <summary>Brief centered banner when the disc lands on fairway or rough.</summary>
+    public sealed class LieLandingBannerUI : MonoBehaviour
     {
         const string HudCanvasName = "GameplayHUD";
-        const string BannerName = "OnTheGreenBanner";
-        const string LegacyBannerName = "InTheCircleBanner";
+        const string BannerName = "LieLandingBanner";
 
         [SerializeField] Image bannerImage;
 
@@ -19,13 +19,13 @@ namespace DiskGolf.UI
 
         public float DisplaySeconds => displaySeconds;
 
-        public static OnTheGreenBannerUI Ensure()
+        public static LieLandingBannerUI Ensure()
         {
             var canvas = FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<OnTheGreenBannerUI>();
+            var existing = canvas.Find(BannerName)?.GetComponent<LieLandingBannerUI>();
             if (existing != null)
             {
                 existing.EnsureBuilt();
@@ -39,8 +39,6 @@ namespace DiskGolf.UI
 
         public void EnsureBuilt()
         {
-            HideLegacyTextBanner();
-
             if (bannerImage != null)
                 return;
 
@@ -56,45 +54,24 @@ namespace DiskGolf.UI
 
             ConfigureBannerRect(transform as RectTransform);
             bannerImage = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
-            ApplySprite(bannerImage);
             bannerImage.raycastTarget = false;
             gameObject.SetActive(false);
         }
 
-        static OnTheGreenBannerUI Build(RectTransform canvas)
+        static LieLandingBannerUI Build(RectTransform canvas)
         {
-            HideLegacyTextBanner(canvas);
-
             var bannerGo = new GameObject(BannerName, typeof(RectTransform), typeof(Image));
             var rt = bannerGo.GetComponent<RectTransform>();
             rt.SetParent(canvas, false);
             ConfigureBannerRect(rt);
 
             var image = bannerGo.GetComponent<Image>();
-            ApplySprite(image);
             image.raycastTarget = false;
 
-            var banner = bannerGo.AddComponent<OnTheGreenBannerUI>();
+            var banner = bannerGo.AddComponent<LieLandingBannerUI>();
             banner.bannerImage = image;
             bannerGo.SetActive(false);
             return banner;
-        }
-
-        static void HideLegacyTextBanner(RectTransform canvas = null)
-        {
-            canvas ??= FindHudCanvas();
-            var legacy = canvas != null ? canvas.Find(LegacyBannerName) : null;
-            if (legacy != null)
-                legacy.gameObject.SetActive(false);
-        }
-
-        static void ApplySprite(Image image)
-        {
-            var sprite = ScoreBannerSprites.OnTheGreen;
-            image.sprite = sprite;
-            image.preserveAspect = true;
-            image.color = Color.white;
-            image.enabled = sprite != null;
         }
 
         static void ConfigureBannerRect(RectTransform rt) =>
@@ -106,28 +83,43 @@ namespace DiskGolf.UI
             return hud != null ? hud.GetComponent<RectTransform>() : null;
         }
 
-        public void Show()
+        public void Show(LieType lie)
         {
             EnsureBuilt();
 
             if (bannerImage == null)
                 return;
 
-            ApplySprite(bannerImage);
+            var sprite = ResolveSprite(lie);
+            if (sprite == null)
+                return;
+
+            bannerImage.sprite = sprite;
+            bannerImage.preserveAspect = true;
+            bannerImage.color = Color.white;
+            bannerImage.enabled = true;
+
             ConfigureBannerRect(transform as RectTransform);
             transform.SetAsLastSibling();
             gameObject.SetActive(true);
         }
 
-        public void ShowBriefly()
+        public void ShowBriefly(LieType lie)
         {
-            Show();
+            Show(lie);
 
             if (_hideRoutine != null)
                 StopCoroutine(_hideRoutine);
 
             _hideRoutine = StartCoroutine(HideAfterDelay());
         }
+
+        static Sprite ResolveSprite(LieType lie) => lie switch
+        {
+            LieType.Fairway => ScoreBannerSprites.Fairway,
+            LieType.Rough => ScoreBannerSprites.Rough,
+            _ => null,
+        };
 
         IEnumerator HideAfterDelay()
         {

@@ -9,11 +9,14 @@ namespace DiskGolf.Gameplay
     public sealed class CourseLayout : MonoBehaviour
     {
         public const string RootName = "CourseElements";
-        public const string FairwayObjectName = "FairwayPlane";
-        public const string RoughObjectName = "RoughBorder";
+        public const string FairwayObjectName = "Fairway1";
+        public const string LegacyFairwayObjectName = "FairwayPlane";
+        public const string GreenObjectName = "Green1";
         public const string MinimapLayerName = "MinimapCourse";
 
         [SerializeField] Transform fairwayPlane;
+
+        [SerializeField] Transform greenSurface;
 
         [SerializeField] Transform teePad;
 
@@ -30,6 +33,8 @@ namespace DiskGolf.Gameplay
         bool _boundsReady;
 
         public Transform FairwayPlane => fairwayPlane;
+
+        public Transform GreenSurface => greenSurface;
 
         public Transform TeePad => teePad;
 
@@ -53,6 +58,7 @@ namespace DiskGolf.Gameplay
         void Awake()
         {
             ResolveReferences();
+            NormalizeCourseNames();
             EnsureGroundColliders();
             Refresh();
         }
@@ -67,6 +73,7 @@ namespace DiskGolf.Gameplay
         public void ResolveReferences()
         {
             fairwayPlane ??= FindChildOrScene(FairwayObjectName);
+            greenSurface ??= FindGreenSurface();
             teePad ??= FindByTag("Tee");
             basket ??= FindByTag("Basket");
 
@@ -123,6 +130,9 @@ namespace DiskGolf.Gameplay
         {
             if (fairwayPlane != null)
                 yield return fairwayPlane;
+
+            if (greenSurface != null)
+                yield return greenSurface;
 
             if (roughBorders != null)
             {
@@ -193,27 +203,17 @@ namespace DiskGolf.Gameplay
             if (fairwayPlane == null)
                 return;
 
-            EnsureHorizontalRough("RoughBorder_L", Vector3.left * 95f);
-            EnsureHorizontalRough("RoughBorder_R", Vector3.right * 95f);
+            EnsureHorizontalRough("Rough1", "RoughBorder_L", Vector3.left * 95f);
+            EnsureHorizontalRough("Rough2", "RoughBorder_R", Vector3.right * 95f);
+            NormalizeCourseNames();
             Refresh();
         }
 
-        void EnsureHorizontalRough(string name, Vector3 localOffset)
+        void EnsureHorizontalRough(string name, string legacyName, Vector3 localOffset)
         {
-            Transform existing = null;
-
-            if (roughBorders != null)
-            {
-                foreach (var rough in roughBorders)
-                {
-                    if (rough != null && rough.name == name)
-                        existing = rough;
-                }
-            }
-
-            existing ??= transform.Find(name);
-            if (existing == null)
-                existing = GameObject.Find(name)?.transform;
+            Transform existing = FindRoughTransform(name);
+            if (existing == null && !string.IsNullOrEmpty(legacyName))
+                existing = FindRoughTransform(legacyName);
 
             if (existing == null)
             {
@@ -243,6 +243,19 @@ namespace DiskGolf.Gameplay
             existing.localPosition = fairwayPlane.localPosition + localOffset + Vector3.up * 0.02f;
             existing.localRotation = Quaternion.identity;
             existing.localScale = new Vector3(6f, 1f, 24f);
+            existing.name = name;
+        }
+
+        static Transform FindRoughTransform(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return null;
+
+            var underCourse = GameObject.Find(RootName)?.transform?.Find(name);
+            if (underCourse != null)
+                return underCourse;
+
+            return GameObject.Find(name)?.transform;
         }
 
         public void EnsureFoliageAndTrees()
@@ -255,6 +268,7 @@ namespace DiskGolf.Gameplay
         void EnsureGroundColliders()
         {
             DiscLieGround.EnsureGroundCollider(fairwayPlane);
+            DiscLieGround.EnsureGroundCollider(greenSurface);
 
             if (roughBorders == null)
                 return;
@@ -299,6 +313,7 @@ namespace DiskGolf.Gameplay
             }
 
             Reparent(GameObject.Find(FairwayObjectName)?.transform);
+            Reparent(FindGreenSurface());
 
             foreach (var rough in GameObject.FindGameObjectsWithTag("Rough"))
                 Reparent(rough.transform);
@@ -309,6 +324,7 @@ namespace DiskGolf.Gameplay
             var layout = rootGo.GetComponent<CourseLayout>() ?? rootGo.AddComponent<CourseLayout>();
             layout.ResolveReferences();
             layout.EnsureTopDownRough();
+            layout.NormalizeCourseNames();
             layout.EnsureFoliageAndTrees();
             layout.ResolveReferences();
             layout.ApplyMinimapLayer();
@@ -316,10 +332,85 @@ namespace DiskGolf.Gameplay
             return layout;
         }
 
+        public void NormalizeCourseNames()
+        {
+            ResolveReferences();
+
+            if (fairwayPlane != null && fairwayPlane.name != FairwayObjectName)
+                fairwayPlane.name = FairwayObjectName;
+
+            if (greenSurface != null)
+            {
+                if (!greenSurface.CompareTag("Green"))
+                    greenSurface.tag = "Green";
+
+                if (greenSurface.name != GreenObjectName)
+                    greenSurface.name = GreenObjectName;
+            }
+
+            int roughIndex = 1;
+            var seen = new HashSet<Transform>();
+
+            if (roughBorders != null)
+            {
+                foreach (var rough in roughBorders)
+                {
+                    if (rough == null || !seen.Add(rough) || rough.CompareTag("Green"))
+                        continue;
+
+                    rough.name = $"Rough{roughIndex++}";
+                }
+            }
+
+            foreach (Transform child in transform)
+            {
+                if (child == null || !child.CompareTag("Rough") || child.CompareTag("Green") || !seen.Add(child))
+                    continue;
+
+                child.name = $"Rough{roughIndex++}";
+            }
+
+            roughBorders = CollectRoughSurfaces();
+        }
+
+        Transform[] CollectRoughSurfaces()
+        {
+            var roughs = new List<Transform>();
+
+            foreach (Transform child in transform)
+            {
+                if (child != null && child.CompareTag("Rough"))
+                    roughs.Add(child);
+            }
+
+            roughs.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            return roughs.ToArray();
+        }
+
+        static Transform FindGreenSurface()
+        {
+            var named = FindChildOrScene(GreenObjectName);
+            if (named != null)
+                return named;
+
+            var tagged = FindByTag("Green");
+            return tagged;
+        }
+
         static Transform FindChildOrScene(string objectName)
         {
             var underRoot = GameObject.Find(RootName)?.transform?.Find(objectName);
-            return underRoot != null ? underRoot : GameObject.Find(objectName)?.transform;
+            if (underRoot != null)
+                return underRoot;
+
+            var direct = GameObject.Find(objectName)?.transform;
+            if (direct != null)
+                return direct;
+
+            if (objectName == FairwayObjectName)
+                return FindChildOrScene(LegacyFairwayObjectName);
+
+            return null;
         }
 
         static Transform FindByTag(string tag)

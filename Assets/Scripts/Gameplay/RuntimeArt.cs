@@ -129,5 +129,20 @@ namespace DiskGolf.Gameplay
             return null;
 #endif
         }
+
+        public static Sprite LoadHappyCharacterPose() => LoadUiSprite(ProjectArtPaths.Ui.HappyCharacterPose);
+
+        public static Sprite LoadSadCharacterPose() => LoadUiSprite(ProjectArtPaths.Ui.SadCharacterPose);
+
+        public static Sprite LoadHoleSummaryBackground() => LoadUiSprite(ProjectArtPaths.Ui.HoleSummaryBackground);
+
+        static Sprite LoadUiSprite(string assetPath)
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+#else
+            return null;
+#endif
+        }
     }
 }

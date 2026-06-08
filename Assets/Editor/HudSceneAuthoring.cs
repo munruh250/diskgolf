@@ -86,6 +86,7 @@ namespace DiskGolf.EditorTools
         {
             bool added = hud.Find("HoleCompleteBanner") == null;
             HoleCompleteBannerUI.CreateForScene(hud);
+            HoleCompleteCutsceneUI.CreateForScene(hud);
             OnTheGreenBannerUI.Ensure();
             ThrowSummaryBannerUI.CreateForScene(hud);
             return added;
@@ -98,12 +99,15 @@ namespace DiskGolf.EditorTools
                 return;
 
             var holeBanner = hud.GetComponentInChildren<HoleCompleteBannerUI>(true);
+            var holeCutscene = hud.GetComponentInChildren<HoleCompleteCutsceneUI>(true);
             var onGreenBanner = hud.GetComponentInChildren<OnTheGreenBannerUI>(true);
             var throwSummaryBanner = hud.GetComponentInChildren<ThrowSummaryBannerUI>(true);
 
             var so = new SerializedObject(controller);
             if (holeBanner != null)
                 so.FindProperty("holeCompleteBanner").objectReferenceValue = holeBanner;
+            if (holeCutscene != null)
+                so.FindProperty("holeCompleteCutscene").objectReferenceValue = holeCutscene;
             if (onGreenBanner != null)
                 so.FindProperty("onTheGreenBanner").objectReferenceValue = onGreenBanner;
             if (throwSummaryBanner != null)

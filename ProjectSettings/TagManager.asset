@@ -9,6 +9,7 @@ TagManager:
   - Basket
   - Circle
   - Rough
+  - Green
   layers:
   - Default
   - TransparentFX
