@@ -8937,7 +8937,7 @@ Transform:
   m_GameObject: {fileID: 915346673}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -31.400002, y: 0.02, z: 125.9}
+  m_LocalPosition: {x: -31.400002, y: 0.02, z: 126.5}
   m_LocalScale: {x: 7.389758, y: 7.3897576, z: 7.389758}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9456,7 +9456,7 @@ Transform:
   m_GameObject: {fileID: 1021928424}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 58.4, y: 0.02, z: 49.7}
+  m_LocalPosition: {x: 59.9, y: 0.02, z: 49.7}
   m_LocalScale: {x: 6.0000005, y: 6, z: 6.0000005}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10819,6 +10819,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fairwayPlane: {fileID: 1470538996}
+  greenSurface: {fileID: 158959312}
   teePad: {fileID: 1147564503}
   basket: {fileID: 1041007224}
   roughBorders:
@@ -17551,7 +17552,7 @@ Transform:
   m_GameObject: {fileID: 1822697500}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 58.4, y: 0.02, z: 109.2}
+  m_LocalPosition: {x: 60, y: 0.02, z: 109.2}
   m_LocalScale: {x: 6.0000005, y: 6, z: 6.0000005}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -18683,7 +18684,7 @@ Transform:
   m_GameObject: {fileID: 1975380851}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 28.5, y: 0.02, z: 125.200005}
+  m_LocalPosition: {x: 28.5, y: 0.02, z: 126.5}
   m_LocalScale: {x: 7.389758, y: 7.3897576, z: 7.389758}
   m_ConstrainProportionsScale: 0
   m_Children: []
