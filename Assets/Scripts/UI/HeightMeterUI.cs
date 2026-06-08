@@ -1,18 +1,12 @@
 using DiskGolf.Core;
-using DiskGolf.Flight;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
     public class HeightMeterUI : MonoBehaviour
     {
-        [SerializeField] Slider slider;
-
-        [SerializeField] Text zoneLabel;
-
         TimingMeter _meter = new TimingMeter(1f);
-        NtmHeightMeterVisual _visual;
+        HeightMeterVisual _visual;
         bool _active;
         bool _frozen;
         float _frozenDisplay;
@@ -24,26 +18,33 @@ namespace DiskGolf.UI
 
         public bool IsFrozenForFlight => _frozen;
 
-        void Awake()
+        HeightMeterVisual Visual
         {
-            if (slider != null)
-                slider.gameObject.SetActive(false);
+            get
+            {
+                if (_visual == null || !_visual)
+                {
+                    _visual = TimingMeterHud.Height;
+                    if (_visual == null)
+                        _visual = FindObjectOfType<HeightMeterVisual>(true);
+                }
+
+                return _visual;
+            }
         }
 
         void Start()
         {
-            _visual = TimingMeterHud.Height;
-            _visual?.SetChromeVisible(true);
-            _visual?.SetNeedleVisible(false);
+            Visual?.SetChromeVisible(true);
+            Visual?.SetNeedleVisible(false);
         }
 
         public void Begin()
         {
-            _visual ??= TimingMeterHud.Height;
             _meter.Reset();
             _active = true;
-            _visual?.SetChromeVisible(true);
-            _visual?.SetNeedleVisible(true);
+            Visual?.SetChromeVisible(true);
+            Visual?.SetNeedleVisible(true);
         }
 
         public void Stop()
@@ -53,10 +54,7 @@ namespace DiskGolf.UI
             _hasSweetZone = false;
             LastConfirmWasSweet = false;
             ClearTargetZone();
-            _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
+            Visual?.SetNeedleVisible(false);
         }
 
         public bool IsRunning => _active;
@@ -67,8 +65,8 @@ namespace DiskGolf.UI
             _frozen = true;
             _frozenDisplay = _meter.Value / 1.1f;
             LastConfirmWasSweet = IsInSweetZone(_frozenDisplay);
-            _visual?.SetIndicator(_frozenDisplay);
-            _visual?.SetNeedleVisible(true);
+            Visual?.SetIndicator(_frozenDisplay);
+            Visual?.SetNeedleVisible(true);
             return _meter.Confirm();
         }
 
@@ -78,10 +76,7 @@ namespace DiskGolf.UI
             _hasSweetZone = false;
             LastConfirmWasSweet = false;
             ClearTargetZone();
-            _visual?.SetNeedleVisible(false);
-
-            if (slider != null)
-                slider.value = 0f;
+            Visual?.SetNeedleVisible(false);
         }
 
         bool IsInSweetZone(float display01) =>
@@ -89,11 +84,14 @@ namespace DiskGolf.UI
 
         public void SetTargetZone(float center01, float width01)
         {
-            _visual ??= TimingMeterHud.Height;
             _sweetCenter = center01;
             _sweetWidth = width01;
             _hasSweetZone = true;
-            _visual?.SetSweetSpot(center01, width01);
+
+            if (GameSessionSettings.ShowMeterSweetSpots)
+                Visual?.SetSweetSpot(center01, width01);
+            else
+                Visual?.HideSweetSpot();
         }
 
         public void PreviewTargetZone(float center01, float width01)
@@ -104,27 +102,13 @@ namespace DiskGolf.UI
             SetTargetZone(center01, width01);
         }
 
-        public void ClearTargetZone() => _visual?.HideSweetSpot();
-
-        void RefreshZoneLabel(ThrowHeight height)
-        {
-            if (zoneLabel == null)
-                return;
-
-            zoneLabel.text = height switch
-            {
-                ThrowHeight.Low => "LOW",
-                ThrowHeight.Nice => "NICE",
-                ThrowHeight.High => "HIGH",
-                _ => "NICE"
-            };
-        }
+        public void ClearTargetZone() => Visual?.HideSweetSpot();
 
         void Update()
         {
             if (_frozen)
             {
-                _visual?.SetIndicator(_frozenDisplay);
+                Visual?.SetIndicator(_frozenDisplay);
                 return;
             }
 
@@ -133,12 +117,7 @@ namespace DiskGolf.UI
 
             _meter.Tick(Time.deltaTime);
             float display = _meter.Value / 1.1f;
-
-            if (slider != null)
-                slider.value = display;
-
-            _visual?.SetIndicator(display);
-            RefreshZoneLabel(HeightMeterZones.FromValue(_meter.Value));
+            Visual?.SetIndicator(display);
         }
     }
 }

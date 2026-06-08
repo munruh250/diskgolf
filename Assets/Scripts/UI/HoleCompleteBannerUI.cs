@@ -1,18 +1,29 @@
-using DiskGolf.Core;
-using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Centered overlay when the disc finishes in the basket.</summary>
+    /// <summary>Centered score-banner overlay when the disc finishes in the basket.</summary>
     public sealed class HoleCompleteBannerUI : MonoBehaviour
     {
         const string HudCanvasName = "GameplayHUD";
         const string BannerName = "HoleCompleteBanner";
 
-        [SerializeField] TextMeshProUGUI titleLabel;
+        [SerializeField] Image holeInOne;
 
-        [SerializeField] TextMeshProUGUI scoreLabel;
+        [SerializeField] Image eagle;
+
+        [SerializeField] Image birdie;
+
+        [SerializeField] Image par;
+
+        [SerializeField] Image bogey;
+
+        [SerializeField] Image doubleBogey;
+
+        [SerializeField] Image tripleBogey;
+
+        [SerializeField] Image awful;
 
         [SerializeField] float displaySeconds = 3.5f;
 
@@ -27,76 +38,146 @@ namespace DiskGolf.UI
             var existing = canvas.Find(BannerName)?.GetComponent<HoleCompleteBannerUI>();
             if (existing != null)
             {
-                existing.EnsureBuilt();
+                existing.BindSceneReferences();
+                if (Application.isPlaying)
+                    existing.Hide();
+
                 return existing;
             }
 
-            return Build(canvas);
-        }
-
-        void Awake() => EnsureBuilt();
-
-        public void EnsureBuilt()
-        {
-            if (titleLabel != null && scoreLabel != null)
-                return;
-
-            var canvas = transform.parent as RectTransform ?? FindHudCanvas();
-            if (canvas == null)
-                return;
-
-            if (transform.parent != canvas)
+            if (SceneHudAuthoring.IsActive)
             {
-                transform.SetParent(canvas, false);
-                gameObject.name = BannerName;
+                Debug.LogWarning(
+                    "[Disk Golf] HoleCompleteBanner not found under GameplayHUD. "
+                    + "Use Disk Golf → HUD → Bake Score Banners.");
+                return null;
             }
 
-            var root = transform as RectTransform;
-            ConfigureRootRect(root);
-
-            titleLabel ??= CreateLine(root, "Title", new Vector2(0f, 28f), 56f);
-            scoreLabel ??= CreateLine(root, "Score", new Vector2(0f, -36f), 40f);
-
-            ApplyTitleStyle(titleLabel);
-            ApplyScoreStyle(scoreLabel);
-            gameObject.SetActive(false);
+            return BuildRuntime(canvas);
         }
 
-        static HoleCompleteBannerUI Build(RectTransform canvas)
+        public static HoleCompleteBannerUI CreateForScene(RectTransform hud)
+        {
+            if (hud == null)
+                return null;
+
+            var existing = hud.Find(BannerName)?.GetComponent<HoleCompleteBannerUI>();
+            if (existing != null)
+            {
+                existing.EnsureSceneLayout();
+                return existing;
+            }
+
+            var banner = BuildSceneLayout(hud);
+            banner.ApplyEditorPreview();
+            return banner;
+        }
+
+        void Awake()
+        {
+            BindSceneReferences();
+            if (Application.isPlaying)
+                Hide();
+        }
+
+        void Reset() => BindSceneReferences();
+
+        public void BindSceneReferences()
+        {
+            holeInOne ??= transform.Find("HoleInOne")?.GetComponent<Image>();
+            eagle ??= transform.Find("Eagle")?.GetComponent<Image>();
+            birdie ??= transform.Find("Birdie")?.GetComponent<Image>();
+            par ??= transform.Find("Par")?.GetComponent<Image>();
+            bogey ??= transform.Find("Bogey")?.GetComponent<Image>();
+            doubleBogey ??= transform.Find("DoubleBogey")?.GetComponent<Image>();
+            tripleBogey ??= transform.Find("TripleBogey")?.GetComponent<Image>();
+            awful ??= transform.Find("Awful")?.GetComponent<Image>();
+        }
+
+        public void EnsureSceneLayout()
+        {
+            RemoveLegacyChildren();
+            BindSceneReferences();
+
+            var root = transform as RectTransform;
+            if (root != null)
+                ConfigureRootRect(root);
+
+            EnsureSlot(ref holeInOne, root, "HoleInOne", HoleCompleteScoreKind.HoleInOne);
+            EnsureSlot(ref eagle, root, "Eagle", HoleCompleteScoreKind.Eagle);
+            EnsureSlot(ref birdie, root, "Birdie", HoleCompleteScoreKind.Birdie);
+            EnsureSlot(ref par, root, "Par", HoleCompleteScoreKind.Par);
+            EnsureSlot(ref bogey, root, "Bogey", HoleCompleteScoreKind.Bogey);
+            EnsureSlot(ref doubleBogey, root, "DoubleBogey", HoleCompleteScoreKind.DoubleBogey);
+            EnsureSlot(ref tripleBogey, root, "TripleBogey", HoleCompleteScoreKind.TripleBogey);
+            EnsureSlot(ref awful, root, "Awful", HoleCompleteScoreKind.Awful);
+
+            ApplyEditorPreview();
+        }
+
+        static HoleCompleteBannerUI BuildSceneLayout(RectTransform canvas)
         {
             var bannerGo = new GameObject(BannerName, typeof(RectTransform));
             var rt = bannerGo.GetComponent<RectTransform>();
             rt.SetParent(canvas, false);
             ConfigureRootRect(rt);
 
-            var title = CreateLine(rt, "Title", new Vector2(0f, 28f), 56f);
-            var score = CreateLine(rt, "Score", new Vector2(0f, -36f), 40f);
-            ApplyTitleStyle(title);
-            ApplyScoreStyle(score);
-
             var banner = bannerGo.AddComponent<HoleCompleteBannerUI>();
-            banner.titleLabel = title;
-            banner.scoreLabel = score;
-            bannerGo.SetActive(false);
+            banner.EnsureSceneLayout();
             return banner;
         }
 
-        static TextMeshProUGUI CreateLine(RectTransform parent, string name, Vector2 offset, float fontSize)
+        static HoleCompleteBannerUI BuildRuntime(RectTransform canvas)
         {
-            var go = new GameObject(name, typeof(RectTransform));
+            var banner = BuildSceneLayout(canvas);
+            banner.gameObject.SetActive(false);
+            return banner;
+        }
+
+        static void EnsureSlot(
+            ref Image slot,
+            RectTransform parent,
+            string childName,
+            HoleCompleteScoreKind kind)
+        {
+            if (slot != null)
+            {
+                ApplySlotSprite(slot, kind);
+                slot.gameObject.SetActive(false);
+                return;
+            }
+
+            slot = CreateScoreSlot(parent, childName, kind);
+        }
+
+        static Image CreateScoreSlot(RectTransform parent, string name, HoleCompleteScoreKind kind)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
             var rt = go.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = offset;
-            rt.sizeDelta = new Vector2(900f, 80f);
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
 
-            var tmp = go.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = fontSize;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.raycastTarget = false;
-            return tmp;
+            var image = go.GetComponent<Image>();
+            image.preserveAspect = true;
+            image.color = Color.white;
+            image.raycastTarget = false;
+            ApplySlotSprite(image, kind);
+            go.SetActive(false);
+            return image;
+        }
+
+        static void ApplySlotSprite(Image image, HoleCompleteScoreKind kind)
+        {
+            if (image == null)
+                return;
+
+            if (image.sprite == null)
+                image.sprite = ScoreBannerSprites.LoadKind(kind);
+
+            image.enabled = image.sprite != null;
         }
 
         static void ConfigureRootRect(RectTransform rt)
@@ -104,41 +185,7 @@ namespace DiskGolf.UI
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(900f, 180f);
-        }
-
-        static void ApplyTitleStyle(TextMeshProUGUI tmp)
-        {
-            tmp.text = "HOLE COMPLETE";
-            tmp.color = new Color(1f, 0.92f, 0.35f);
-            tmp.outlineWidth = 0.32f;
-            tmp.outlineColor = Color.black;
-            CopyFont(tmp);
-        }
-
-        static void ApplyScoreStyle(TextMeshProUGUI tmp)
-        {
-            tmp.text = "3 — PAR";
-            tmp.color = Color.white;
-            tmp.outlineWidth = 0.28f;
-            tmp.outlineColor = Color.black;
-            CopyFont(tmp);
-        }
-
-        static void CopyFont(TextMeshProUGUI tmp)
-        {
-            var throwBanner = GameObject.Find(HudCanvasName)?.transform.Find("ThrowResultBanner")
-                ?.GetComponent<TextMeshProUGUI>();
-
-            if (throwBanner != null && throwBanner.font != null)
-            {
-                tmp.font = throwBanner.font;
-                return;
-            }
-
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
+            rt.sizeDelta = new Vector2(640f, 160f);
         }
 
         static RectTransform FindHudCanvas()
@@ -147,19 +194,93 @@ namespace DiskGolf.UI
             return hud != null ? hud.GetComponent<RectTransform>() : null;
         }
 
-        public void Show(int strokes, int par)
+        void RemoveLegacyChildren()
         {
-            EnsureBuilt();
+            DestroyChild("Title");
+            DestroyChild("Score");
+            DestroyChild("ScoreBanner");
+        }
 
-            if (titleLabel == null || scoreLabel == null)
+        void DestroyChild(string childName)
+        {
+            var child = transform.Find(childName);
+            if (child == null)
                 return;
 
-            titleLabel.text = "HOLE COMPLETE";
-            scoreLabel.text = HoleScore.CompletedLine(strokes, par);
-            transform.SetAsLastSibling();
+            if (Application.isPlaying)
+                Destroy(child.gameObject);
+            else
+                DestroyImmediate(child.gameObject);
+        }
+
+        public void ApplyEditorPreview()
+        {
+            if (Application.isPlaying)
+                return;
+
+            BindSceneReferences();
+            ShowKind(HoleCompleteScoreKind.Par, previewOnly: true);
             gameObject.SetActive(true);
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        public void Show(int strokes, int par)
+        {
+            BindSceneReferences();
+            ShowKind(ScoreBannerSprites.ResolveKind(strokes, par), previewOnly: false);
+        }
+
+        void ShowKind(HoleCompleteScoreKind kind, bool previewOnly)
+        {
+            HideAllSlots();
+
+            var slot = GetSlot(kind);
+            if (slot == null)
+                return;
+
+            ApplySlotSprite(slot, kind);
+            slot.gameObject.SetActive(true);
+
+            if (!previewOnly)
+                transform.SetAsLastSibling();
+
+            gameObject.SetActive(true);
+        }
+
+        Image GetSlot(HoleCompleteScoreKind kind) => kind switch
+        {
+            HoleCompleteScoreKind.HoleInOne => holeInOne,
+            HoleCompleteScoreKind.Eagle => eagle,
+            HoleCompleteScoreKind.Birdie => birdie,
+            HoleCompleteScoreKind.Par => par,
+            HoleCompleteScoreKind.Bogey => bogey,
+            HoleCompleteScoreKind.DoubleBogey => doubleBogey,
+            HoleCompleteScoreKind.TripleBogey => tripleBogey,
+            HoleCompleteScoreKind.Awful => awful,
+            _ => par,
+        };
+
+        void HideAllSlots()
+        {
+            SetSlotActive(holeInOne, false);
+            SetSlotActive(eagle, false);
+            SetSlotActive(birdie, false);
+            SetSlotActive(par, false);
+            SetSlotActive(bogey, false);
+            SetSlotActive(doubleBogey, false);
+            SetSlotActive(tripleBogey, false);
+            SetSlotActive(awful, false);
+        }
+
+        static void SetSlotActive(Image slot, bool active)
+        {
+            if (slot != null)
+                slot.gameObject.SetActive(active);
+        }
+
+        public void Hide()
+        {
+            HideAllSlots();
+            gameObject.SetActive(false);
+        }
     }
 }

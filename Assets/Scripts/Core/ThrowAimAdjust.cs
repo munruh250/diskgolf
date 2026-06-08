@@ -7,13 +7,11 @@ namespace DiskGolf.Core
     /// <summary>Pre-throw aim: arrow keys shift trajectory target before the timing meters.</summary>
     public sealed class ThrowAimAdjust : MonoBehaviour
     {
-        const float YawStepDeg = 2.5f;
-
-        const float DistanceStepFt = 15f;
-
         const float MinTargetDistanceFt = 10f;
 
-        [SerializeField] float maxYawDegrees = 35f;
+        const float DistanceHoldRateFtPerSec = 12f;
+
+        [SerializeField] float maxYawDegrees = 90f;
 
         float _yawOffsetDeg;
 
@@ -35,6 +33,8 @@ namespace DiskGolf.Core
             RecalculateTarget(hole, lie, disc);
         }
 
+        public void SetPlannedHeight(ThrowHeight height) => _plannedHeight = height;
+
         public void RecalculateTarget(HoleSetup hole, Vector3 lie, DiscProfile disc)
         {
             if (hole == null || disc == null)
@@ -44,11 +44,10 @@ namespace DiskGolf.Core
             }
 
             float alongBasket = DistanceAlongAim(hole, lie, AimDirection(hole, lie));
-            float maxReach = disc.maxDistanceFt * FlightSimulator.DistanceScale;
+            float maxReach = disc.maxDistanceFt * FlightSimulator.DistanceScale * PowerDistanceMultiplier();
             float baseline = alongBasket;
 
             TargetDistanceFt = Mathf.Clamp(baseline + _distanceOffsetFt, MinTargetDistanceFt, maxReach);
-            _plannedHeight = SuggestHeightForTarget(TargetDistanceFt, maxReach);
         }
 
         public Vector3 AimDirection(HoleSetup hole, Vector3 lie)
@@ -57,24 +56,49 @@ namespace DiskGolf.Core
             return Quaternion.Euler(0f, _yawOffsetDeg, 0f) * baseAim;
         }
 
-        public void ApplyHeldInput(HoleSetup hole, Vector3 lie, DiscProfile disc,
-            bool left, bool right, bool up, bool down)
+        public void ApplyHeldInput(
+            HoleSetup hole,
+            Vector3 lie,
+            DiscProfile disc,
+            bool left,
+            bool right,
+            bool up,
+            bool down,
+            float deltaTime)
         {
+            if (deltaTime <= 0f)
+                return;
+
+            float yawRateDegPerSec = YawHoldRateForTargetDistance(TargetDistanceFt);
+            float yawDelta = 0f;
             if (left)
-                _yawOffsetDeg -= YawStepDeg;
-
+                yawDelta -= yawRateDegPerSec * deltaTime;
             if (right)
-                _yawOffsetDeg += YawStepDeg;
+                yawDelta += yawRateDegPerSec * deltaTime;
 
-            _yawOffsetDeg = Mathf.Clamp(_yawOffsetDeg, -maxYawDegrees, maxYawDegrees);
+            if (Mathf.Abs(yawDelta) > 0f)
+            {
+                _yawOffsetDeg = Mathf.Clamp(_yawOffsetDeg + yawDelta, -maxYawDegrees, maxYawDegrees);
+            }
 
+            float distanceDelta = 0f;
             if (up)
-                _distanceOffsetFt += DistanceStepFt;
-
+                distanceDelta += DistanceHoldRateFtPerSec * deltaTime;
             if (down)
-                _distanceOffsetFt -= DistanceStepFt;
+                distanceDelta -= DistanceHoldRateFtPerSec * deltaTime;
 
-            RecalculateTarget(hole, lie, disc);
+            if (Mathf.Abs(distanceDelta) > 0f)
+                _distanceOffsetFt += distanceDelta;
+
+            if (Mathf.Abs(yawDelta) > 0f || Mathf.Abs(distanceDelta) > 0f)
+                RecalculateTarget(hole, lie, disc);
+        }
+
+        /// <summary>Match left/right arc motion to the up/down hold rate at the current target distance.</summary>
+        static float YawHoldRateForTargetDistance(float targetDistanceFt)
+        {
+            float radiusFt = Mathf.Max(targetDistanceFt, MinTargetDistanceFt);
+            return DistanceHoldRateFtPerSec / (radiusFt * Mathf.Deg2Rad);
         }
 
         static float DistanceAlongAim(HoleSetup hole, Vector3 lie, Vector3 aim)
@@ -89,17 +113,12 @@ namespace DiskGolf.Core
             return Mathf.Max(0f, Vector3.Dot(toBasket.normalized, aim.normalized) * toBasket.magnitude / 0.3048f);
         }
 
-        static ThrowHeight SuggestHeightForTarget(float targetFt, float maxReach)
+        static float PowerDistanceMultiplier()
         {
-            float ratio = targetFt / Mathf.Max(maxReach, 1f);
-
-            if (ratio > 0.82f)
-                return ThrowHeight.High;
-
-            if (ratio < 0.42f)
-                return ThrowHeight.Low;
-
-            return ThrowHeight.Nice;
+            var character = GameSessionSettings.ActiveCharacter;
+            return character != null
+                ? PlayerCharacterStats.PowerDistanceMultiplier(character.power)
+                : 1f;
         }
     }
 }

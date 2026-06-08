@@ -5,17 +5,28 @@ namespace DiskGolf.Gameplay
     /// <summary>NTM-style 2D thrower sprite with a hand anchor for the disc.</summary>
     public sealed class ThrowerVisual : MonoBehaviour
     {
-        const string SpriteResourcePath = "Player/Thrower";
+        const float MaxAimLeanDegrees = 20f;
 
         [SerializeField] Transform handAnchor;
 
         [SerializeField] Sprite throwerSprite;
 
+        Transform _spriteTransform;
+
         public Transform HandAnchor => handAnchor;
 
-        public void ApplyReachBackHandPose()
+        void Awake()
         {
-            handAnchor ??= transform.Find("HandAnchor");
+            BindHandAnchor();
+            _spriteTransform ??= transform.Find("Sprite");
+            ApplySortingOrder();
+        }
+
+        void BindHandAnchor() => handAnchor ??= transform.Find("HandAnchor");
+
+        /// <summary>Default pose for a newly created hand anchor only.</summary>
+        void ApplyDefaultHandAnchorPose()
+        {
             if (handAnchor == null)
                 return;
 
@@ -23,16 +34,14 @@ namespace DiskGolf.Gameplay
             handAnchor.localRotation = Quaternion.Euler(-16f, 0f, 0f);
         }
 
-        /// <summary>Apply sprite height/offset without rebuilding the rig.</summary>
-        public void ApplySpriteLayout()
+        /// <summary>Layout sprite child when first building the rig — does not move HandAnchor.</summary>
+        void ApplyNewSpriteLayout(Transform spriteTf, SpriteRenderer renderer)
         {
-            var spriteTf = transform.Find("Sprite");
             if (spriteTf == null)
                 return;
 
             spriteTf.localPosition = new Vector3(0f, GreyboxScale.ThrowerSpriteLocalY, 0f);
 
-            var renderer = spriteTf.GetComponent<SpriteRenderer>();
             if (renderer?.sprite != null)
             {
                 float targetHeight = 1.75f;
@@ -40,8 +49,6 @@ namespace DiskGolf.Gameplay
                 float scale = spriteHeight > 1e-4f ? targetHeight / spriteHeight : 1f;
                 spriteTf.localScale = Vector3.one * scale;
             }
-
-            ApplyReachBackHandPose();
         }
 
         public void RebuildAsSprite()
@@ -70,26 +77,29 @@ namespace DiskGolf.Gameplay
 
             var renderer = spriteGo.AddComponent<SpriteRenderer>();
             renderer.sprite = ResolveSprite();
-            renderer.sortingOrder = 20;
+            renderer.sortingOrder = 30;
             renderer.flipX = false;
 
             if (renderer.sprite != null)
             {
-                float targetHeight = 1.75f;
-                float spriteHeight = renderer.sprite.bounds.size.y;
-                float scale = spriteHeight > 1e-4f ? targetHeight / spriteHeight : 1f;
-                spriteGo.transform.localScale = Vector3.one * scale;
+                ApplyNewSpriteLayout(spriteGo.transform, renderer);
             }
             else
             {
-                Debug.LogWarning("[ThrowerVisual] Missing sprite at Resources/Player/Thrower");
+                Debug.LogWarning("[ThrowerVisual] Missing thrower sprite. Assign throwerSprite or add Art/Characters/Player/Thrower.png.");
             }
 
             spriteGo.AddComponent<ThrowerBillboard>();
+            _spriteTransform = spriteGo.transform;
+            ApplySortingOrder();
 
-            handAnchor = new GameObject("HandAnchor").transform;
-            handAnchor.SetParent(transform, false);
-            ApplyReachBackHandPose();
+            BindHandAnchor();
+            if (handAnchor == null)
+            {
+                handAnchor = new GameObject("HandAnchor").transform;
+                handAnchor.SetParent(transform, false);
+                ApplyDefaultHandAnchorPose();
+            }
         }
 
         void ClearLegacyRig()
@@ -104,6 +114,28 @@ namespace DiskGolf.Gameplay
             }
 
             handAnchor = null;
+            _spriteTransform = null;
+        }
+
+        void ApplySortingOrder()
+        {
+            if (_spriteTransform == null)
+                return;
+
+            var renderer = _spriteTransform.GetComponent<SpriteRenderer>();
+            if (renderer != null)
+                renderer.sortingOrder = 30;
+        }
+
+        /// <summary>Subtle Y-lean on the 2D sprite toward the aim line (±20° max).</summary>
+        public void ApplyAimLean(float yawOffsetDegrees)
+        {
+            _spriteTransform ??= transform.Find("Sprite");
+            if (_spriteTransform == null)
+                return;
+
+            float lean = Mathf.Clamp(yawOffsetDegrees, -MaxAimLeanDegrees, MaxAimLeanDegrees);
+            _spriteTransform.localRotation = Quaternion.Euler(0f, lean, 0f);
         }
 
         Sprite ResolveSprite()
@@ -111,7 +143,7 @@ namespace DiskGolf.Gameplay
             if (throwerSprite != null)
                 return throwerSprite;
 
-            throwerSprite = Resources.Load<Sprite>(SpriteResourcePath);
+            throwerSprite = RuntimeArt.LoadThrowerSprite();
             return throwerSprite;
         }
     }

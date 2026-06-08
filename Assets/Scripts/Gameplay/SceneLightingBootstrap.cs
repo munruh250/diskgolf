@@ -11,6 +11,7 @@ namespace DiskGolf.Gameplay
         public static void Apply()
         {
             ApplyRenderSettings();
+            ApplySkybox();
             ApplySunLight(FindSun());
             ApplyMainCameraShadows();
             EnsureShadowDistance();
@@ -38,14 +39,26 @@ namespace DiskGolf.Gameplay
             RenderSettings.reflectionIntensity = 0.65f;
         }
 
+        static void ApplySkybox()
+        {
+            var skybox = LoadPrototypeSkyboxMaterial();
+            if (skybox != null)
+                RenderSettings.skybox = skybox;
+        }
+
+        static Material LoadPrototypeSkyboxMaterial() => RuntimeArt.LoadPrototypeSkyboxMaterial();
+
         static void ApplySunLight(Light sun)
         {
             if (sun == null)
                 return;
 
+            if (RenderSettings.sun == null)
+                RenderSettings.sun = sun;
+
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.96f, 0.88f);
-            sun.intensity = 1.18f;
+            sun.intensity = 1f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.9f;
             sun.shadowBias = 0.038f;

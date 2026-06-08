@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>NTM-style centered popup when the disc stops (e.g. "200 FEET").</summary>
+    /// <summary>Centered popup when the disc stops (e.g. "200 FEET").</summary>
     public sealed class ThrowResultBannerUI : MonoBehaviour
     {
         const string HudCanvasName = "GameplayHUD";
@@ -76,35 +76,25 @@ namespace DiskGolf.UI
             return hud != null ? hud.GetComponent<RectTransform>() : null;
         }
 
-        static void ConfigureBannerRect(RectTransform rt)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(900f, 140f);
-        }
+        static void ConfigureBannerRect(RectTransform rt) =>
+            PostThrowCalloutLayout.ApplyFeetLabelRect(rt);
 
         public static void ApplyStyle(TextMeshProUGUI tmp)
         {
-            tmp.text = "200 FEET";
             tmp.fontSize = 64f;
             tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.42f, 0.96f, 0.52f);
-            tmp.outlineWidth = 0.32f;
-            tmp.outlineColor = Color.black;
+            tmp.alignment = TextAlignmentOptions.Top;
+            tmp.color = Color.black;
+            tmp.outlineWidth = 0f;
             tmp.raycastTarget = false;
 
-            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("HudRoot/TMPRow");
+            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("InTheCircleBanner")
+                ?? GameObject.Find(HudCanvasName)?.transform.Find("TMPRow");
             var circleTmp = circleBanner != null ? circleBanner.GetComponent<TextMeshProUGUI>() : null;
             if (circleTmp != null && circleTmp.font != null)
                 tmp.font = circleTmp.font;
             else
-            {
-                var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-                if (font != null)
-                    tmp.font = font;
-            }
+                HudTypography.BindFont(tmp);
         }
 
         public void ShowThrowDistance(float distanceFt)
@@ -114,8 +104,11 @@ namespace DiskGolf.UI
             if (label == null)
                 return;
 
+            ApplyStyle(label);
             int feet = Mathf.Max(0, Mathf.RoundToInt(distanceFt));
             label.text = $"{feet} FEET";
+            label.ForceMeshUpdate();
+            ConfigureBannerRect(transform as RectTransform);
             transform.SetAsLastSibling();
             gameObject.SetActive(true);
         }

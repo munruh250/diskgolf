@@ -5,14 +5,13 @@ namespace DiskGolf.Gameplay
     /// <summary>Builds a billboard tree sprite with a blocking collider.</summary>
     public static class CourseTree
     {
+        /// <summary>Collider is this fraction of sprite size — smaller = more forgiving misses.</summary>
+        const float ColliderSizeScale = 0.75f;
+
         public static Transform Spawn(Transform parent, Vector3 worldPosition, CourseTreeVariant variant,
             float yawDegrees = 0f)
         {
-            var spriteName = variant == CourseTreeVariant.Round
-                ? FoliageSprites.TreeRound
-                : FoliageSprites.TreeConical;
-
-            var sprite = FoliageSprites.Load(spriteName);
+            var sprite = FoliageSprites.LoadTree();
             if (sprite == null)
                 return null;
 
@@ -28,29 +27,42 @@ namespace DiskGolf.Gameplay
             go.AddComponent<FoliageBillboard>();
 
             var collider = go.AddComponent<CapsuleCollider>();
-            ConfigureCollider(collider, variant);
+            FitColliderToSprite(collider, sprite);
             go.AddComponent<TreeObstacle>();
 
             return go.transform;
         }
 
-        static void ConfigureCollider(CapsuleCollider collider, CourseTreeVariant variant)
+        public static void FitColliderToSprite(GameObject treeGo)
         {
-            switch (variant)
-            {
-                case CourseTreeVariant.Round:
-                    collider.height = 5.5f;
-                    collider.radius = 1.75f;
-                    collider.center = new Vector3(0f, 2.6f, 0f);
-                    break;
-                default:
-                    collider.height = 6.5f;
-                    collider.radius = 1.25f;
-                    collider.center = new Vector3(0f, 3.1f, 0f);
-                    break;
-            }
+            if (treeGo == null)
+                return;
+
+            var renderer = treeGo.GetComponent<SpriteRenderer>();
+            var collider = treeGo.GetComponent<CapsuleCollider>();
+
+            if (renderer == null || collider == null || renderer.sprite == null)
+                return;
+
+            FitColliderToSprite(collider, renderer.sprite);
+        }
+
+        public static void FitColliderToSprite(CapsuleCollider collider, Sprite sprite)
+        {
+            if (collider == null || sprite == null)
+                return;
+
+            var bounds = sprite.bounds;
+            float width = Mathf.Max(bounds.size.x, bounds.size.z);
+            float height = Mathf.Max(bounds.size.y, width);
 
             collider.direction = 1;
+            collider.height = height * ColliderSizeScale;
+            collider.radius = width * 0.5f * ColliderSizeScale;
+            collider.center = bounds.center;
+
+            if (collider.height < collider.radius * 2f)
+                collider.radius = collider.height * 0.45f;
         }
     }
 }

@@ -1,18 +1,10 @@
 using UnityEngine;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 namespace DiskGolf.Gameplay
 {
     /// <summary>NTM-style 2D basket sprite with invisible 3D catch colliders.</summary>
     public sealed class BasketVisual : MonoBehaviour
     {
-        const string SpriteResourcePath = "Basket/2dbucket";
-
-        const string SpriteAssetPath = "Assets/Resources/Basket/2dbucket.png";
-
         const string SpriteChildName = "BasketSprite";
 
         const string LegacyPoleName = "Pole";
@@ -68,7 +60,7 @@ namespace DiskGolf.Gameplay
             var sprite = ResolveSprite();
             if (sprite == null)
             {
-                Debug.LogWarning("[BasketVisual] Missing sprite at Resources/Basket/2dbucket");
+                Debug.LogWarning("[BasketVisual] Missing basket sprite. Assign a sprite or check Art/Characters/Player/Thrower.png import.");
                 return;
             }
 
@@ -113,7 +105,7 @@ namespace DiskGolf.Gameplay
             if (basketSprite != null)
                 return basketSprite;
 
-            var texture = LoadBasketTexture();
+            var texture = RuntimeArt.LoadBasketTexture();
             if (texture != null)
             {
                 basketSprite = BasketSpriteUtil.CreateGroundAlignedSprite(texture);
@@ -121,21 +113,8 @@ namespace DiskGolf.Gameplay
                     return basketSprite;
             }
 
-            basketSprite = Resources.Load<Sprite>(SpriteResourcePath);
+            basketSprite = RuntimeArt.LoadBasketSprite();
             return basketSprite;
-        }
-
-        static Texture2D LoadBasketTexture()
-        {
-            var texture = Resources.Load<Texture2D>(SpriteResourcePath);
-            if (texture != null)
-                return texture;
-
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture2D>(SpriteAssetPath);
-#else
-            return null;
-#endif
         }
     }
 }

@@ -11,7 +11,10 @@ namespace DiskGolf.Core
         [SerializeField] Transform thrower;
         [SerializeField] float circleRadiusFt = 33f;
         [SerializeField] float holeLengthFt = 250f;
+        [SerializeField] int holeNumber = 1;
         [SerializeField] int par = 3;
+
+        public int HoleNumber => holeNumber;
 
         public int Par => par;
 
@@ -44,7 +47,7 @@ namespace DiskGolf.Core
                 if (thrower == null)
                     return Quaternion.identity;
 
-                var forward = AimDirection;
+                var forward = thrower.forward;
                 forward.y = 0f;
 
                 if (forward.sqrMagnitude < 1e-6f)
@@ -67,7 +70,7 @@ namespace DiskGolf.Core
 
         const float ThrowerBehindLieM = 0.55f;
 
-        /// <summary>Place thrower at tee facing the basket (first throw / reset).</summary>
+        /// <summary>Place thrower at tee facing the basket so side camera sits behind the throw line.</summary>
         public void PositionThrowerAtTee()
         {
             if (thrower == null || teePad == null || basket == null)
@@ -76,20 +79,23 @@ namespace DiskGolf.Core
             var aim = AimDirection;
             var rot = Quaternion.LookRotation(aim, Vector3.up);
             thrower.SetPositionAndRotation(TeePosition + rot * Vector3.back * ThrowerBehindLieM, rot);
-            ApplyThrowerSpriteLayout();
             RefreshCameraAimPoint();
         }
 
-        /// <summary>Place thrower behind the disc lie for the next throw.</summary>
+        /// <summary>Place thrower behind the disc lie, facing the basket for the next throw.</summary>
         public void PositionThrowerAtLie(Vector3 discLie)
         {
             if (thrower == null)
                 return;
 
+            discLie = DiscLieGround.SnapLie(discLie, discLie.y);
+            float groundY = discLie.y - DiscLieGround.DiscRestLift;
+
             var aim = AimDirectionFrom(discLie);
             var rot = Quaternion.LookRotation(aim, Vector3.up);
-            thrower.SetPositionAndRotation(discLie + rot * Vector3.back * ThrowerBehindLieM, rot);
-            ApplyThrowerSpriteLayout();
+            var throwerPos = discLie + rot * Vector3.back * ThrowerBehindLieM;
+            throwerPos.y = groundY;
+            thrower.SetPositionAndRotation(throwerPos, rot);
             RefreshCameraAimPoint();
         }
 
@@ -98,16 +104,7 @@ namespace DiskGolf.Core
             if (thrower == null || basket == null)
                 return;
 
-            DiskGolf.Camera.NtmCameraRig.EnsureAimPoint(thrower, basket);
-        }
-
-        void ApplyThrowerSpriteLayout()
-        {
-            if (thrower == null)
-                return;
-
-            var visual = thrower.GetComponent<ThrowerVisual>();
-            visual?.ApplySpriteLayout();
+            DiskGolf.Camera.CameraRig.EnsureAimPoint(thrower, basket);
         }
 
         public float CircleRadiusFt => circleRadiusFt;
@@ -134,6 +131,13 @@ namespace DiskGolf.Core
 
         public float DistanceToBasket(Vector3 from) =>
             Vector3.Distance(from, BasketPosition) / 0.3048f;
+
+        /// <summary>Tee-to-basket length shown as the hole yardage and at the start of a hole.</summary>
+        public float HoleLengthDisplayFt => DistanceToBasket(TeePosition);
+
+        /// <summary>Lie distance to basket; at the tee uses tee-to-basket so HUD yardages stay aligned.</summary>
+        public float DisplayDistanceToBasketFt(Vector3 lieWorld) =>
+            IsNearTee(lieWorld) ? HoleLengthDisplayFt : DistanceToBasket(lieWorld);
 
         /// <summary>Distance used to pick a disc — uses configured hole length at the tee.</summary>
         public float DistanceForDiscSelection(Vector3 lieWorld)

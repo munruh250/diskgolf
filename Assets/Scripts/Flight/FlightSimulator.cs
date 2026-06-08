@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DiskGolf.Core;
 using DiskGolf.Disc;
 using UnityEngine;
 
@@ -46,7 +47,8 @@ namespace DiskGolf.Flight
                 distancePenalty = UnderpowerDistanceMultiplier;
             }
 
-            float distanceFt = input.Disc.maxDistanceFt * DistanceScale * power * glideBonus * distancePenalty;
+            float distanceFt = input.Disc.maxDistanceFt * DistanceScale * CharacterPowerMultiplier()
+                * power * glideBonus * distancePenalty;
 
             float turnMod = input.ReleaseAngle switch
             {
@@ -154,7 +156,15 @@ namespace DiskGolf.Flight
             };
 
         public static float MaxReachFeet(DiscProfile disc, ThrowHeight height) =>
-            disc.maxDistanceFt * DistanceScale * GlideBonus(height);
+            disc.maxDistanceFt * DistanceScale * CharacterPowerMultiplier() * GlideBonus(height);
+
+        static float CharacterPowerMultiplier()
+        {
+            var character = GameSessionSettings.ActiveCharacter;
+            return character != null
+                ? PlayerCharacterStats.PowerDistanceMultiplier(character.power)
+                : 1f;
+        }
 
         /// <summary>Meter reading (0–1.1) that should carry the disc the target distance.</summary>
         public static float MeterPowerForTargetDistance(DiscProfile disc, float targetDistanceFt, ThrowHeight height)
@@ -166,15 +176,10 @@ namespace DiskGolf.Flight
             return Mathf.Clamp(targetDistanceFt / maxReach * 1.1f, 0f, 1.1f);
         }
 
-        /// <summary>Slider-normalized center (0–1) for the height timing meter.</summary>
-        public static float HeightMeterCenter(ThrowHeight height) =>
-            height switch
-            {
-                ThrowHeight.Low => 0.16f,
-                ThrowHeight.Nice => 0.5f,
-                ThrowHeight.High => 0.84f,
-                _ => 0.5f,
-            };
+        /// <summary>Slider-normalized center (0–1) for the accuracy timing meter sweet spot.</summary>
+        public static float HeightMeterCenter(ThrowHeight height) => AccuracyMeterZones.MeterCenter;
+
+        public static float AccuracyMeterCenter => AccuracyMeterZones.MeterCenter;
 
         /// <summary>Convert a putt meter reading into travel distance using the putting scale.</summary>
         public static float PuttDistanceFromMeter(float meterValue) =>

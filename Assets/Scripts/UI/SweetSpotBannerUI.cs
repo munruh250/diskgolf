@@ -95,9 +95,7 @@ namespace DiskGolf.UI
             tmp.outlineColor = Color.black;
             tmp.raycastTarget = false;
 
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-            if (font != null)
-                tmp.font = font;
+            HudTypography.BindFont(tmp);
         }
 
         public void Show()

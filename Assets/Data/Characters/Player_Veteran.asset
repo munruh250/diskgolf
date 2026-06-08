@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 794bfe868643bf44c8604b63e9758287, type: 3}
+  m_Name: Player_Veteran
+  m_EditorClassIdentifier: 
+  firstName: Gus
+  nickname: The Veteran
+  lastName: Mercer
+  displayName: The Veteran
+  regionLabel: GER
+  power: 82
+  accuracy: 80
+  clutch: 84
+  portraitColor: {r: 0.62, g: 0.58, b: 0.48, a: 1}
+  previewSprite: {fileID: 1369289046, guid: 350527d8eea783b4d800bd77a935e48a, type: 3}

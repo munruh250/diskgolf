@@ -34,7 +34,11 @@ namespace DiskGolf.UI
             }
         }
 
-        void OnEnable() => RefreshSelection();
+        void OnEnable()
+        {
+            RefreshSelection();
+            ApplyTypography();
+        }
 
         public void RebuildButtons()
         {
@@ -58,6 +62,16 @@ namespace DiskGolf.UI
             }
 
             RefreshSelection();
+            ApplyTypography();
+        }
+
+        public void ApplyTypography()
+        {
+            if (buttonRow == null)
+                return;
+
+            foreach (var tmp in buttonRow.GetComponentsInChildren<TextMeshProUGUI>(true))
+                HudTypography.Apply(tmp, TextAlignmentOptions.Center);
         }
 
         void CreateButton(int index, DiscProfile profile)
@@ -80,11 +94,7 @@ namespace DiskGolf.UI
 
             var tmp = labelGo.AddComponent<TextMeshProUGUI>();
             tmp.text = profile.displayName;
-            tmp.fontSize = 20f;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = Color.white;
-            tmp.raycastTarget = false;
+            HudTypography.Apply(tmp, TextAlignmentOptions.Center);
 
             var font = FindAnyDiscLabelFont();
             if (font != null)
@@ -130,6 +140,9 @@ namespace DiskGolf.UI
 
             var hud = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
             if (hud == null)
+                return;
+
+            if (hud.Find("NtmBottomBar") != null)
                 return;
 
             var go = new GameObject("DiscSelectRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));

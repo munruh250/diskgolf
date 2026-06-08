@@ -5,7 +5,9 @@ using DiskGolf.Flight;
 using DiskGolf.Gameplay;
 using DiskGolf.Input;
 using DiskGolf.UI;
+using DiskGolf.Camera;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace DiskGolf.Core
 {
@@ -27,13 +29,29 @@ namespace DiskGolf.Core
 
         [SerializeField] GameObject inTheCircleBanner;
 
+        [SerializeField] OnTheGreenBannerUI onTheGreenBanner;
+
+        [SerializeField] LieLandingBannerUI lieLandingBanner;
+
         [SerializeField] ThrowResultBannerUI throwResultBanner;
 
         [SerializeField] HoleCompleteBannerUI holeCompleteBanner;
 
+        [SerializeField] HoleCompleteCutsceneUI holeCompleteCutscene;
+
+        [SerializeField] ThrowSummaryBannerUI throwSummaryBanner;
+
         [SerializeField] SweetSpotBannerUI sweetSpotBanner;
 
         [SerializeField] ThrowAimAdjust aimAdjust;
+
+        [SerializeField] float basketCelebrationDelaySeconds = 2f;
+
+        [SerializeField] float holeCompleteCutsceneSeconds = 3f;
+
+        [SerializeField] AudioClip basketChainSfx;
+
+        CameraDirector _cameraDirector;
 
         readonly ThrowStateMachine _state = new ThrowStateMachine();
         WindSettings _wind;
@@ -56,6 +74,10 @@ namespace DiskGolf.Core
 
         Coroutine _sweetBannerRoutine;
 
+        Coroutine _throwPresentationRoutine;
+
+        bool _throwPresentationReady;
+
         bool _postThrowPending;
 
         float _pendingRestFt;
@@ -65,6 +87,10 @@ namespace DiskGolf.Core
         bool _pendingWasPut;
 
         bool _throwFromPutting;
+
+        bool _showOnGreenLandingCallout = true;
+
+        Vector3 _lastThrowAim = Vector3.forward;
 
         public ThrowPhase Phase => _state.Phase;
 
@@ -78,6 +104,8 @@ namespace DiskGolf.Core
 
         public Vector3 CurrentDiscWorld => _discPosition;
 
+        public Vector3 LastThrowAimDirection => _lastThrowAim;
+
         public int StrokeCount => _strokeCount;
 
         public int HolePar => hole != null ? hole.Par : 3;
@@ -86,15 +114,27 @@ namespace DiskGolf.Core
 
         public float TargetTrajectoryFt => aimAdjust != null ? aimAdjust.TargetDistanceFt : 0f;
 
+        public float PreviewDistanceYards => aimAdjust != null ? aimAdjust.TargetDistanceFt / 3f : 0f;
+
         public bool IsPreThrowPhase => _state.Phase is ThrowPhase.Aiming
             or ThrowPhase.PowerMeter
             or ThrowPhase.HeightMeter;
 
-        public bool ShowsTrajectoryPreview => IsPreThrowPhase || _state.Phase == ThrowPhase.Putting;
+        public bool ThrowPresentationReady => _throwPresentationReady;
+
+        public bool ShowsTrajectoryPreview =>
+            _throwPresentationReady && (IsPreThrowPhase || _state.Phase == ThrowPhase.Putting);
 
         void Awake()
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
+            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
+            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+            lieLandingBanner ??= LieLandingBannerUI.Ensure();
+            inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
+            if (inTheCircleBanner != null)
+                inTheCircleBanner.SetActive(false);
+            _cameraDirector ??= FindObjectOfType<CameraDirector>();
         }
 
         void Start()
@@ -114,11 +154,64 @@ namespace DiskGolf.Core
             if (hole == null || presenter == null || hole.Thrower == null)
                 return;
 
+            if (!_throwPresentationReady)
+                return;
+
             if (!IsPreThrowPhase && _state.Phase != ThrowPhase.Putting)
                 return;
 
             SyncDiscToHand();
+            HandlePreThrowAimInput();
             RefreshMeterPreview();
+            RefreshTrajectoryZoomCamera();
+            ApplyThrowerAimLean();
+        }
+
+        void ApplyThrowerAimLean()
+        {
+            if (hole?.Thrower == null || aimAdjust == null)
+                return;
+
+            var visual = hole.Thrower.GetComponent<ThrowerVisual>();
+            visual?.ApplyAimLean(aimAdjust.YawOffsetDegrees);
+        }
+
+        void HandlePreThrowAimInput()
+        {
+            if (input == null || bag?.Active == null || aimAdjust == null || hole == null)
+                return;
+
+            if (!input.AnyAimHeld)
+                return;
+
+            ClearUiSelectionForAim();
+
+            aimAdjust.ApplyHeldInput(
+                hole,
+                _discPosition,
+                bag.Active,
+                input.AimLeftHeld,
+                input.AimRightHeld,
+                input.AimUpHeld,
+                input.AimDownHeld,
+                Time.deltaTime);
+        }
+
+        static void ClearUiSelectionForAim()
+        {
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+                EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        void RefreshTrajectoryZoomCamera()
+        {
+            if (_cameraDirector == null || !_cameraDirector.TrajectoryZoomActive)
+                return;
+
+            _cameraDirector.RefreshTrajectoryZoom(
+                GetPreviewPath(),
+                GetPreviewTargetWorld(),
+                PreviewDistanceYards);
         }
 
         void RefreshMeterPreview()
@@ -138,10 +231,7 @@ namespace DiskGolf.Core
             }
 
             if (heightMeter != null && !heightMeter.IsRunning && !heightMeter.IsFrozenForFlight)
-            {
-                float heightCenter = FlightSimulator.HeightMeterCenter(aimAdjust.PlannedHeight);
-                heightMeter.PreviewTargetZone(heightCenter, 0.1f);
-            }
+                heightMeter.PreviewTargetZone(AccuracyMeterZones.MeterCenter, AccuracyMeterZones.MeterWidth);
         }
 
         void SyncDiscToHand()
@@ -167,10 +257,19 @@ namespace DiskGolf.Core
             if (_holeCompletePending)
                 return;
 
+            if (ShowsTrajectoryPreview && input.TrajectoryZoomTogglePressed)
+            {
+                _cameraDirector?.ToggleTrajectoryZoom(
+                    GetPreviewPath(),
+                    GetPreviewTargetWorld(),
+                    PreviewDistanceYards);
+            }
+
             switch (_state.Phase)
             {
                 case ThrowPhase.Aiming:
-                    HandleAimingDrive();
+                    if (_throwPresentationReady)
+                        HandleAimingDrive();
 
                     break;
                 case ThrowPhase.PowerMeter:
@@ -186,22 +285,22 @@ namespace DiskGolf.Core
                 case ThrowPhase.HeightMeter:
                     if (input.ConfirmPressed)
                     {
-                        float heightRaw =
-                            heightMeter != null ? heightMeter.Confirm() : 0.55f;
+                        float accuracyRaw =
+                            heightMeter != null ? heightMeter.Confirm() : AccuracyMeterZones.MeterCenter;
 
-                        var height = HeightMeterZones.FromValue(heightRaw);
-
-                        ExecuteThrow(_confirmedPower, height);
+                        var accuracy = AccuracyMeterZones.FromValue(accuracyRaw);
+                        ExecuteThrow(_confirmedPower, accuracy);
                     }
 
                     break;
                 case ThrowPhase.Putting:
-                    HandlePutting();
+                    if (_throwPresentationReady)
+                        HandlePutting();
 
                     break;
                 case ThrowPhase.Landed:
-                    if (input.ConfirmPressed)
-                        CompletePostThrowTransition();
+                    if (input.ConfirmPressed && _postThrowRoutine == null)
+                        StartCoroutine(CompletePostThrowTransitionRoutine());
 
                     break;
                 default:
@@ -235,18 +334,6 @@ namespace DiskGolf.Core
                 aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
             }
 
-            if (bag.Active != null)
-            {
-                aimAdjust.ApplyHeldInput(
-                    hole,
-                    _discPosition,
-                    bag.Active,
-                    input.AimLeft,
-                    input.AimRight,
-                    input.AimUp,
-                    input.AimDown);
-            }
-
             if (input.ConfirmPressed)
             {
                 BeginThrowMeters();
@@ -269,25 +356,20 @@ namespace DiskGolf.Core
 
         void BeginHeightMeter()
         {
-            float center = FlightSimulator.HeightMeterCenter(aimAdjust.PlannedHeight);
-            heightMeter?.SetTargetZone(center, 0.1f);
+            heightMeter?.SetTargetZone(AccuracyMeterZones.MeterCenter, AccuracyMeterZones.MeterWidth);
             heightMeter?.Begin();
+        }
+
+        void SyncArcHeightToAim()
+        {
+            if (input == null || aimAdjust == null)
+                return;
+
+            aimAdjust.SetPlannedHeight(input.ArcHeight);
         }
 
         void HandlePutting()
         {
-            if (bag.Active != null)
-            {
-                aimAdjust.ApplyHeldInput(
-                    hole,
-                    _discPosition,
-                    bag.Active,
-                    input.AimLeft,
-                    input.AimRight,
-                    input.AimUp,
-                    input.AimDown);
-            }
-
             if (!input.ConfirmPressed)
                 return;
 
@@ -296,7 +378,7 @@ namespace DiskGolf.Core
             _state.Advance();
         }
 
-        void ExecuteThrow(float power, ThrowHeight height)
+        void ExecuteThrow(float power, AccuracyZone accuracy)
         {
             if (presenter == null || hole == null)
                 return;
@@ -310,7 +392,11 @@ namespace DiskGolf.Core
             if (isPutt)
                 bag.SelectIndex(0);
 
+            SyncArcHeightToAim();
+            var height = aimAdjust.PlannedHeight;
             var aim = aimAdjust.AimDirection(hole, _discPosition);
+            AccuracyMeterZones.ApplyToThrow(ref aim, ref power, accuracy);
+            _lastThrowAim = aim;
             var release = isPutt ? ReleaseAngle.Flat : input.ReleaseAngle;
 
             var throwInput = new ThrowInput(
@@ -343,21 +429,32 @@ namespace DiskGolf.Core
         void FinishThrowCommon(FlightPath completedPath, bool allowEnterPutting)
         {
             var wps = completedPath?.Waypoints;
+            bool holed = presenter != null && presenter.LastFlightHoled;
 
             if (presenter != null)
-                _discPosition = presenter.LandedPosition;
+            {
+                if (holed)
+                {
+                    _discPosition = presenter.LandedPosition;
+                }
+                else
+                {
+                    float originGroundY = wps != null && wps.Count > 0 ? wps[0].Position.y : _discPosition.y;
+                    _discPosition = DiscLieGround.SnapLie(presenter.LandedPosition, originGroundY);
+                    presenter.SetPosition(_discPosition);
+                }
+            }
             else if (wps != null && wps.Count > 0)
-                _discPosition = wps[wps.Count - 1].Position;
+                _discPosition = DiscLieGround.SnapLie(wps[wps.Count - 1].Position, wps[0].Position.y);
 
-            PrepareNextShotView();
-
+            _cameraDirector?.HoldLandingCameraUntilThrowSummary();
             _state.Advance(); // InFlight → Landed
 
             EndMeterFlightDisplay();
 
             if (IsDiscHoled(_discPosition))
             {
-                CompleteHole();
+                BeginHoleComplete();
                 return;
             }
 
@@ -366,6 +463,9 @@ namespace DiskGolf.Core
             _pendingWasPut = _pendingPutOutcome;
             _pendingPutOutcome = false;
             _postThrowPending = true;
+            _throwPresentationReady = false;
+            _cameraDirector?.ClearTrajectoryZoom();
+            ApplyThrowPresentationVisibility();
 
             if (_postThrowRoutine != null)
                 StopCoroutine(_postThrowRoutine);
@@ -375,48 +475,96 @@ namespace DiskGolf.Core
 
         IEnumerator PostThrowRoutine(FlightPath completedPath)
         {
+            float wait = ShowLandingCallout(completedPath);
+            yield return new WaitForSeconds(wait);
+
+            HideLandingCallout();
+
+            yield return CompletePostThrowTransitionRoutine();
+            _postThrowRoutine = null;
+        }
+
+        float ShowLandingCallout(FlightPath completedPath)
+        {
+            const float defaultWait = 2.25f;
+            float wait = defaultWait;
+
+            bool onGreen = IsDiscOnGreenSurface(_discPosition)
+                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
+
+            if (!onGreen)
+                _showOnGreenLandingCallout = true;
+
+            if (onGreen && _showOnGreenLandingCallout)
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.Show();
+                wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : defaultWait;
+                _showOnGreenLandingCallout = false;
+            }
+            else if (hole != null && !hole.IsNearTee(_discPosition))
+            {
+                float fallbackGroundY = _discPosition.y - DiscLieGround.DiscRestLift;
+                var lie = DiscLieGround.SampleLieType(_discPosition, fallbackGroundY);
+                if (lie is LieType.Fairway or LieType.Rough)
+                {
+                    lieLandingBanner ??= LieLandingBannerUI.Ensure();
+                    lieLandingBanner?.Show(lie);
+                    wait = lieLandingBanner != null ? lieLandingBanner.DisplaySeconds : defaultWait;
+                }
+            }
+
             if (completedPath != null)
             {
                 throwResultBanner ??= ThrowResultBannerUI.Ensure();
                 throwResultBanner?.ShowThrowDistance(completedPath.TotalDistanceFt);
             }
 
-            float wait = throwResultBanner != null ? throwResultBanner.DisplaySeconds : 2.75f;
-            float elapsed = 0f;
+            if (onGreen && onTheGreenBanner != null && onTheGreenBanner.gameObject.activeSelf)
+                onTheGreenBanner.transform.SetAsLastSibling();
+            else if (lieLandingBanner != null && lieLandingBanner.gameObject.activeSelf)
+                lieLandingBanner.transform.SetAsLastSibling();
 
-            while (elapsed < wait && _postThrowPending)
-            {
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            CompletePostThrowTransition();
-            _postThrowRoutine = null;
+            return wait;
         }
 
-        void CompletePostThrowTransition()
+        void HideLandingCallout()
+        {
+            throwResultBanner?.Hide();
+            HideOnTheGreenBanner();
+            HideLieLandingBanner();
+        }
+
+        IEnumerator CompletePostThrowTransitionRoutine()
         {
             if (!_postThrowPending)
-                return;
+                yield break;
 
             _postThrowPending = false;
-            throwResultBanner?.Hide();
 
             if (_pendingWasPut)
             {
-                ResolvePutOutcome(_pendingRestFt);
-
-                return;
+                yield return ResolvePutOutcomeRoutine(_pendingRestFt);
+                yield break;
             }
 
-            if (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt)
-            {
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
+
+            RelocateThrowerForNextShot();
+
+            bool onGreen = IsDiscOnGreenSurface(_discPosition)
+                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
+            if (onGreen)
                 _state.EnterPutting();
+            else
+                ResumeAimingFromLanded();
+        }
 
-                return;
-            }
-
-            ResumeAimingFromLanded();
+        static bool IsDiscOnGreenSurface(Vector3 discPosition)
+        {
+            float fallbackGroundY = discPosition.y - DiscLieGround.DiscRestLift;
+            return DiscLieGround.SampleLieType(discPosition, fallbackGroundY) == LieType.Green;
         }
 
         void ResumeAimingFromLanded()
@@ -424,29 +572,45 @@ namespace DiskGolf.Core
             if (_state.Phase != ThrowPhase.Landed)
                 return;
 
-            _state.Advance(); // Landed → Resolve
-            _state.Advance(); // Resolve → Aiming
+            EnableCircleBanner(false);
+            _state.TransitionTo(ThrowPhase.Aiming);
         }
 
-        void ResolvePutOutcome(float restFt)
+        IEnumerator ResolvePutOutcomeRoutine(float restFt)
         {
             if (hole != null && (restFt <= HoledToleranceFt || IsDiscHoled(_discPosition)))
             {
-                CompleteHole();
-                return;
+                BeginHoleComplete();
+                yield break;
             }
 
-            if (hole != null && restFt <= hole.CircleRadiusFt)
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
+
+            RelocateThrowerForNextShot();
+
+            if (hole != null && (IsDiscOnGreenSurface(_discPosition) || restFt <= hole.CircleRadiusFt))
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
+        }
+
+        void RelocateThrowerForNextShot()
+        {
+            if (hole == null)
+                return;
+
+            if (hole.IsNearTee(_discPosition))
+                hole.PositionThrowerAtTee();
+            else
+                hole.PositionThrowerAtLie(_discPosition);
         }
 
         bool IsDiscHoled(Vector3 discWorld) =>
             (presenter != null && presenter.LastFlightHoled)
             || BasketCatchDetector.ContainsPoint(discWorld, GreyboxScale.DiscDiameterM * 0.45f);
 
-        void CompleteHole()
+        void BeginHoleComplete()
         {
             _postThrowPending = false;
 
@@ -456,36 +620,58 @@ namespace DiskGolf.Core
                 _postThrowRoutine = null;
             }
 
+            if (_throwPresentationRoutine != null)
+            {
+                StopCoroutine(_throwPresentationRoutine);
+                _throwPresentationRoutine = null;
+            }
+
             throwResultBanner?.Hide();
             EndMeterFlightDisplay();
-            EnableCircleBanner(false);
-
-            presenter?.SetPosition(hole.BasketPosition);
-            _discPosition = hole.BasketPosition;
+            HideOnTheGreenBanner();
+            HideLieLandingBanner();
+            HideThrowSummaryBanner();
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
 
             _holeCompletePending = true;
-            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
-            holeCompleteBanner?.Show(_strokeCount, HolePar);
 
             if (_holeCompleteRoutine != null)
                 StopCoroutine(_holeCompleteRoutine);
 
-            _holeCompleteRoutine = StartCoroutine(HoleCompleteRoutine());
+            _holeCompleteRoutine = StartCoroutine(HoleCompleteSequence());
         }
 
-        IEnumerator HoleCompleteRoutine()
+        IEnumerator HoleCompleteSequence()
         {
-            float wait = holeCompleteBanner != null ? holeCompleteBanner.DisplaySeconds : 3.5f;
-            float elapsed = 0f;
+            float delay = Mathf.Max(0f, basketCelebrationDelaySeconds);
+            if (delay > 0f)
+                yield return new WaitForSeconds(delay);
 
-            while (elapsed < wait && _holeCompletePending)
-            {
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
+            PlayBasketChainSfx();
+
+            holeCompleteCutscene ??= HoleCompleteCutsceneUI.Ensure();
+            holeCompleteCutscene?.Show(_strokeCount, HolePar, holeCompleteCutsceneSeconds);
+
+            float wait = holeCompleteCutscene != null
+                ? holeCompleteCutscene.DisplaySeconds
+                : holeCompleteCutsceneSeconds;
+            yield return new WaitForSeconds(Mathf.Max(0f, wait));
+
+            holeCompleteCutscene?.Hide();
+            holeCompleteBanner?.Hide();
 
             _holeCompleteRoutine = null;
             ResetHole();
+        }
+
+        void PlayBasketChainSfx()
+        {
+            var clip = basketChainSfx != null
+                ? basketChainSfx
+                : Resources.Load<AudioClip>("Audio/BasketChain");
+
+            GameplayAudio.PlayOneShot(clip);
         }
 
         void OnPhaseChangedInternal(ThrowPhase phase)
@@ -505,12 +691,7 @@ namespace DiskGolf.Core
 
                     powerMeter?.Stop();
                     heightMeter?.Stop();
-                    EnableCircleBanner(true);
-
-                    if (hole != null)
-                        hole.PositionThrowerAtLie(_discPosition);
-
-                    SyncDiscToHand();
+                    BeginThrowPresentationSequence();
 
                     break;
                 case ThrowPhase.Resolve:
@@ -524,16 +705,7 @@ namespace DiskGolf.Core
                     heightMeter?.Stop();
 
                     EnableCircleBanner(false);
-
-                    if (hole != null && presenter != null)
-                    {
-                        if (hole.IsNearTee(_discPosition))
-                            hole.PositionThrowerAtTee();
-                        else
-                            hole.PositionThrowerAtLie(_discPosition);
-
-                        SyncDiscToHand();
-                    }
+                    ClearUiSelectionForAim();
 
                     if (hole != null && bag != null)
                     {
@@ -541,17 +713,113 @@ namespace DiskGolf.Core
                         _trackedDisc = bag.Active;
                     }
 
+                    input?.ResetArcHeight();
+
                     if (hole != null && bag?.Active != null)
                         aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
+
+                    SyncArcHeightToAim();
+                    BeginThrowPresentationSequence();
 
                     break;
             }
         }
 
+        void BeginThrowPresentationSequence()
+        {
+            _throwPresentationReady = false;
+            _cameraDirector?.ClearTrajectoryZoom();
+            ApplyThrowPresentationVisibility();
+
+            if (_throwPresentationRoutine != null)
+                StopCoroutine(_throwPresentationRoutine);
+
+            _throwPresentationRoutine = StartCoroutine(ThrowPresentationSequence());
+        }
+
+        IEnumerator ThrowPresentationSequence()
+        {
+            _cameraDirector?.ReleaseLandingCameraHold();
+
+            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+
+            if (throwSummaryBanner == null)
+            {
+                _throwPresentationReady = true;
+                ApplyThrowPresentationVisibility();
+                SyncDiscToHand();
+                _throwPresentationRoutine = null;
+                yield break;
+            }
+
+            bool dismissed = false;
+            throwSummaryBanner.ShowBriefly(
+                _strokeCount + 1,
+                GameSessionSettings.ActiveCharacter,
+                () => dismissed = true);
+
+            while (!dismissed)
+                yield return null;
+
+            _throwPresentationReady = true;
+            ApplyThrowPresentationVisibility();
+            SyncDiscToHand();
+            _throwPresentationRoutine = null;
+        }
+
+        void ApplyThrowPresentationVisibility()
+        {
+            if (hole?.Thrower == null)
+                return;
+
+            if (_state.Phase is ThrowPhase.InFlight or ThrowPhase.Throwing)
+            {
+                hole.Thrower.gameObject.SetActive(true);
+                return;
+            }
+
+            if (_postThrowPending || _state.Phase == ThrowPhase.Landed)
+            {
+                hole.Thrower.gameObject.SetActive(false);
+                return;
+            }
+
+            bool inPreThrow = IsPreThrowPhase || _state.Phase == ThrowPhase.Putting;
+            hole.Thrower.gameObject.SetActive(_throwPresentationReady && inPreThrow);
+        }
+
+        void HideThrowSummaryBanner()
+        {
+            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+            throwSummaryBanner?.Hide();
+        }
+
         void EnableCircleBanner(bool on)
         {
-            if (inTheCircleBanner != null && inTheCircleBanner.activeSelf != on)
-                inTheCircleBanner.SetActive(on);
+            if (on)
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.ShowBriefly();
+                return;
+            }
+
+            HideOnTheGreenBanner();
+            HideLieLandingBanner();
+        }
+
+        void HideOnTheGreenBanner()
+        {
+            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+            onTheGreenBanner?.Hide();
+
+            if (inTheCircleBanner != null)
+                inTheCircleBanner.SetActive(false);
+        }
+
+        void HideLieLandingBanner()
+        {
+            lieLandingBanner ??= LieLandingBannerUI.Ensure();
+            lieLandingBanner?.Hide();
         }
 
         public void ResetHole()
@@ -572,8 +840,20 @@ namespace DiskGolf.Core
                 _holeCompleteRoutine = null;
             }
 
+            if (_throwPresentationRoutine != null)
+            {
+                StopCoroutine(_throwPresentationRoutine);
+                _throwPresentationRoutine = null;
+            }
+
             throwResultBanner?.Hide();
             holeCompleteBanner?.Hide();
+            holeCompleteCutscene?.Hide();
+            HideThrowSummaryBanner();
+            HideLieLandingBanner();
+            _cameraDirector?.ClearLandingCameraHold();
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
             sweetSpotBanner?.Hide();
 
             if (_sweetBannerRoutine != null)
@@ -584,12 +864,16 @@ namespace DiskGolf.Core
 
             _strokeCount = 0;
             _throwFromPutting = false;
+            _showOnGreenLandingCallout = true;
+            _cameraDirector?.ClearTrajectoryZoom();
 
             if (hole != null)
             {
                 _wind = hole.RollWind();
                 hole.PositionThrowerAtTee();
-                _discPosition = hole.DiscHoldPosition;
+                _discPosition = hole.TeePosition + Vector3.up * DiscLieGround.DiscRestLift;
+
+                input?.ResetArcHeight();
 
                 if (bag != null)
                 {
@@ -599,9 +883,11 @@ namespace DiskGolf.Core
 
                 if (bag?.Active != null)
                     aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
+
+                SyncArcHeightToAim();
             }
 
-            presenter?.SetPositionAndRotation(hole.DiscHoldPosition, hole.DiscHoldRotation);
+            presenter?.SetPosition(_discPosition);
 
             heightMeter?.Stop();
 
@@ -644,17 +930,6 @@ namespace DiskGolf.Core
             heightMeter?.EndFlightDisplay();
         }
 
-        void PrepareNextShotView()
-        {
-            if (hole == null)
-                return;
-
-            if (hole.IsNearTee(_discPosition))
-                hole.PositionThrowerAtTee();
-            else
-                hole.PositionThrowerAtLie(_discPosition);
-        }
-
         public FlightPath GetPreviewPath()
         {
             if (!ShowsTrajectoryPreview)
@@ -675,6 +950,21 @@ namespace DiskGolf.Core
                 _wind,
                 _discPosition,
                 aim));
+        }
+
+        public Vector3 GetPreviewTargetWorld()
+        {
+            var path = GetPreviewPath();
+            var wps = path?.Waypoints;
+
+            if (wps != null && wps.Count > 0)
+                return wps[wps.Count - 1].Position;
+
+            if (hole == null || aimAdjust == null)
+                return _discPosition;
+
+            var aim = aimAdjust.AimDirection(hole, _discPosition);
+            return _discPosition + aim * (aimAdjust.TargetDistanceFt * 0.3048f);
         }
     }
 }

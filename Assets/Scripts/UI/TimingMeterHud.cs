@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Hosts NTM arc meters under the gameplay HUD canvas.</summary>
+    /// <summary>Hosts power and height arc meters under the gameplay HUD canvas.</summary>
     [DefaultExecutionOrder(-150)]
     public sealed class TimingMeterHud : MonoBehaviour
     {
@@ -12,11 +12,11 @@ namespace DiskGolf.UI
 
         static TimingMeterHud _instance;
 
-        NtmPowerMeterVisual _power;
+        PowerMeterVisual _power;
 
-        NtmHeightMeterVisual _height;
+        HeightMeterVisual _height;
 
-        public static NtmPowerMeterVisual Power
+        public static PowerMeterVisual Power
         {
             get
             {
@@ -25,7 +25,7 @@ namespace DiskGolf.UI
             }
         }
 
-        public static NtmHeightMeterVisual Height
+        public static HeightMeterVisual Height
         {
             get
             {
@@ -34,11 +34,14 @@ namespace DiskGolf.UI
             }
         }
 
+        void Awake()
+        {
+            _instance = this;
+            BindMeters();
+        }
+
         public static TimingMeterHud Ensure()
         {
-            if (_instance != null)
-                return _instance;
-
             var hudGo = GameObject.Find(HudRootName);
             if (hudGo == null)
                 return null;
@@ -50,20 +53,45 @@ namespace DiskGolf.UI
             FixCanvasRect(canvas);
 
             _instance = hudGo.GetComponent<TimingMeterHud>();
+            if (SceneHudAuthoring.IsActive)
+            {
+                if (_instance == null)
+                {
+                    Debug.LogWarning("[Disk Golf] TimingMeterHud missing from GameplayHUD. Add the component in the scene.");
+                    return null;
+                }
+
+                _instance.BindMeters();
+                return _instance;
+            }
+
             if (_instance == null)
                 _instance = hudGo.AddComponent<TimingMeterHud>();
 
-            _instance.Build(canvas);
+            if (_instance._power == null || !_instance._power
+                || _instance._height == null || !_instance._height)
+                _instance.RefreshMeters(canvas);
+
             return _instance;
         }
 
-        void OnDestroy()
+        public void BindMeters()
         {
-            if (_instance == this)
-                _instance = null;
+            var canvas = transform as RectTransform;
+            var root = canvas.Find(MetersRootName);
+            if (root == null)
+                return;
+
+            _power = root.Find(PowerMeterVisual.VisualNameForFind)?.GetComponent<PowerMeterVisual>()
+                ?? root.Find("NtmPowerMeter")?.GetComponent<PowerMeterVisual>();
+            _height = HeightMeterVisual.FindMeterRoot(root)?.GetComponent<HeightMeterVisual>();
+
+            _power?.BindSceneReferences();
+            _height?.BindSceneReferences();
+            _power?.PlayerPortrait?.Refresh();
         }
 
-        void Build(RectTransform canvas)
+        void RefreshMeters(RectTransform canvas)
         {
             var root = canvas.Find(MetersRootName) as RectTransform;
             if (root == null)
@@ -79,53 +107,53 @@ namespace DiskGolf.UI
 
             root.SetAsLastSibling();
 
-            DestroyStaleMeter(root, NtmPowerMeterVisual.VisualNameForFind,
-                t =>
-                {
-                    if (t.Find("Pivot/ArcHub/TrackColorV4") == null)
-                        return false;
+            UpgradeStaleMeter(root, parent => parent.Find(PowerMeterVisual.VisualNameForFind), PowerMeterVisual.IsCurrentLayout);
+            UpgradeStaleMeter(root, HeightMeterVisual.FindMeterRoot, HeightMeterVisual.IsCurrentLayout);
 
-                    var rt = t as RectTransform;
-                    return rt != null
-                           && rt.sizeDelta.x >= NtmTimingMeterLayout.PowerWidth - 1f
-                           && Vector2.Distance(rt.anchoredPosition, NtmTimingMeterLayout.PowerAnchorPos) < 1f;
-                });
-
-            DestroyStaleMeter(root, NtmHeightMeterVisual.VisualNameForFind,
-                t =>
-                {
-                    var rt = t as RectTransform;
-                    return rt != null
-                           && rt.sizeDelta.y >= NtmTimingMeterLayout.HeightTotal - 1f
-                           && rt.sizeDelta.x >= NtmTimingMeterLayout.HeightWidth - 1f;
-                });
-
-            _power = NtmPowerMeterVisual.Ensure(root);
-            _height = NtmHeightMeterVisual.Ensure(root);
+            _power = PowerMeterVisual.Ensure(root);
+            _height = HeightMeterVisual.Ensure(root);
 
             _power?.EnsureBuilt();
             _height?.EnsureBuilt();
 
-            _power.SetChromeVisible(true);
-            _height.SetChromeVisible(true);
+            _power?.SetChromeVisible(true);
+            _height?.SetChromeVisible(true);
+
+            NtmBottomBar.Ensure(canvas);
         }
 
-        static void DestroyStaleMeter(RectTransform root, string meterName, System.Func<Transform, bool> isCurrent)
+        void OnDestroy()
         {
-            var existing = root.Find(meterName);
+            if (_instance == this)
+                _instance = null;
+        }
+
+        static void UpgradeStaleMeter(
+            RectTransform root,
+            System.Func<Transform, Transform> findMeter,
+            System.Func<Transform, bool> isCurrent)
+        {
+            var existing = findMeter(root);
             if (existing == null || isCurrent(existing))
                 return;
 
             if (Application.isPlaying)
-                Destroy(existing.gameObject);
-            else
-                DestroyImmediate(existing.gameObject);
+            {
+                existing.GetComponent<PowerMeterVisual>()?.EnsureBuilt();
+                existing.GetComponent<HeightMeterVisual>()?.EnsureBuilt();
+                return;
+            }
+
+            DestroyImmediate(existing.gameObject);
         }
 
         static void FixCanvasRect(RectTransform canvas)
         {
             if (canvas.localScale.sqrMagnitude < 0.01f)
                 canvas.localScale = Vector3.one;
+
+            if (SceneHudAuthoring.IsActive)
+                return;
 
             canvas.anchorMin = Vector2.zero;
             canvas.anchorMax = Vector2.one;

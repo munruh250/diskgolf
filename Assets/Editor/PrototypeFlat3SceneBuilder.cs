@@ -19,33 +19,39 @@ using UnityEngine.UI;
 
 namespace DiskGolf.EditorTools
 {
-    /// <summary>Full scene scaffold (optional). Prefer <see cref="GreyboxAutoSetup"/> auto-migration on load.</summary>
+    /// <summary>Full scene scaffold for bootstrapping a new prototype hole (editor-only, no menu entry).</summary>
     public static class PrototypeFlat3SceneBuilder
     {
-        const string PrefabsDir = "Assets/Prefabs";
+        const string PrefabsDir = ProjectArtPaths.Prefabs.GameplayRoot;
 
-        const string MaterialsDir = "Assets/Materials";
+        const string CoursePrefabsDir = ProjectArtPaths.Prefabs.CourseRoot;
 
-        const string ScenePath = "Assets/Scenes/PrototypeFlat3.unity";
-
-        [MenuItem("Disk Golf/Rebuild Prototype Flat 3 Scene")] public static void MenuBuild() => Build();
+        const string ScenePath = ProjectArtPaths.Scenes.PrototypeFlat3;
 
         public static void Build()
         {
             Directory.CreateDirectory(PrefabsDir);
-            Directory.CreateDirectory(MaterialsDir);
-            Directory.CreateDirectory("Assets/Scenes");
+            Directory.CreateDirectory(CoursePrefabsDir);
+            Directory.CreateDirectory(ProjectArtPaths.Scenes.PrototypeRoot);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Fairway.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Basket.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Environment.Tee.Root);
+            Directory.CreateDirectory(ProjectArtPaths.Gameplay.DiscMaterial.Replace("/MAT_DiscOrange.mat", ""));
 
             EnsureTmpEssentials();
 
-            EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough" });
+            EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough", "Green" });
 
             var fairRgb = new Color(0.2f, 0.52f, 0.26f);
-            var fairMat = SaveMaterialAsset("FairwayMat", fairRgb, $"{MaterialsDir}/FairwayMat.mat");
-            var teeMat = SaveMaterialAsset("TeeMat", new Color(0.73f, 0.57f, 0.41f), $"{MaterialsDir}/TeeMat.mat");
-            var metalMat = SaveMaterialAsset("BasketMat", new Color(0.46f, 0.49f, 0.53f), $"{MaterialsDir}/BasketMat.mat");
+            var fairMat = SaveMaterialAsset("MAT_FairwayGreybox", fairRgb,
+                ProjectArtPaths.Environment.Fairway.Root + "/MAT_FairwayGreybox.mat");
+            var teeMat = SaveMaterialAsset("MAT_Tee", new Color(0.73f, 0.57f, 0.41f),
+                ProjectArtPaths.Environment.Tee.Material);
+            var metalMat = SaveMaterialAsset("MAT_Basket", new Color(0.46f, 0.49f, 0.53f),
+                ProjectArtPaths.Environment.Basket.Material);
 
-            var discOrange = SaveMaterialAsset("DiscOrange", new Color(0.92f, 0.42f, 0.06f), $"{MaterialsDir}/DiscOrange.mat");
+            var discOrange = SaveMaterialAsset("MAT_DiscOrange", new Color(0.92f, 0.42f, 0.06f),
+                ProjectArtPaths.Gameplay.DiscMaterial);
 
             GameObject discPrefab = SaveDiscPrefab(discOrange);
             GameObject teePrefab = SaveTeePrefab(teeMat);
@@ -56,7 +62,7 @@ namespace DiskGolf.EditorTools
             DirLight(out _);
 
             var fairPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            fairPlane.name = "FairwayPlane";
+            fairPlane.name = "Fairway1";
             fairPlane.tag = "Fairway";
             DestroyColliderImmediate(fairPlane);
             fairPlane.transform.position = Vector3.forward * (76.2f * 0.5f);
@@ -119,95 +125,31 @@ namespace DiskGolf.EditorTools
                 "presenter",
                 presenter);
 
-            var hudRt = HudCanvas(out _);
+            var hudCanvas = HudCanvas(out _);
 
-            HudTmpLabel(hudRt, new Vector2(0f, 130f), "Bucket Distance --- ft", 34f, out TextMeshProUGUI restUi);
-            HudTmpLabel(hudRt, new Vector2(0f, 108f), "DISC HEIGHT --- ft", 30f, out TextMeshProUGUI discHeightUi);
-            HudTmpLabel(hudRt, new Vector2(0f, 94f), "Disc", 28f, out TextMeshProUGUI discUi);
-
-            HudTmpLabel(hudRt, new Vector2(0f, 60f), "FLAT", 26f,
-                out TextMeshProUGUI stanceUi);
-
-            HudTmpLabel(hudRt,
-                new Vector2(0f,
-                    28f),
-                "WIND --- mph",
-                24f,
-
-                out TextMeshProUGUI windUi);
-
-            HudTmpLabelRow(hudRt, new Vector2(-240f, -110f),
-
-                "POWER", 18f,
-
-                TextAlignmentOptions.Top);
-
-            _ = HudSliderUi(hudRt, new Vector2(-230f,
-
-                -146f),
-
-                out Slider powerSlider);
-
-            HudTmpLabelRow(hudRt,
-
-                new Vector2(232f,
-
-                    -108f),
-
-                "HEIGHT",
-
-                18f,
-
-                TextAlignmentOptions.Top);
-
-            _ = HudSliderUi(hudRt,
-                    new Vector2(260f,
-
-                        -146f),
-
-                    out Slider heightSlider);
-
-            var zoneText =
-                HudUnityText(hudRt,
-                    new Vector2(258f,
-
-                        -188f),
-
-                    "NICE");
-
-            ZoneTextStyle(zoneText);
+            HudTmpLabel(hudCanvas, new Vector2(36f, 48f), "Disc", 28f, out TextMeshProUGUI discUi);
+            discUi.gameObject.name = "Disc";
+            HudTmpLabel(hudCanvas, new Vector2(36f, 88f), "FLAT", 26f, out TextMeshProUGUI stanceUi);
+            stanceUi.gameObject.name = "StanceLabel";
 
             var powerMb = gm.AddComponent<PowerMeterUI>();
-
-            AssignSerialized(powerMb, "slider", powerSlider);
-
             var heightMb = gm.AddComponent<HeightMeterUI>();
 
-            AssignSerialized(heightMb, "slider", heightSlider);
-
-            AssignSerialized(heightMb, "zoneLabel", zoneText);
-
             AssignSerialized(controller, "powerMeter", powerMb);
-
             AssignSerialized(controller, "heightMeter", heightMb);
 
             var banner =
-                HudTmpLabelRow(hudRt,
-                    new Vector2(0f,
-
-                        -36f),
-
+                HudTmpLabelRow(hudCanvas,
+                    new Vector2(0f, -36f),
                     "IN THE CIRCLE",
-
                     40f,
-
                     TextAlignmentOptions.Center);
 
+            banner.gameObject.name = "InTheCircleBanner";
             banner.gameObject.SetActive(false);
-
             AssignSerialized(controller, "inTheCircleBanner", banner.gameObject);
 
-            var throwLabel = HudTmpLabelRow(hudRt, Vector2.zero, "200 FEET", 64f,
+            var throwLabel = HudTmpLabelRow(hudCanvas, Vector2.zero, "200 FEET", 64f,
                 TextAlignmentOptions.Center);
             var throwRt = throwLabel.rectTransform;
             throwRt.anchorMin = throwRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -220,66 +162,37 @@ namespace DiskGolf.EditorTools
             throwLabel.gameObject.SetActive(false);
             AssignSerialized(controller, "throwResultBanner", throwBanner);
 
-            var hud = hudRt.gameObject.AddComponent<HUDController>();
-
+            var hud = hudCanvas.gameObject.AddComponent<HUDController>();
             AssignSerialized(hud, "controller", controller);
-
             AssignSerialized(hud, "hole", hole);
-
             AssignSerialized(hud, "discTransform", discTf);
-
-            AssignSerialized(hud, "restText", restUi);
-
-            AssignSerialized(hud, "discHeightText", discHeightUi);
-
             AssignSerialized(hud, "discText", discUi);
-
             AssignSerialized(hud, "stanceText", stanceUi);
 
-            AssignSerialized(hud, "windText", windUi);
+            SpawnMinimap(hudCanvas, hole, discTf, courseLayout, controller);
 
-            SpawnMinimap(hudRt, hole, discTf, courseLayout, controller);
+            var aimPoint = CameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
+            var cameraRoot = new GameObject("Camera").transform;
 
-            var aimPoint = NtmCameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
+            var side = Vcam(CameraRig.SideSetupName, cameraRoot, throwerTf, aimPoint, CameraRig.SideFollowOffset, 0f);
+            var flightChase = Vcam(CameraRig.FlightChaseName, cameraRoot, discTf, basketTf, CameraRig.FlightChaseOffset, 0f);
 
-            var side =
-                Vcam(NtmCameraRig.SideSetupName, mainCam.transform, throwerTf, aimPoint, NtmCameraRig.SideFollowOffset, 0f);
-
-            var flightChase =
-                Vcam(NtmCameraRig.FlightChaseName, mainCam.transform, discTf, basketTf, NtmCameraRig.FlightChaseOffset, 0f);
-
-            NtmCameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
-            NtmCameraRig.ConfigureFlightChaseCam(flightChase, discTf, discTf);
-
-            var top =
-                Vcam("TopDownTrackCam", mainCam.transform, discTf, discTf, new Vector3(0f, 22f, 0f), 90f);
-
-            var lie = Vcam("LieZoomCam", mainCam.transform, discTf, basketTf, new Vector3(1.8f, 2.1f, -2.2f), 0f);
-
-            var putt =
-                Vcam("OverheadPuttCam", mainCam.transform, basketTf, basketTf, new Vector3(0f, 15f, 0.9f), 72f);
+            CameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
+            CameraRig.ConfigureFlightChaseCam(flightChase, discTf, Vector3.forward);
 
             side.gameObject.SetActive(true);
             flightChase.gameObject.SetActive(false);
-            top.gameObject.SetActive(false);
-            lie.gameObject.SetActive(false);
-            putt.gameObject.SetActive(false);
 
-            NtmHudLayout.Apply();
+            HudLayout.Apply();
 
-            var directorGo = new GameObject("CameraDirector");
-            directorGo.transform.SetParent(gm.transform, false);
-
-            var director = directorGo.AddComponent<CameraDirector>();
+            var director = gm.AddComponent<CameraDirector>();
             AssignSerialized(director, "sideSetupCam", side);
             AssignSerialized(director, "flightChaseCam", flightChase);
-            AssignSerialized(director, "lieZoomCam", lie);
-            AssignSerialized(director, "overheadPuttCam", putt);
             AssignSerialized(director, "throwController", controller);
             AssignSerialized(director, "flightPresenter", presenter);
+            AssignSerialized(director, "hole", hole);
 
-            var autoSetup = gm.GetComponent<GreyboxAutoSetup>() ?? gm.AddComponent<GreyboxAutoSetup>();
-            autoSetup.Apply();
+            SceneHierarchy.Organize();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
@@ -324,15 +237,16 @@ namespace DiskGolf.EditorTools
             markerLayer.offsetMax = Vector2.zero;
 
             var mapRect = panelRt;
-            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect),
+            const float minimapAspect = 248f / 392f;
+            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect, minimapAspect),
                 new Vector2(8f, 8f), Color.white).rectTransform;
             teeDot.name = "TeeDot";
 
-            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect),
+            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect, minimapAspect),
                 new Vector2(10f, 10f), new Color(1f, 0.55f, 0.25f)).rectTransform;
             basketDot.name = "BasketDot";
 
-            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect),
+            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect, minimapAspect),
                 new Vector2(8f, 8f), Color.cyan).rectTransform;
             discDot.name = "DiscDot";
 
@@ -442,7 +356,7 @@ namespace DiskGolf.EditorTools
 
         static Material SaveMaterialAsset(string name, Color c, string assetPath)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(assetPath) ?? MaterialsDir);
+            Directory.CreateDirectory(Path.GetDirectoryName(assetPath) ?? ProjectArtPaths.ArtRoot);
             var shader = Shader.Find("Standard");
             var mat = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
             if (mat == null)
@@ -480,7 +394,7 @@ namespace DiskGolf.EditorTools
                 GreyboxScale.DiscThicknessM,
                 GreyboxScale.DiscDiameterM);
             disc.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            return SavePrefabAsset(disc, $"{PrefabsDir}/Disc.prefab");
+            return SavePrefabAsset(disc, ProjectArtPaths.Prefabs.Disc);
         }
 
         static GameObject SaveTeePrefab(Material mat)
@@ -490,7 +404,7 @@ namespace DiskGolf.EditorTools
             tee.tag = "Tee";
             tee.transform.localScale = new Vector3(2f, 0.08f, 2f);
             tee.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            return SavePrefabAsset(tee, $"{PrefabsDir}/TeePad.prefab");
+            return SavePrefabAsset(tee, ProjectArtPaths.Prefabs.TeePad);
         }
 
         static GameObject SaveBasketPrefab(Material mat)
@@ -524,7 +438,7 @@ namespace DiskGolf.EditorTools
             root.AddComponent<BasketCatchDetector>();
 
             root.tag = "Basket";
-            return SavePrefabAsset(root, $"{PrefabsDir}/Basket.prefab");
+            return SavePrefabAsset(root, ProjectArtPaths.Prefabs.Basket);
         }
 
         static GameObject SavePrefabAsset(GameObject instance, string path)
@@ -580,7 +494,7 @@ namespace DiskGolf.EditorTools
             var tmpSettings =
                 Path.Combine(projectRoot,
 
-                    "Assets/TextMesh Pro/Resources/TMP Settings.asset");
+                    ProjectArtPaths.ThirdParty.TmpSettings);
 
             if (File.Exists(tmpSettings))
                 return;
@@ -622,8 +536,8 @@ namespace DiskGolf.EditorTools
                 DestroyColliderImmediate(slab);
             }
 
-            Stripe("RoughBorder_L", Vector3.left * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
-            Stripe("RoughBorder_R", Vector3.right * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
+            Stripe("Rough1", Vector3.left * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
+            Stripe("Rough2", Vector3.right * 95f + Vector3.up * 0.02f, new Vector3(6f, 1f, 24f));
         }
 
         static void DirLight(out GameObject go)
@@ -631,7 +545,7 @@ namespace DiskGolf.EditorTools
             go = new GameObject("Directional Light");
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.18f;
+            light.intensity = 1f;
             light.color = new Color(1f, 0.96f, 0.88f);
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.9f;
@@ -676,16 +590,12 @@ namespace DiskGolf.EditorTools
 
             holder.AddComponent<GraphicRaycaster>();
 
-            var hudRootGo = new GameObject("HudRoot");
-
-            hudRootGo.transform.SetParent(holder.transform,
-                false);
-
-            var rt = hudRootGo.AddComponent<RectTransform>();
+            var rt = holder.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
+            rt.localScale = Vector3.one;
 
             return rt;
         }
@@ -729,10 +639,7 @@ namespace DiskGolf.EditorTools
 
         static void TryBindTmpFont(TextMeshProUGUI tmp)
         {
-            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
-
-            if (font != null)
-                tmp.font = font;
+            HudTypography.BindFont(tmp);
         }
 
         static GameObject HudSliderUi(RectTransform root, Vector2 anchored, out Slider slider)

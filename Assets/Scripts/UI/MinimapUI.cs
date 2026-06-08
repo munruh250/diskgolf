@@ -15,6 +15,8 @@ namespace DiskGolf.UI
 
         const int TextureHeight = 392;
 
+        const float ViewAspect = TextureWidth / (float)TextureHeight;
+
         const int MaxTrajectorySegments = 48;
 
         [SerializeField] ThrowController controller;
@@ -35,6 +37,12 @@ namespace DiskGolf.UI
 
         [SerializeField] RectTransform basketDot;
 
+        static readonly Color TreeDotColor = new(0.45f, 0.28f, 0.12f, 1f);
+
+        static readonly Vector2 TreeDotSize = new(8f, 8f);
+
+        readonly List<RectTransform> _treeDots = new();
+
         UnityEngine.Camera _captureCam;
 
         RenderTexture _renderTexture;
@@ -50,6 +58,7 @@ namespace DiskGolf.UI
             EnsureCaptureCamera();
             EnsureMapImage();
             EnsureMarkers();
+            EnsureTreeMarkers();
             EnsureTrajectoryOverlay();
             EnsureTrajectoryLine();
         }
@@ -93,14 +102,15 @@ namespace DiskGolf.UI
             var mapRect = mapImage.rectTransform;
 
             if (teeDot != null && hole != null)
-                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect);
+                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect, ViewAspect);
 
             if (basketDot != null && hole != null)
-                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect);
+                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect, ViewAspect);
 
             if (discDot != null && discTransform != null)
-                discDot.anchoredPosition = course.WorldToMapAnchored(discTransform.position, mapRect);
+                discDot.anchoredPosition = course.WorldToMapAnchored(discTransform.position, mapRect, ViewAspect);
 
+            UpdateTreeMarkers(mapRect);
             UpdateTrajectoryOverlay(mapRect);
         }
 
@@ -154,14 +164,10 @@ namespace DiskGolf.UI
             if (_captureCam == null || course == null)
                 return;
 
-            var bounds = course.WorldBounds;
-            _captureCam.transform.position = bounds.center + Vector3.up * 120f;
+            course.ComputeMinimapFraming(ViewAspect, out var center, out float orthographicSize);
+            _captureCam.transform.position = center + Vector3.up * 120f;
             _captureCam.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-
-            float aspect = TextureWidth / (float)TextureHeight;
-            float halfHeight = bounds.extents.z * 1.1f;
-            float halfWidth = bounds.extents.x * 1.1f;
-            _captureCam.orthographicSize = Mathf.Max(halfHeight, halfWidth / aspect);
+            _captureCam.orthographicSize = orthographicSize;
         }
 
         void EnsureMapImage()
@@ -202,10 +208,74 @@ namespace DiskGolf.UI
             discDot ??= markerLayer.Find("DiscDot") as RectTransform;
 
             if (hole != null && teeDot != null)
-                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect);
+                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect, ViewAspect);
 
             if (hole != null && basketDot != null)
-                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect);
+                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect, ViewAspect);
+        }
+
+        void EnsureTreeMarkers()
+        {
+            markerLayer ??= transform.Find("MapPanel/MarkerLayer") as RectTransform;
+            if (markerLayer == null || course == null)
+                return;
+
+            var treesRoot = course.TreesRoot;
+            if (treesRoot == null)
+                return;
+
+            int treeCount = treesRoot.childCount;
+            while (_treeDots.Count < treeCount)
+            {
+                var dot = CreateMarkerDot(markerLayer, "TreeDot", TreeDotSize, TreeDotColor);
+                dot.SetAsLastSibling();
+                _treeDots.Add(dot);
+            }
+
+            for (int i = treeCount; i < _treeDots.Count; i++)
+                _treeDots[i].gameObject.SetActive(false);
+        }
+
+        void UpdateTreeMarkers(RectTransform mapRect)
+        {
+            if (_treeDots.Count == 0)
+                EnsureTreeMarkers();
+
+            var treesRoot = course?.TreesRoot;
+            if (treesRoot == null)
+                return;
+
+            int treeCount = treesRoot.childCount;
+            for (int i = 0; i < treeCount && i < _treeDots.Count; i++)
+            {
+                var dot = _treeDots[i];
+                if (dot == null)
+                    continue;
+
+                dot.gameObject.SetActive(true);
+                dot.anchoredPosition = course.WorldToMapAnchored(treesRoot.GetChild(i).position, mapRect, ViewAspect);
+            }
+
+            for (int i = treeCount; i < _treeDots.Count; i++)
+            {
+                if (_treeDots[i] != null)
+                    _treeDots[i].gameObject.SetActive(false);
+            }
+        }
+
+        static RectTransform CreateMarkerDot(RectTransform parent, string name, Vector2 size, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+
+            var image = go.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return rt;
         }
 
         void EnsureTrajectoryOverlay()
@@ -263,19 +333,25 @@ namespace DiskGolf.UI
 
             var wps = path.Waypoints;
             int segCount = Mathf.Min(wps.Count - 1, _trajectorySegments.Count);
+            float discRadius = GreyboxScale.DiscDiameterM * 0.45f;
+            var worldPoints = new Vector3[wps.Count];
+            for (int i = 0; i < wps.Count; i++)
+                worldPoints[i] = wps[i].Position;
+            int hitWaypointIndex = TreeObstacle.FindFirstHitWaypointIndex(worldPoints, discRadius);
 
             for (int i = 0; i < segCount; i++)
             {
-                var a = course.WorldToMapAnchored(wps[i].Position, mapRect);
-                var b = course.WorldToMapAnchored(wps[i + 1].Position, mapRect);
-                PlaceTrajectorySegment(_trajectorySegments[i], a, b);
+                var a = course.WorldToMapAnchored(wps[i].Position, mapRect, ViewAspect);
+                var b = course.WorldToMapAnchored(wps[i + 1].Position, mapRect, ViewAspect);
+                bool blocked = hitWaypointIndex >= 0 && i + 1 >= hitWaypointIndex;
+                PlaceTrajectorySegment(_trajectorySegments[i], a, b, blocked);
             }
 
             for (int i = segCount; i < _trajectorySegments.Count; i++)
                 _trajectorySegments[i].gameObject.SetActive(false);
         }
 
-        static void PlaceTrajectorySegment(Image segment, Vector2 a, Vector2 b)
+        static void PlaceTrajectorySegment(Image segment, Vector2 a, Vector2 b, bool blocked)
         {
             var rt = segment.rectTransform;
             var delta = b - a;
@@ -288,6 +364,7 @@ namespace DiskGolf.UI
             }
 
             segment.gameObject.SetActive(true);
+            segment.color = blocked ? MinimapTrajectoryLine.BlockedPathColor : MinimapTrajectoryLine.PathColor;
             rt.anchoredPosition = (a + b) * 0.5f;
             rt.sizeDelta = new Vector2(length, 2f);
             rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);

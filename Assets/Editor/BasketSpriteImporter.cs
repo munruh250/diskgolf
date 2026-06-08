@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DiskGolf.Gameplay;
 using UnityEditor;
 using UnityEngine;
 
@@ -7,11 +8,11 @@ namespace DiskGolf.EditorTools
     /// <summary>Imports basket sprite with edge-connected background transparency.</summary>
     sealed class BasketSpriteImporter : AssetPostprocessor
     {
-        const string BasketResourceFolder = "Assets/Resources/Basket/";
+        const string BasketFolder = ProjectArtPaths.Environment.Basket.Root + "/";
 
         void OnPreprocessTexture()
         {
-            if (!assetPath.StartsWith(BasketResourceFolder) || !assetPath.EndsWith(".png"))
+            if (!assetPath.StartsWith(BasketFolder) || !assetPath.EndsWith(".png"))
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -22,13 +23,13 @@ namespace DiskGolf.EditorTools
             importer.mipmapEnabled = false;
             importer.filterMode = FilterMode.Bilinear;
             importer.spritePivot = new Vector2(0.5f, 0f);
-            importer.spritePixelsToUnits = 220f;
+            importer.spritePixelsPerUnit = 220f;
             importer.isReadable = true;
         }
 
         void OnPostprocessTexture(Texture2D texture)
         {
-            if (!assetPath.StartsWith(BasketResourceFolder) || !assetPath.EndsWith(".png"))
+            if (!assetPath.StartsWith(BasketFolder) || !assetPath.EndsWith(".png"))
                 return;
 
             KeyBorderBackgroundToTransparent(texture, 0.07f);
@@ -97,13 +98,6 @@ namespace DiskGolf.EditorTools
 
             texture.SetPixels(pixels);
             texture.Apply();
-        }
-
-        [MenuItem("Disk Golf/Reimport Basket Sprite")]
-        public static void ReimportBasketSprite()
-        {
-            AssetDatabase.ImportAsset(BasketResourceFolder + "2dbucket.png", ImportAssetOptions.ForceUpdate);
-            Debug.Log("[Disk Golf] Reimported basket sprite.");
         }
     }
 }
