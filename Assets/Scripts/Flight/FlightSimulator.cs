@@ -47,7 +47,8 @@ namespace DiskGolf.Flight
                 distancePenalty = UnderpowerDistanceMultiplier;
             }
 
-            float distanceFt = input.Disc.maxDistanceFt * DistanceScale * power * glideBonus * distancePenalty;
+            float distanceFt = input.Disc.maxDistanceFt * DistanceScale * CharacterPowerMultiplier()
+                * power * glideBonus * distancePenalty;
 
             float turnMod = input.ReleaseAngle switch
             {
@@ -155,7 +156,15 @@ namespace DiskGolf.Flight
             };
 
         public static float MaxReachFeet(DiscProfile disc, ThrowHeight height) =>
-            disc.maxDistanceFt * DistanceScale * GlideBonus(height);
+            disc.maxDistanceFt * DistanceScale * CharacterPowerMultiplier() * GlideBonus(height);
+
+        static float CharacterPowerMultiplier()
+        {
+            var character = GameSessionSettings.ActiveCharacter;
+            return character != null
+                ? PlayerCharacterStats.PowerDistanceMultiplier(character.power)
+                : 1f;
+        }
 
         /// <summary>Meter reading (0–1.1) that should carry the disc the target distance.</summary>
         public static float MeterPowerForTargetDistance(DiscProfile disc, float targetDistanceFt, ThrowHeight height)

@@ -28,6 +28,7 @@ namespace DiskGolf.EditorTools
         {
             Directory.CreateDirectory(ProjectArtPaths.Scenes.MenuRoot);
             EnsureTmpEssentials();
+            PlayerCharacterRosterBuilder.CreateDefaultRoster();
 
             BuildIntroScene();
             BuildMainMenuScene();
@@ -77,17 +78,29 @@ namespace DiskGolf.EditorTools
 
         static void BuildCharacterSelectScene()
         {
+            BuildCharacterSelectSceneOnly();
+        }
+
+        public static void BuildCharacterSelectSceneOnly()
+        {
             NewMenuScene();
             SetupCamera();
 
             var canvas = MenuCanvas();
-            CreateTitle(canvas, "Character Select", 58f, new Vector2(0f, 280f));
-            CreateBody(canvas, "Choose your thrower (more options coming soon)", 28f, new Vector2(0f, 40f),
-                TextAlignmentOptions.Center);
+            var bg = canvas.gameObject.GetComponent<Image>() ?? canvas.gameObject.AddComponent<Image>();
+            bg.color = new Color(0.22f, 0.28f, 0.2f, 1f);
+            bg.raycastTarget = false;
 
-            var root = new GameObject("CharacterSelectController");
-            var controller = root.AddComponent<CharacterSelectController>();
-            WireNavButtons(canvas, controller, continueLabel: "Continue To Course Select");
+            var screenGo = new GameObject("CharacterSelectScreen", typeof(RectTransform));
+            var screenRt = screenGo.GetComponent<RectTransform>();
+            screenRt.SetParent(canvas, false);
+            screenRt.anchorMin = Vector2.zero;
+            screenRt.anchorMax = Vector2.one;
+            screenRt.offsetMin = Vector2.zero;
+            screenRt.offsetMax = Vector2.zero;
+            var screen = screenGo.AddComponent<CharacterSelectScreen>();
+
+            CharacterSelectSceneBuilder.BuildUi(screenRt, screen);
 
             SaveScene(ProjectArtPaths.Scenes.CharacterSelect);
         }

@@ -44,13 +44,16 @@ namespace DiskGolf.Input
 
         public bool ResetPressed => UnityEngine.Input.GetKeyDown(KeyCode.R);
 
-        public bool AimLeft => UnityEngine.Input.GetKeyDown(KeyCode.LeftArrow);
+        public bool AimLeftHeld => UnityEngine.Input.GetKey(KeyCode.LeftArrow);
 
-        public bool AimRight => UnityEngine.Input.GetKeyDown(KeyCode.RightArrow);
+        public bool AimRightHeld => UnityEngine.Input.GetKey(KeyCode.RightArrow);
 
-        public bool AimUp => UnityEngine.Input.GetKeyDown(KeyCode.UpArrow);
+        public bool AimUpHeld => UnityEngine.Input.GetKey(KeyCode.UpArrow);
 
-        public bool AimDown => UnityEngine.Input.GetKeyDown(KeyCode.DownArrow);
+        public bool AimDownHeld => UnityEngine.Input.GetKey(KeyCode.DownArrow);
+
+        public bool AnyAimHeld =>
+            AimLeftHeld || AimRightHeld || AimUpHeld || AimDownHeld;
 
         public int DiscHotkey =>
             UnityEngine.Input.GetKeyDown(KeyCode.Alpha1) ? 0 :

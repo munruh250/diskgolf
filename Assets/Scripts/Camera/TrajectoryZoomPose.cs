@@ -24,9 +24,6 @@ namespace DiskGolf.Camera
             FlightCameraSettings settings)
         {
             pathT = Mathf.Clamp01(pathT);
-            const float settleStart = 0.82f;
-            float travelT = Mathf.Clamp01(pathT / settleStart);
-            float settleT = Smooth01(Mathf.Clamp01((pathT - settleStart) / (1f - settleStart)));
 
             Vector3 forward = landing - thrower.position;
             forward.y = 0f;
@@ -37,11 +34,11 @@ namespace DiskGolf.Camera
             forward.Normalize();
 
             Vector3 pathPoint = waypoints != null && waypoints.Count > 0
-                ? TrajectoryPathSampler.SamplePosition(waypoints, travelT)
-                : Vector3.Lerp(thrower.position, landing, travelT);
+                ? TrajectoryPathSampler.SamplePosition(waypoints, pathT)
+                : Vector3.Lerp(thrower.position, landing, pathT);
 
             Vector3 tangent = waypoints != null && waypoints.Count > 1
-                ? TrajectoryPathSampler.SampleTangent(waypoints, travelT)
+                ? TrajectoryPathSampler.SampleTangent(waypoints, pathT)
                 : forward;
 
             tangent.y = 0f;
@@ -51,14 +48,15 @@ namespace DiskGolf.Camera
 
             tangent.Normalize();
 
-            float travelHeight = Mathf.Lerp(2.2f, 5.5f, travelT);
-            float travelBack = Mathf.Lerp(4.5f, 7f, travelT);
+            float travelHeight = Mathf.Lerp(2.2f, 5.5f, pathT);
+            float travelBack = Mathf.Lerp(4.5f, 7f, pathT);
             Vector3 travelPos = pathPoint - tangent * travelBack + Vector3.up * travelHeight;
             Vector3 travelLook = pathPoint + tangent * 2f;
 
             var finalPose = CameraRig.ComputeTargetZoomPose(thrower, landing, settings);
-            Vector3 pos = Vector3.Lerp(travelPos, finalPose.Position, settleT);
-            Vector3 look = Vector3.Lerp(travelLook, finalPose.LookAt, settleT);
+            float finalBlend = Smooth01(Mathf.InverseLerp(0.72f, 1f, pathT));
+            Vector3 pos = Vector3.Lerp(travelPos, finalPose.Position, finalBlend);
+            Vector3 look = Vector3.Lerp(travelLook, finalPose.LookAt, finalBlend);
             return new TrajectoryZoomPose(pos, look);
         }
 

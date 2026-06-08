@@ -20,11 +20,22 @@ namespace DiskGolf.Core
 
         public const float MeterCenter = 0.5f;
 
-        public const float MeterWidth = 0.2f;
+        public const float BaselineMeterWidth = 0.2f;
 
         const float YawErrorDeg = 11f;
 
         const float PowerErrorScale = 0.14f;
+
+        public static float MeterWidth
+        {
+            get
+            {
+                var character = GameSessionSettings.ActiveCharacter;
+                return character != null
+                    ? PlayerCharacterStats.AccuracyMeterWidth(character.accuracy)
+                    : BaselineMeterWidth;
+            }
+        }
 
         public static AccuracyZone FromValue(float normalized01)
         {
@@ -58,25 +69,37 @@ namespace DiskGolf.Core
 
             aimDirection.Normalize();
 
+            float clutchScale = ClutchErrorScale();
+            float powerPenalty = PowerErrorScale * clutchScale;
+            float yawPenalty = YawErrorDeg * clutchScale;
+
             switch (zone)
             {
                 case AccuracyZone.Green:
                     return;
                 case AccuracyZone.YellowLow:
-                    power *= 1f - PowerErrorScale;
+                    power *= 1f - powerPenalty;
                     return;
                 case AccuracyZone.YellowHigh:
-                    aimDirection = Quaternion.Euler(0f, YawErrorDeg, 0f) * aimDirection;
+                    aimDirection = Quaternion.Euler(0f, yawPenalty, 0f) * aimDirection;
                     return;
                 case AccuracyZone.RedLow:
-                    power *= 1f - PowerErrorScale;
-                    aimDirection = Quaternion.Euler(0f, -YawErrorDeg, 0f) * aimDirection;
+                    power *= 1f - powerPenalty;
+                    aimDirection = Quaternion.Euler(0f, -yawPenalty, 0f) * aimDirection;
                     return;
                 case AccuracyZone.RedHigh:
-                    power *= 1f + PowerErrorScale;
-                    aimDirection = Quaternion.Euler(0f, YawErrorDeg, 0f) * aimDirection;
+                    power *= 1f + powerPenalty;
+                    aimDirection = Quaternion.Euler(0f, yawPenalty, 0f) * aimDirection;
                     return;
             }
+        }
+
+        static float ClutchErrorScale()
+        {
+            var character = GameSessionSettings.ActiveCharacter;
+            return character != null
+                ? PlayerCharacterStats.ClutchErrorMultiplier(character.clutch)
+                : 1f;
         }
     }
 }

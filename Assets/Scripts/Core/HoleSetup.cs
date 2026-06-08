@@ -88,9 +88,14 @@ namespace DiskGolf.Core
             if (thrower == null)
                 return;
 
+            discLie = DiscLieGround.SnapLie(discLie, discLie.y);
+            float groundY = discLie.y - DiscLieGround.DiscRestLift;
+
             var aim = AimDirectionFrom(discLie);
             var rot = Quaternion.LookRotation(aim, Vector3.up);
-            thrower.SetPositionAndRotation(discLie + rot * Vector3.back * ThrowerBehindLieM, rot);
+            var throwerPos = discLie + rot * Vector3.back * ThrowerBehindLieM;
+            throwerPos.y = groundY;
+            thrower.SetPositionAndRotation(throwerPos, rot);
             RefreshCameraAimPoint();
         }
 

@@ -90,6 +90,8 @@ namespace DiskGolf.Gameplay
 
             public const string WindIcon = Root + "/windicon.png";
 
+            public static string ScoreBanner(string fileName) => $"{Root}/{fileName}.png";
+
             public static class DiscPreview
             {
                 public const string Root = ArtRoot + "/UI/DiscPreview";

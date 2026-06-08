@@ -58,6 +58,7 @@ namespace DiskGolf.UI
             if (existing != null)
             {
                 existing.BindReferences();
+                existing.ApplyTypography();
                 existing.HideLegacyHud();
                 return existing;
             }
@@ -418,6 +419,8 @@ namespace DiskGolf.UI
 
             return x + width + 6f * S;
         }
+
+        public void ApplyTypography() => HudTypography.BindFontsPreservingStyle(transform);
 
         static void BindFont(TextMeshProUGUI tmp) => HudTypography.BindFont(tmp);
     }

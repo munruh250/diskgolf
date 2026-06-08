@@ -263,19 +263,25 @@ namespace DiskGolf.UI
 
             var wps = path.Waypoints;
             int segCount = Mathf.Min(wps.Count - 1, _trajectorySegments.Count);
+            float discRadius = GreyboxScale.DiscDiameterM * 0.45f;
+            var worldPoints = new Vector3[wps.Count];
+            for (int i = 0; i < wps.Count; i++)
+                worldPoints[i] = wps[i].Position;
+            int hitWaypointIndex = TreeObstacle.FindFirstHitWaypointIndex(worldPoints, discRadius);
 
             for (int i = 0; i < segCount; i++)
             {
                 var a = course.WorldToMapAnchored(wps[i].Position, mapRect);
                 var b = course.WorldToMapAnchored(wps[i + 1].Position, mapRect);
-                PlaceTrajectorySegment(_trajectorySegments[i], a, b);
+                bool blocked = hitWaypointIndex >= 0 && i + 1 >= hitWaypointIndex;
+                PlaceTrajectorySegment(_trajectorySegments[i], a, b, blocked);
             }
 
             for (int i = segCount; i < _trajectorySegments.Count; i++)
                 _trajectorySegments[i].gameObject.SetActive(false);
         }
 
-        static void PlaceTrajectorySegment(Image segment, Vector2 a, Vector2 b)
+        static void PlaceTrajectorySegment(Image segment, Vector2 a, Vector2 b, bool blocked)
         {
             var rt = segment.rectTransform;
             var delta = b - a;
@@ -288,6 +294,7 @@ namespace DiskGolf.UI
             }
 
             segment.gameObject.SetActive(true);
+            segment.color = blocked ? MinimapTrajectoryLine.BlockedPathColor : MinimapTrajectoryLine.PathColor;
             rt.anchoredPosition = (a + b) * 0.5f;
             rt.sizeDelta = new Vector2(length, 2f);
             rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);

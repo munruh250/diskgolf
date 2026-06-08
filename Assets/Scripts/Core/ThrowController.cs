@@ -7,6 +7,7 @@ using DiskGolf.Input;
 using DiskGolf.UI;
 using DiskGolf.Camera;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace DiskGolf.Core
 {
@@ -27,6 +28,8 @@ namespace DiskGolf.Core
         [SerializeField] HeightMeterUI heightMeter;
 
         [SerializeField] GameObject inTheCircleBanner;
+
+        [SerializeField] OnTheGreenBannerUI onTheGreenBanner;
 
         [SerializeField] ThrowResultBannerUI throwResultBanner;
 
@@ -104,7 +107,11 @@ namespace DiskGolf.Core
         void Awake()
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
+            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
+            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
             inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
+            if (inTheCircleBanner != null)
+                inTheCircleBanner.SetActive(false);
             _cameraDirector ??= FindObjectOfType<CameraDirector>();
         }
 
@@ -129,27 +136,35 @@ namespace DiskGolf.Core
                 return;
 
             SyncDiscToHand();
-            HandlePreThrowAimInput();
             RefreshMeterPreview();
             RefreshTrajectoryZoomCamera();
         }
 
         void HandlePreThrowAimInput()
         {
-            if (input == null || bag?.Active == null || aimAdjust == null)
+            if (input == null || bag?.Active == null || aimAdjust == null || hole == null)
                 return;
 
-            if (!input.AimLeft && !input.AimRight && !input.AimUp && !input.AimDown)
+            if (!input.AnyAimHeld)
                 return;
+
+            ClearUiSelectionForAim();
 
             aimAdjust.ApplyHeldInput(
                 hole,
                 _discPosition,
                 bag.Active,
-                input.AimLeft,
-                input.AimRight,
-                input.AimUp,
-                input.AimDown);
+                input.AimLeftHeld,
+                input.AimRightHeld,
+                input.AimUpHeld,
+                input.AimDownHeld,
+                Time.deltaTime);
+        }
+
+        static void ClearUiSelectionForAim()
+        {
+            if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         void RefreshTrajectoryZoomCamera()
@@ -218,6 +233,7 @@ namespace DiskGolf.Core
             {
                 case ThrowPhase.Aiming:
                     HandleAimingDrive();
+                    HandlePreThrowAimInput();
 
                     break;
                 case ThrowPhase.PowerMeter:
@@ -378,9 +394,13 @@ namespace DiskGolf.Core
             var wps = completedPath?.Waypoints;
 
             if (presenter != null)
-                _discPosition = presenter.LandedPosition;
+            {
+                float originGroundY = wps != null && wps.Count > 0 ? wps[0].Position.y : _discPosition.y;
+                _discPosition = DiscLieGround.SnapLie(presenter.LandedPosition, originGroundY);
+                presenter.SetPosition(_discPosition);
+            }
             else if (wps != null && wps.Count > 0)
-                _discPosition = wps[wps.Count - 1].Position;
+                _discPosition = DiscLieGround.SnapLie(wps[wps.Count - 1].Position, wps[0].Position.y);
 
             _state.Advance(); // InFlight → Landed
 
@@ -512,7 +532,7 @@ namespace DiskGolf.Core
 
             throwResultBanner?.Hide();
             EndMeterFlightDisplay();
-            EnableCircleBanner(false);
+            HideOnTheGreenBanner();
 
             presenter?.SetPosition(hole.BasketPosition);
             _discPosition = hole.BasketPosition;
@@ -559,8 +579,8 @@ namespace DiskGolf.Core
 
                     powerMeter?.Stop();
                     heightMeter?.Stop();
-                    EnableCircleBanner(true);
-
+                    onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                    onTheGreenBanner?.ShowBriefly();
                     SyncDiscToHand();
 
                     break;
@@ -575,6 +595,7 @@ namespace DiskGolf.Core
                     heightMeter?.Stop();
 
                     EnableCircleBanner(false);
+                    ClearUiSelectionForAim();
 
                     if (hole != null && presenter != null)
                         SyncDiscToHand();
@@ -598,8 +619,23 @@ namespace DiskGolf.Core
 
         void EnableCircleBanner(bool on)
         {
-            if (inTheCircleBanner != null && inTheCircleBanner.activeSelf != on)
-                inTheCircleBanner.SetActive(on);
+            if (on)
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.ShowBriefly();
+                return;
+            }
+
+            HideOnTheGreenBanner();
+        }
+
+        void HideOnTheGreenBanner()
+        {
+            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+            onTheGreenBanner?.Hide();
+
+            if (inTheCircleBanner != null)
+                inTheCircleBanner.SetActive(false);
         }
 
         public void ResetHole()

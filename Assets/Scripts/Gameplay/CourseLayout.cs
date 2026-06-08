@@ -50,7 +50,12 @@ namespace DiskGolf.Gameplay
             }
         }
 
-        void Awake() => Refresh();
+        void Awake()
+        {
+            ResolveReferences();
+            EnsureGroundColliders();
+            Refresh();
+        }
 
         public void Refresh()
         {
@@ -242,9 +247,21 @@ namespace DiskGolf.Gameplay
 
         public void EnsureFoliageAndTrees()
         {
+            EnsureGroundColliders();
             ApplyFoliageMaterials();
             EnsureTestTrees();
             Refresh();
+        }
+
+        void EnsureGroundColliders()
+        {
+            DiscLieGround.EnsureGroundCollider(fairwayPlane);
+
+            if (roughBorders == null)
+                return;
+
+            foreach (var rough in roughBorders)
+                DiscLieGround.EnsureGroundCollider(rough);
         }
 
         void ApplyFoliageMaterials()

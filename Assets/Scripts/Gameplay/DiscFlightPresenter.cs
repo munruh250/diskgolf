@@ -111,10 +111,10 @@ namespace DiskGolf.Gameplay
 
                 var nextPos = SamplePathAtTime(wps, simTime);
 
-                if (TreeObstacle.TryHitSegment(previousPos, nextPos, discRadius, out var hitPos))
+                if (TreeObstacle.TryHitSegment(previousPos, nextPos, discRadius, out var treeHit))
                 {
-                    discTransform.position = hitPos;
-                    ApplyDiscRotation(FlatRotation(YawFromPosition(previousPos, hitPos)));
+                    float originGroundY = wps.Count > 0 ? wps[0].Position.y : treeHit.GroundFallbackY;
+                    yield return TreeDeflectAndFallRoutine(treeHit, previousPos, originGroundY);
                     IsFlying = false;
                     Debug.Log("[Disk Golf] Disc hit a tree.");
                     _onComplete?.Invoke(_activePath);
@@ -151,6 +151,36 @@ namespace DiskGolf.Gameplay
             IsFlying = false;
             FlightProgress = 1f;
             _onComplete?.Invoke(_activePath);
+        }
+
+        IEnumerator TreeDeflectAndFallRoutine(TreeHitInfo treeHit, Vector3 approachFrom, float originGroundY)
+        {
+            const float bounceDuration = 0.55f;
+
+            var start = treeHit.HitPosition;
+            var end = DiscLieGround.SnapLie(treeHit.DeflectedPosition, originGroundY);
+            float elapsed = 0f;
+
+            while (elapsed < bounceDuration && discTransform != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / bounceDuration);
+                float horizontalT = Mathf.SmoothStep(0f, 1f, t);
+                float verticalT = t * t;
+
+                discTransform.position = new Vector3(
+                    Mathf.Lerp(start.x, end.x, horizontalT),
+                    Mathf.Lerp(start.y, end.y, verticalT),
+                    Mathf.Lerp(start.z, end.z, horizontalT));
+                ApplyDiscRotation(FlatRotation(YawFromPosition(approachFrom, discTransform.position)));
+                yield return null;
+            }
+
+            if (discTransform != null)
+            {
+                discTransform.position = end;
+                ApplyDiscRotation(FlatRotation(YawFromPosition(approachFrom, end)));
+            }
         }
 
         static Vector3 SamplePathAtTime(System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps, float time)

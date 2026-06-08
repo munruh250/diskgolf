@@ -92,6 +92,16 @@ namespace DiskGolf.UI
             BindFont(tmp);
         }
 
+        /// <summary>Sets Pixel Emulator on all TMP under <paramref name="root"/> without changing size or color.</summary>
+        public static void BindFontsPreservingStyle(Transform root)
+        {
+            if (root == null)
+                return;
+
+            foreach (var tmp in root.GetComponentsInChildren<TextMeshProUGUI>(true))
+                BindFont(tmp);
+        }
+
         /// <summary>Applies the standard HUD font size to persistent readout labels.</summary>
         public static void ApplyToGameplayHud(RectTransform canvas)
         {
@@ -117,16 +127,13 @@ namespace DiskGolf.UI
                 }
             }
 
+            var bar = canvas.Find("NtmBottomBar");
+            if (bar != null)
+                BindFontsPreservingStyle(bar);
+
             var meters = canvas.Find("TimingMeters");
             if (meters != null)
-            {
-                foreach (var tmp in meters.GetComponentsInChildren<TextMeshProUGUI>(true))
-                {
-                    var color = tmp.color;
-                    Apply(tmp, tmp.alignment);
-                    tmp.color = color;
-                }
-            }
+                BindFontsPreservingStyle(meters);
 
             canvas.GetComponentInChildren<DiscSelectUI>()?.ApplyTypography();
         }

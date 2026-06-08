@@ -119,6 +119,7 @@ namespace DiskGolf.Camera
 
             _trajectoryZoomActive = true;
             _zoomAtEnd = false;
+            _zoomDriver.ExitSideBlend = 0f;
             _landingMarker?.UpdateLanding(targetWorld, yards);
             StartZoomRoutine(EnterZoomRoutine(path, targetWorld));
         }
@@ -135,9 +136,6 @@ namespace DiskGolf.Camera
                 _zoomDriver.Waypoints = path.Waypoints;
                 _zoomDriver.Landing = targetWorld;
             }
-
-            if (_zoomAtEnd && !_zoomDriver.IsDriving)
-                ApplyFinalZoom(targetWorld);
         }
 
         public void ClearTrajectoryZoom()
@@ -145,6 +143,7 @@ namespace DiskGolf.Camera
             StopZoomRoutine();
             _trajectoryZoomActive = false;
             _zoomAtEnd = false;
+            _zoomDriver.ExitSideBlend = 0f;
             _landingMarker?.SetVisible(false);
             SetPathDriveActive(false);
 
@@ -173,8 +172,13 @@ namespace DiskGolf.Camera
             var thrower = hole != null ? hole.Thrower : null;
             if (thrower == null || path?.Waypoints == null || path.Waypoints.Count < 2)
             {
-                ApplyFinalZoom(targetWorld);
+                _zoomDriver.BindThrower(thrower);
+                _zoomDriver.Waypoints = path?.Waypoints;
+                _zoomDriver.Landing = targetWorld;
+                _zoomDriver.PathT = 1f;
+                SetPathDriveActive(true);
                 _zoomAtEnd = true;
+                _zoomRoutine = null;
                 yield break;
             }
 
@@ -182,6 +186,7 @@ namespace DiskGolf.Camera
             _zoomDriver.Waypoints = path.Waypoints;
             _zoomDriver.Landing = targetWorld;
             _zoomDriver.PathT = 0f;
+            _zoomDriver.ExitSideBlend = 0f;
 
             SetPathDriveActive(true);
             SetPriority(sideSetupCam, CameraRig.SidePriority);
@@ -199,8 +204,6 @@ namespace DiskGolf.Camera
             }
 
             _zoomDriver.PathT = 1f;
-            SetPathDriveActive(false);
-            ApplyFinalZoom(targetWorld);
             _zoomAtEnd = true;
             _zoomRoutine = null;
         }
@@ -209,6 +212,9 @@ namespace DiskGolf.Camera
         {
             hole ??= FindObjectOfType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
+
+            _zoomDriver.ExitSideBlend = 0f;
+            PrepareSideThrowCamForHandoff();
 
             if (thrower != null && path?.Waypoints != null && path.Waypoints.Count >= 2)
             {
@@ -226,14 +232,49 @@ namespace DiskGolf.Camera
                 while (elapsed < duration)
                 {
                     elapsed += Time.deltaTime;
-                    _zoomDriver.PathT = Mathf.Lerp(startT, 0f, Smooth01(Mathf.Clamp01(elapsed / duration)));
+                    float u = Smooth01(Mathf.Clamp01(elapsed / duration));
+                    _zoomDriver.PathT = Mathf.Lerp(startT, 0f, u);
+                    float handoff = Smooth01(Mathf.InverseLerp(0.5f, 1f, u));
+                    _zoomDriver.ExitSideBlend = handoff;
+
+                    if (handoff > 0.08f)
+                        SetSideThrowCamComponentsActive(true);
+
                     yield return null;
                 }
+
+                _zoomDriver.PathT = 0f;
             }
 
+            _zoomDriver.ExitSideBlend = 1f;
+            SetSideThrowCamComponentsActive(true);
+            PrepareSideThrowCamForHandoff();
             SetPathDriveActive(false);
-            BindSideThrowCam();
+            _zoomDriver.ExitSideBlend = 0f;
             _zoomRoutine = null;
+        }
+
+        void PrepareSideThrowCamForHandoff()
+        {
+            if (sideSetupCam == null)
+                return;
+
+            hole ??= FindObjectOfType<HoleSetup>();
+            var thrower = hole != null ? hole.Thrower : null;
+            if (thrower == null)
+                return;
+
+            hole.RefreshCameraAimPoint();
+            CameraRig.BindSideThrowCam(sideSetupCam, thrower, hole.BasketTransform);
+        }
+
+        void SetSideThrowCamComponentsActive(bool on)
+        {
+            if (_sideTransposer != null)
+                _sideTransposer.enabled = on;
+
+            if (_sideComposer != null)
+                _sideComposer.enabled = on;
         }
 
         void SetPathDriveActive(bool on)
@@ -249,16 +290,6 @@ namespace DiskGolf.Camera
 
             if (_sideComposer != null)
                 _sideComposer.enabled = !on;
-        }
-
-        void ApplyFinalZoom(Vector3 targetWorld)
-        {
-            hole ??= FindObjectOfType<HoleSetup>();
-            var thrower = hole != null ? hole.Thrower : null;
-            if (thrower == null)
-                return;
-
-            CameraRig.BindTargetZoomCam(sideSetupCam, thrower, targetWorld);
         }
 
         static float Smooth01(float t) => t * t * (3f - 2f * t);
@@ -383,7 +414,7 @@ namespace DiskGolf.Camera
         void SetSideThrowViewActive(bool on)
         {
             if (on && _trajectoryZoomActive && _zoomAtEnd)
-                ApplyFinalZoom(throwController != null ? throwController.GetPreviewTargetWorld() : default);
+                SetPathDriveActive(true);
             else if (on && !_trajectoryZoomActive)
                 BindSideThrowCam();
 

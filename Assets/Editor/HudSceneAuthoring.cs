@@ -40,6 +40,9 @@ namespace DiskGolf.EditorTools
             }
 
             EnsureDiscPreviewInPowerMeter(hud);
+            bool addedHoleBanner = EnsureScoreBanners(hud);
+            WireThrowControllerBannerRefs(hud);
+            HudTypography.ApplyToGameplayHud(hud);
 
             EditorUtility.SetDirty(hud.gameObject);
             EditorSceneManager.MarkSceneDirty(hud.gameObject.scene);
@@ -48,7 +51,59 @@ namespace DiskGolf.EditorTools
                 "[Disk Golf] HUD bake complete. "
                 + (addedBar ? "Created NtmBottomBar. " : upgradedBar ? "Upgraded NtmBottomBar with ARC section. " : "NtmBottomBar unchanged. ")
                 + (upgradedAccuracy ? "Upgraded HeightMeter to ACCURACY layout. " : "Accuracy meter already current. ")
+                + (addedHoleBanner ? "Created HoleCompleteBanner under GameplayHUD. " : "HoleCompleteBanner already present. ")
                 + "Save the scene to keep changes.");
+        }
+
+        [MenuItem(MenuRoot + "Bake Score Banners")]
+        public static void BakeScoreBanners()
+        {
+            var hud = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
+            if (hud == null)
+            {
+                Debug.LogError("[Disk Golf] GameplayHUD not found in the open scene.");
+                return;
+            }
+
+            Undo.RegisterFullObjectHierarchyUndo(hud.gameObject, "Bake score banners");
+
+            if (hud.GetComponent<HudLayoutSettings>() == null)
+            {
+                var settings = Undo.AddComponent<HudLayoutSettings>(hud.gameObject);
+                settings.preserveManualLayout = true;
+            }
+
+            EnsureScoreBanners(hud);
+            WireThrowControllerBannerRefs(hud);
+            EditorUtility.SetDirty(hud.gameObject);
+            EditorSceneManager.MarkSceneDirty(hud.gameObject.scene);
+            Debug.Log("[Disk Golf] Score banners baked under GameplayHUD. HoleCompleteBanner is visible in the editor for layout.");
+        }
+
+        static bool EnsureScoreBanners(RectTransform hud)
+        {
+            bool added = hud.Find("HoleCompleteBanner") == null;
+            HoleCompleteBannerUI.CreateForScene(hud);
+            OnTheGreenBannerUI.Ensure();
+            return added;
+        }
+
+        static void WireThrowControllerBannerRefs(RectTransform hud)
+        {
+            var controller = Object.FindObjectOfType<DiskGolf.Core.ThrowController>();
+            if (controller == null)
+                return;
+
+            var holeBanner = hud.GetComponentInChildren<HoleCompleteBannerUI>(true);
+            var onGreenBanner = hud.GetComponentInChildren<OnTheGreenBannerUI>(true);
+
+            var so = new SerializedObject(controller);
+            if (holeBanner != null)
+                so.FindProperty("holeCompleteBanner").objectReferenceValue = holeBanner;
+            if (onGreenBanner != null)
+                so.FindProperty("onTheGreenBanner").objectReferenceValue = onGreenBanner;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(controller);
         }
 
         public static void BakePrototypeSceneHudBatch()

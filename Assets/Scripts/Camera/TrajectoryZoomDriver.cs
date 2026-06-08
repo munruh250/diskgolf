@@ -13,6 +13,9 @@ namespace DiskGolf.Camera
 
         public bool IsDriving { get; set; }
 
+        /// <summary>0 = full zoom override, 1 = hand off to side-throw transposer/composer.</summary>
+        public float ExitSideBlend { get; set; }
+
         public float PathT { get; set; }
 
         public IReadOnlyList<FlightWaypoint> Waypoints { get; set; }

@@ -120,5 +120,14 @@ namespace DiskGolf.Gameplay
             return null;
 #endif
         }
+
+        public static Sprite LoadScoreBannerSprite(string fileName)
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Sprite>(ProjectArtPaths.Ui.ScoreBanner(fileName));
+#else
+            return null;
+#endif
+        }
     }
 }

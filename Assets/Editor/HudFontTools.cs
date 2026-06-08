@@ -22,6 +22,11 @@ namespace DiskGolf.EditorTools
                 return;
 
             int count = ApplyToHierarchy(null, font, includeInactive: true);
+
+            var hud = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();
+            if (hud != null)
+                HudTypography.ApplyToGameplayHud(hud);
+
             if (count > 0)
             {
                 var scene = SceneManager.GetActiveScene();
