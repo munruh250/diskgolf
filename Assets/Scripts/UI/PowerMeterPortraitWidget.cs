@@ -104,7 +104,7 @@ namespace DiskGolf.UI
                 if (child.name != ObjectName || child == hub)
                     continue;
 
-                DestroyObject(child.gameObject);
+                DestroyUiObject(child.gameObject);
             }
         }
 
@@ -114,7 +114,7 @@ namespace DiskGolf.UI
             if (legacy == null)
                 return;
 
-            DestroyObject(legacy.gameObject);
+            DestroyUiObject(legacy.gameObject);
         }
 
         static void ConfigureHubLayout(RectTransform hub)
@@ -161,7 +161,7 @@ namespace DiskGolf.UI
             }
 
             foreach (var duplicate in duplicates)
-                DestroyObject(duplicate);
+                DestroyUiObject(duplicate);
 
             return keep;
         }
@@ -215,10 +215,10 @@ namespace DiskGolf.UI
             if (child == null)
                 return;
 
-            DestroyObject(child.gameObject);
+            DestroyUiObject(child.gameObject);
         }
 
-        static void DestroyObject(Object target)
+        static void DestroyUiObject(Object target)
         {
             if (target == null)
                 return;
