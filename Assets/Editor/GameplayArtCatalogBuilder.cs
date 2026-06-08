@@ -11,6 +11,9 @@ namespace DiskGolf.EditorTools
         [InitializeOnLoadMethod]
         static void ScheduleBuild() => EditorApplication.delayCall += () => EnsureCatalog(force: false);
 
+        [MenuItem("Disk Golf/Refresh Gameplay Art Catalog")]
+        public static void RefreshFromMenu() => EnsureCatalog(force: true);
+
         public static void EnsureCatalog(bool force)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -30,12 +33,7 @@ namespace DiskGolf.EditorTools
             if (!force && CatalogLooksComplete(catalog))
                 return;
 
-            catalog.grassLightA = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("GrassLight_A"));
-            catalog.grassDarkA = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("GrassDark_A"));
-            catalog.grassLightB = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("GrassLight_B"));
-            catalog.grassDarkB = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("GrassDark_B"));
-            catalog.treeConical = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("TreeConical"));
-            catalog.treeRound = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite("TreeRound"));
+            catalog.treeRound = LoadSprite(ProjectArtPaths.Environment.Foliage.Sprite(FoliageSprites.Tree));
             catalog.basket = LoadSprite(ProjectArtPaths.Environment.Basket.Sprite);
             catalog.thrower = LoadSprite(ProjectArtPaths.Characters.ThrowerSprite);
             catalog.prototypeSkybox = AssetDatabase.LoadAssetAtPath<Material>(
@@ -48,7 +46,7 @@ namespace DiskGolf.EditorTools
         }
 
         static bool CatalogLooksComplete(GameplayArtCatalog catalog) =>
-            catalog.grassLightA != null
+            catalog.treeRound != null
             && catalog.basket != null
             && catalog.thrower != null
             && catalog.prototypeSkybox != null;

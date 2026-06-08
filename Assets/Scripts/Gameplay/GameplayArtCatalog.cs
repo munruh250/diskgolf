@@ -6,16 +6,6 @@ namespace DiskGolf.Gameplay
     [CreateAssetMenu(fileName = "GameplayArtCatalog", menuName = "DiskGolf/Art/Gameplay Art Catalog")]
     public sealed class GameplayArtCatalog : ScriptableObject
     {
-        public Sprite grassLightA;
-
-        public Sprite grassDarkA;
-
-        public Sprite grassLightB;
-
-        public Sprite grassDarkB;
-
-        public Sprite treeConical;
-
         public Sprite treeRound;
 
         public Sprite basket;
@@ -29,15 +19,6 @@ namespace DiskGolf.Gameplay
         public Material discDefault;
 
         public Sprite GetFoliageSprite(string spriteName) =>
-            spriteName switch
-            {
-                FoliageSprites.GrassLightA => grassLightA,
-                FoliageSprites.GrassDarkA => grassDarkA,
-                FoliageSprites.GrassLightB => grassLightB,
-                FoliageSprites.GrassDarkB => grassDarkB,
-                FoliageSprites.TreeConical => treeConical,
-                FoliageSprites.TreeRound => treeRound,
-                _ => null,
-            };
+            spriteName == FoliageSprites.Tree ? treeRound : null;
     }
 }

@@ -35,6 +35,8 @@ namespace DiskGolf.Core
 
         [SerializeField] HoleCompleteBannerUI holeCompleteBanner;
 
+        [SerializeField] ThrowSummaryBannerUI throwSummaryBanner;
+
         [SerializeField] SweetSpotBannerUI sweetSpotBanner;
 
         [SerializeField] ThrowAimAdjust aimAdjust;
@@ -61,6 +63,10 @@ namespace DiskGolf.Core
         Coroutine _postThrowRoutine;
 
         Coroutine _sweetBannerRoutine;
+
+        Coroutine _throwPresentationRoutine;
+
+        bool _throwPresentationReady;
 
         bool _postThrowPending;
 
@@ -102,7 +108,10 @@ namespace DiskGolf.Core
             or ThrowPhase.PowerMeter
             or ThrowPhase.HeightMeter;
 
-        public bool ShowsTrajectoryPreview => IsPreThrowPhase || _state.Phase == ThrowPhase.Putting;
+        public bool ThrowPresentationReady => _throwPresentationReady;
+
+        public bool ShowsTrajectoryPreview =>
+            _throwPresentationReady && (IsPreThrowPhase || _state.Phase == ThrowPhase.Putting);
 
         void Awake()
         {
@@ -132,12 +141,25 @@ namespace DiskGolf.Core
             if (hole == null || presenter == null || hole.Thrower == null)
                 return;
 
+            if (!_throwPresentationReady)
+                return;
+
             if (!IsPreThrowPhase && _state.Phase != ThrowPhase.Putting)
                 return;
 
             SyncDiscToHand();
             RefreshMeterPreview();
             RefreshTrajectoryZoomCamera();
+            ApplyThrowerAimLean();
+        }
+
+        void ApplyThrowerAimLean()
+        {
+            if (hole?.Thrower == null || aimAdjust == null)
+                return;
+
+            var visual = hole.Thrower.GetComponent<ThrowerVisual>();
+            visual?.ApplyAimLean(aimAdjust.YawOffsetDegrees);
         }
 
         void HandlePreThrowAimInput()
@@ -232,8 +254,11 @@ namespace DiskGolf.Core
             switch (_state.Phase)
             {
                 case ThrowPhase.Aiming:
-                    HandleAimingDrive();
-                    HandlePreThrowAimInput();
+                    if (_throwPresentationReady)
+                    {
+                        HandleAimingDrive();
+                        HandlePreThrowAimInput();
+                    }
 
                     break;
                 case ThrowPhase.PowerMeter:
@@ -258,12 +283,13 @@ namespace DiskGolf.Core
 
                     break;
                 case ThrowPhase.Putting:
-                    HandlePutting();
+                    if (_throwPresentationReady)
+                        HandlePutting();
 
                     break;
                 case ThrowPhase.Landed:
-                    if (input.ConfirmPressed)
-                        CompletePostThrowTransition();
+                    if (input.ConfirmPressed && _postThrowRoutine == null)
+                        StartCoroutine(CompletePostThrowTransitionRoutine());
 
                     break;
                 default:
@@ -417,6 +443,9 @@ namespace DiskGolf.Core
             _pendingWasPut = _pendingPutOutcome;
             _pendingPutOutcome = false;
             _postThrowPending = true;
+            _throwPresentationReady = false;
+            _cameraDirector?.ClearTrajectoryZoom();
+            ApplyThrowPresentationVisibility();
 
             if (_postThrowRoutine != null)
                 StopCoroutine(_postThrowRoutine);
@@ -441,36 +470,46 @@ namespace DiskGolf.Core
                 yield return null;
             }
 
-            CompletePostThrowTransition();
+            yield return CompletePostThrowTransitionRoutine();
             _postThrowRoutine = null;
         }
 
-        void CompletePostThrowTransition()
+        IEnumerator CompletePostThrowTransitionRoutine()
         {
             if (!_postThrowPending)
-                return;
+                yield break;
 
             _postThrowPending = false;
             throwResultBanner?.Hide();
 
             if (_pendingWasPut)
             {
-                ResolvePutOutcome(_pendingRestFt);
-
-                return;
+                yield return ResolvePutOutcomeRoutine(_pendingRestFt);
+                yield break;
             }
+
+            bool inCircle = _pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt;
+            if (inCircle)
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.ShowBriefly();
+
+                float wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : 2.25f;
+                yield return new WaitForSeconds(wait);
+
+                onTheGreenBanner?.Hide();
+            }
+
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
 
             RelocateThrowerForNextShot();
             SnapSideCameraForNextShot();
 
-            if (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt)
-            {
+            if (inCircle)
                 _state.EnterPutting();
-
-                return;
-            }
-
-            ResumeAimingFromLanded();
+            else
+                ResumeAimingFromLanded();
         }
 
         void ResumeAimingFromLanded()
@@ -488,13 +527,16 @@ namespace DiskGolf.Core
             _cameraDirector?.SnapToSideThrowView();
         }
 
-        void ResolvePutOutcome(float restFt)
+        IEnumerator ResolvePutOutcomeRoutine(float restFt)
         {
             if (hole != null && (restFt <= HoledToleranceFt || IsDiscHoled(_discPosition)))
             {
                 CompleteHole();
-                return;
+                yield break;
             }
+
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
 
             RelocateThrowerForNextShot();
             SnapSideCameraForNextShot();
@@ -530,9 +572,18 @@ namespace DiskGolf.Core
                 _postThrowRoutine = null;
             }
 
+            if (_throwPresentationRoutine != null)
+            {
+                StopCoroutine(_throwPresentationRoutine);
+                _throwPresentationRoutine = null;
+            }
+
             throwResultBanner?.Hide();
             EndMeterFlightDisplay();
             HideOnTheGreenBanner();
+            HideThrowSummaryBanner();
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
 
             presenter?.SetPosition(hole.BasketPosition);
             _discPosition = hole.BasketPosition;
@@ -579,9 +630,7 @@ namespace DiskGolf.Core
 
                     powerMeter?.Stop();
                     heightMeter?.Stop();
-                    onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-                    onTheGreenBanner?.ShowBriefly();
-                    SyncDiscToHand();
+                    BeginThrowPresentationSequence();
 
                     break;
                 case ThrowPhase.Resolve:
@@ -597,9 +646,6 @@ namespace DiskGolf.Core
                     EnableCircleBanner(false);
                     ClearUiSelectionForAim();
 
-                    if (hole != null && presenter != null)
-                        SyncDiscToHand();
-
                     if (hole != null && bag != null)
                     {
                         bag.SelectForDistance(hole.DistanceForDiscSelection(_discPosition));
@@ -612,9 +658,77 @@ namespace DiskGolf.Core
                         aimAdjust.ResetForLie(hole, _discPosition, bag.Active);
 
                     SyncArcHeightToAim();
+                    BeginThrowPresentationSequence();
 
                     break;
             }
+        }
+
+        void BeginThrowPresentationSequence()
+        {
+            _throwPresentationReady = false;
+            _cameraDirector?.ClearTrajectoryZoom();
+            ApplyThrowPresentationVisibility();
+
+            if (_throwPresentationRoutine != null)
+                StopCoroutine(_throwPresentationRoutine);
+
+            _throwPresentationRoutine = StartCoroutine(ThrowPresentationSequence());
+        }
+
+        IEnumerator ThrowPresentationSequence()
+        {
+            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+
+            if (throwSummaryBanner == null)
+            {
+                _throwPresentationReady = true;
+                ApplyThrowPresentationVisibility();
+                SyncDiscToHand();
+                _throwPresentationRoutine = null;
+                yield break;
+            }
+
+            bool dismissed = false;
+            throwSummaryBanner.ShowBriefly(
+                _strokeCount + 1,
+                GameSessionSettings.ActiveCharacter,
+                () => dismissed = true);
+
+            while (!dismissed)
+                yield return null;
+
+            _throwPresentationReady = true;
+            ApplyThrowPresentationVisibility();
+            SyncDiscToHand();
+            _throwPresentationRoutine = null;
+        }
+
+        void ApplyThrowPresentationVisibility()
+        {
+            if (hole?.Thrower == null)
+                return;
+
+            if (_state.Phase is ThrowPhase.InFlight or ThrowPhase.Throwing)
+            {
+                hole.Thrower.gameObject.SetActive(true);
+                return;
+            }
+
+            if (_postThrowPending || _state.Phase == ThrowPhase.Landed)
+            {
+                hole.Thrower.gameObject.SetActive(false);
+                return;
+            }
+
+            bool inPreThrow = IsPreThrowPhase || _state.Phase == ThrowPhase.Putting;
+            hole.Thrower.gameObject.SetActive(_throwPresentationReady && inPreThrow);
+        }
+
+        void HideThrowSummaryBanner()
+        {
+            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+            throwSummaryBanner?.Hide();
         }
 
         void EnableCircleBanner(bool on)
@@ -656,8 +770,17 @@ namespace DiskGolf.Core
                 _holeCompleteRoutine = null;
             }
 
+            if (_throwPresentationRoutine != null)
+            {
+                StopCoroutine(_throwPresentationRoutine);
+                _throwPresentationRoutine = null;
+            }
+
             throwResultBanner?.Hide();
             holeCompleteBanner?.Hide();
+            HideThrowSummaryBanner();
+            _throwPresentationReady = false;
+            ApplyThrowPresentationVisibility();
             sweetSpotBanner?.Hide();
 
             if (_sweetBannerRoutine != null)
@@ -674,7 +797,7 @@ namespace DiskGolf.Core
             {
                 _wind = hole.RollWind();
                 hole.PositionThrowerAtTee();
-                _discPosition = hole.DiscHoldPosition;
+                _discPosition = hole.TeePosition + Vector3.up * DiscLieGround.DiscRestLift;
 
                 input?.ResetArcHeight();
 
@@ -690,7 +813,7 @@ namespace DiskGolf.Core
                 SyncArcHeightToAim();
             }
 
-            presenter?.SetPositionAndRotation(hole.DiscHoldPosition, hole.DiscHoldRotation);
+            presenter?.SetPosition(_discPosition);
 
             heightMeter?.Stop();
 

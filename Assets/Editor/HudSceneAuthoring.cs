@@ -77,7 +77,9 @@ namespace DiskGolf.EditorTools
             WireThrowControllerBannerRefs(hud);
             EditorUtility.SetDirty(hud.gameObject);
             EditorSceneManager.MarkSceneDirty(hud.gameObject.scene);
-            Debug.Log("[Disk Golf] Score banners baked under GameplayHUD. HoleCompleteBanner is visible in the editor for layout.");
+            Debug.Log(
+                "[Disk Golf] Score banners baked under GameplayHUD. "
+                + "HoleCompleteBanner and ThrowSummaryBanner are visible in the editor for layout.");
         }
 
         static bool EnsureScoreBanners(RectTransform hud)
@@ -85,6 +87,7 @@ namespace DiskGolf.EditorTools
             bool added = hud.Find("HoleCompleteBanner") == null;
             HoleCompleteBannerUI.CreateForScene(hud);
             OnTheGreenBannerUI.Ensure();
+            ThrowSummaryBannerUI.CreateForScene(hud);
             return added;
         }
 
@@ -96,12 +99,15 @@ namespace DiskGolf.EditorTools
 
             var holeBanner = hud.GetComponentInChildren<HoleCompleteBannerUI>(true);
             var onGreenBanner = hud.GetComponentInChildren<OnTheGreenBannerUI>(true);
+            var throwSummaryBanner = hud.GetComponentInChildren<ThrowSummaryBannerUI>(true);
 
             var so = new SerializedObject(controller);
             if (holeBanner != null)
                 so.FindProperty("holeCompleteBanner").objectReferenceValue = holeBanner;
             if (onGreenBanner != null)
                 so.FindProperty("onTheGreenBanner").objectReferenceValue = onGreenBanner;
+            if (throwSummaryBanner != null)
+                so.FindProperty("throwSummaryBanner").objectReferenceValue = throwSummaryBanner;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(controller);
         }

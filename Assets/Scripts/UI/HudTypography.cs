@@ -177,7 +177,7 @@ namespace DiskGolf.UI
             }
 
             public static LayoutSnapshot Defaults => new(
-                28f, 36f, 72f, 40f, 200f, 210f, 100f, Color.white);
+                28f, 36f, 72f, 40f, 200f, 268f, 100f, Color.white);
 
             public static LayoutSnapshot From(HudLayoutSettings s) => new(
                 s.fontSize,

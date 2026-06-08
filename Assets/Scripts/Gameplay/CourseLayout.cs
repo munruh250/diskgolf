@@ -248,7 +248,6 @@ namespace DiskGolf.Gameplay
         public void EnsureFoliageAndTrees()
         {
             EnsureGroundColliders();
-            ApplyFoliageMaterials();
             EnsureTestTrees();
             Refresh();
         }
@@ -262,27 +261,6 @@ namespace DiskGolf.Gameplay
 
             foreach (var rough in roughBorders)
                 DiscLieGround.EnsureGroundCollider(rough);
-        }
-
-        void ApplyFoliageMaterials()
-        {
-            ApplyFoliageMaterial(fairwayPlane, FoliageSprites.GrassLightA);
-
-            if (roughBorders == null)
-                return;
-
-            foreach (var rough in roughBorders)
-                ApplyFoliageMaterial(rough, FoliageSprites.GrassDarkA);
-        }
-
-        static void ApplyFoliageMaterial(Transform target, string spriteName)
-        {
-            if (target == null || !target.TryGetComponent<Renderer>(out var renderer))
-                return;
-
-            var mat = FoliageSprites.CreateUnlitMaterial(spriteName);
-            if (mat != null)
-                renderer.sharedMaterial = mat;
         }
 
         void EnsureTestTrees()
@@ -303,10 +281,9 @@ namespace DiskGolf.Gameplay
             var forward = (basket.position - teePad.position).normalized;
             var right = Vector3.Cross(Vector3.up, forward);
 
-            CourseTree.Spawn(treesRoot, teePad.position + forward * 52f + right * 13f, CourseTreeVariant.Conical, 12f);
+            CourseTree.Spawn(treesRoot, teePad.position + forward * 52f + right * 13f, CourseTreeVariant.Round, 12f);
             CourseTree.Spawn(treesRoot, teePad.position + forward * 88f + right * -11f, CourseTreeVariant.Round, -6f);
-            CourseTree.Spawn(treesRoot, teePad.position + forward * 124f + right * 15f, CourseTreeVariant.Conical,
-                -18f);
+            CourseTree.Spawn(treesRoot, teePad.position + forward * 124f + right * 15f, CourseTreeVariant.Round, -18f);
         }
 
         public static CourseLayout EnsureInScene()

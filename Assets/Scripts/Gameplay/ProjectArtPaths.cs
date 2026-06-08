@@ -50,11 +50,9 @@ namespace DiskGolf.Gameplay
 
             public static class Foliage
             {
-                public const string SourceRoot = ArtRoot + "/Environment/Foliage/Source";
-
-                public const string Sheet = SourceRoot + "/FoliageSheet.png";
-
                 public const string SpritesRoot = ArtRoot + "/Environment/Foliage/Sprites";
+
+                public const string Tree = SpritesRoot + "/Tree.png";
 
                 public static string Sprite(string name) => $"{SpritesRoot}/{name}.png";
             }

@@ -205,9 +205,28 @@ namespace DiskGolf.UI
                 return;
 
             needle.SetAsLastSibling();
-            var img = needle.GetComponent<Image>();
-            if (img != null)
-                img.color = Color.white;
+            ConfigureOpaqueNeedle(needle.GetComponent<Image>());
+        }
+
+        static void ConfigureOpaqueNeedle(Image needleImg)
+        {
+            if (needleImg == null)
+                return;
+
+            needleImg.sprite = ArcRingBuilder.WhiteSprite;
+            needleImg.type = Image.Type.Simple;
+            needleImg.color = Color.white;
+            needleImg.raycastTarget = false;
+            needleImg.maskable = false;
+
+            var canvas = needleImg.GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                canvas = needleImg.gameObject.AddComponent<Canvas>();
+                canvas.overrideSorting = true;
+            }
+
+            canvas.sortingOrder = 50;
         }
 
         static PowerMeterVisual Build(Transform parent)
@@ -358,9 +377,7 @@ namespace DiskGolf.UI
             needleRt.anchoredPosition = Vector2.zero;
             needleRt.sizeDelta = new Vector2(5f * S, ArcRadius + 8f * S);
             var needleImg = needleGo.GetComponent<Image>();
-            needleImg.sprite = ArcRingBuilder.WhiteSprite;
-            needleImg.color = Color.white;
-            needleImg.raycastTarget = false;
+            ConfigureOpaqueNeedle(needleImg);
             needle = needleRt;
 
             var sweetGo = new GameObject("SweetSpot", typeof(RectTransform));

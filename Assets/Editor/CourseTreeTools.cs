@@ -12,16 +12,10 @@ namespace DiskGolf.EditorTools
     {
         const string MenuRoot = "Disk Golf/Course/";
 
-        [MenuItem(MenuRoot + "Place Test Tree (Round)")]
+        [MenuItem(MenuRoot + "Place Test Tree")]
         public static void PlaceRoundTree()
         {
             PlaceTree(CourseTreeVariant.Round);
-        }
-
-        [MenuItem(MenuRoot + "Place Test Tree (Conical)")]
-        public static void PlaceConicalTree()
-        {
-            PlaceTree(CourseTreeVariant.Conical);
         }
 
         [MenuItem(MenuRoot + "Refit Tree Colliders In Scene")]

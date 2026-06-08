@@ -1,4 +1,6 @@
+using DiskGolf.Camera;
 using DiskGolf.Core;
+using DiskGolf.Flight;
 using DiskGolf.Gameplay;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -15,13 +17,17 @@ namespace DiskGolf.UI
 
         const float PathHeightOffset = 0.2f;
 
-        const int TrajectorySortingOrder = 200;
+        const int TrajectorySortingOrder = 15;
 
         [SerializeField] ThrowController controller;
 
         LineRenderer _line;
 
         Material _material;
+
+        CameraDirector _cameraDirector;
+
+        TrajectoryLandingMarker _apexMarker;
 
         void Awake()
         {
@@ -37,6 +43,7 @@ namespace DiskGolf.UI
             if (!controller.ShowsTrajectoryPreview)
             {
                 _line.enabled = false;
+                ClearApexPreview();
                 return;
             }
 
@@ -44,6 +51,7 @@ namespace DiskGolf.UI
             if (path?.Waypoints == null || path.Waypoints.Count < 2)
             {
                 _line.enabled = false;
+                ClearApexPreview();
                 return;
             }
 
@@ -59,6 +67,47 @@ namespace DiskGolf.UI
             }
 
             ApplyPathColors(points);
+            RefreshApexLabel(wps);
+        }
+
+        void RefreshApexLabel(System.Collections.Generic.IReadOnlyList<FlightWaypoint> waypoints)
+        {
+            _cameraDirector ??= FindObjectOfType<CameraDirector>();
+            if (_cameraDirector != null && _cameraDirector.TrajectoryZoomActive)
+            {
+                ClearApexPreview();
+                return;
+            }
+
+            _apexMarker ??= TrajectoryLandingMarker.Ensure();
+            var apex = FindApexPosition(waypoints) + Vector3.up * PathHeightOffset;
+            _apexMarker.UpdateApexPreview(apex, controller.PreviewDistanceYards);
+        }
+
+        void ClearApexPreview()
+        {
+            if (_apexMarker == null)
+                _apexMarker = FindObjectOfType<TrajectoryLandingMarker>(true);
+
+            _apexMarker?.ClearApexPreview();
+        }
+
+        static Vector3 FindApexPosition(System.Collections.Generic.IReadOnlyList<FlightWaypoint> waypoints)
+        {
+            var apex = waypoints[0].Position;
+            float apexY = apex.y;
+
+            for (int i = 1; i < waypoints.Count; i++)
+            {
+                float y = waypoints[i].Position.y;
+                if (y <= apexY)
+                    continue;
+
+                apexY = y;
+                apex = waypoints[i].Position;
+            }
+
+            return apex;
         }
 
         void ApplyPathColors(Vector3[] points)
@@ -118,18 +167,18 @@ namespace DiskGolf.UI
             _line.startWidth = width;
             _line.endWidth = width;
             _line.sortingOrder = TrajectorySortingOrder;
-            _line.material = _material = CreateAlwaysVisibleMaterial();
+            _line.material = _material = CreateTrajectoryMaterial();
             _line.textureMode = LineTextureMode.Stretch;
             _line.alignment = LineAlignment.View;
             _line.colorGradient = SolidGradient(PathColor);
         }
 
-        static Material CreateAlwaysVisibleMaterial()
+        static Material CreateTrajectoryMaterial()
         {
             var mat = new Material(Shader.Find("Sprites/Default"));
-            mat.renderQueue = 3200;
+            mat.renderQueue = 3000;
             mat.SetInt("_ZWrite", 0);
-            mat.SetInt("_ZTest", (int)CompareFunction.Always);
+            mat.SetInt("_ZTest", (int)CompareFunction.LessEqual);
             return mat;
         }
 

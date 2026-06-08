@@ -22,9 +22,23 @@ namespace DiskGolf.UI
 
         [SerializeField] Transform labelAnchor;
 
+        const float ApexLabelLift = 1.35f;
+
+        const float ApexLabelCameraUpLift = 0.55f;
+
+        const int ApexLabelSortingOrder = 35;
+
+        const float LandingLabelFontSize = 3.2f;
+
+        const float ApexLabelFontSize = 6.4f;
+
         bool _visible;
 
+        bool _apexPreviewOnly;
+
         float _baseRadius;
+
+        public bool IsApexPreviewOnly => _apexPreviewOnly;
 
         public static TrajectoryLandingMarker Ensure()
         {
@@ -84,6 +98,8 @@ namespace DiskGolf.UI
         public void SetVisible(bool visible)
         {
             _visible = visible;
+            _apexPreviewOnly = false;
+
             if (ring != null)
                 ring.enabled = visible;
 
@@ -94,17 +110,76 @@ namespace DiskGolf.UI
         public void UpdateLanding(Vector3 landingWorld, float yards)
         {
             BuildIfNeeded();
-            SetVisible(true);
+            _apexPreviewOnly = false;
+            _visible = true;
+
+            if (ring != null)
+                ring.enabled = true;
+
+            if (yardLabel != null)
+                yardLabel.gameObject.SetActive(true);
 
             transform.position = landingWorld + Vector3.up * GroundLift;
 
+            if (labelAnchor != null)
+                labelAnchor.localPosition = new Vector3(0f, 0.1f, _baseRadius * 1.5f);
+
             if (yardLabel != null)
-                yardLabel.text = $"{Mathf.Max(0, Mathf.RoundToInt(yards))} Yards";
+            {
+                yardLabel.fontSize = LandingLabelFontSize;
+                yardLabel.sortingOrder = 0;
+                yardLabel.text = FormatYards(yards);
+            }
         }
+
+        public void UpdateApexPreview(Vector3 apexWorld, float yards)
+        {
+            BuildIfNeeded();
+            _apexPreviewOnly = true;
+            _visible = true;
+
+            if (ring != null)
+                ring.enabled = false;
+
+            if (labelAnchor != null)
+                labelAnchor.localPosition = Vector3.zero;
+
+            if (yardLabel != null)
+            {
+                yardLabel.gameObject.SetActive(true);
+                yardLabel.fontSize = ApexLabelFontSize;
+                yardLabel.sortingOrder = ApexLabelSortingOrder;
+                yardLabel.alignment = TextAlignmentOptions.Center;
+                yardLabel.text = FormatYards(yards);
+            }
+
+            transform.position = ResolveApexLabelPosition(apexWorld);
+        }
+
+        Vector3 ResolveApexLabelPosition(Vector3 apexWorld)
+        {
+            var position = apexWorld + Vector3.up * ApexLabelLift;
+
+            var cam = UnityEngine.Camera.main;
+            if (cam != null)
+                position += cam.transform.up * ApexLabelCameraUpLift;
+
+            return position;
+        }
+
+        public void ClearApexPreview()
+        {
+            if (!_apexPreviewOnly)
+                return;
+
+            SetVisible(false);
+        }
+
+        static string FormatYards(float yards) => $"{Mathf.Max(0, Mathf.RoundToInt(yards))} Yards";
 
         void Update()
         {
-            if (!_visible || ring == null)
+            if (!_visible || _apexPreviewOnly || ring == null)
                 return;
 
             float pulse = (Mathf.Sin(Time.time * PulseSpeed) + 1f) * 0.5f;

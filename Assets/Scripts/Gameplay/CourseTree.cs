@@ -11,11 +11,7 @@ namespace DiskGolf.Gameplay
         public static Transform Spawn(Transform parent, Vector3 worldPosition, CourseTreeVariant variant,
             float yawDegrees = 0f)
         {
-            var spriteName = variant == CourseTreeVariant.Round
-                ? FoliageSprites.TreeRound
-                : FoliageSprites.TreeConical;
-
-            var sprite = FoliageSprites.Load(spriteName);
+            var sprite = FoliageSprites.LoadTree();
             if (sprite == null)
                 return null;
 

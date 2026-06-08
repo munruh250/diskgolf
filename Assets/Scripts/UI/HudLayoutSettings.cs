@@ -29,7 +29,7 @@ namespace DiskGolf.UI
 
         public float labelWidth = 200f;
 
-        public float valueOffset = 210f;
+        public float valueOffset = 268f;
 
         public float valueWidth = 100f;
 
