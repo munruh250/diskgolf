@@ -157,7 +157,7 @@ namespace DiskGolf.Camera
             _landingMarker?.SetVisible(false);
             SetPathDriveActive(false);
 
-            if (sideSetupCam != null)
+            if (sideSetupCam != null && !_landingCameraFrozen && !_holdLandingCameraUntilThrowSummary)
                 BindSideThrowCam();
         }
 

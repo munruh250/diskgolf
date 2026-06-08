@@ -237,15 +237,16 @@ namespace DiskGolf.EditorTools
             markerLayer.offsetMax = Vector2.zero;
 
             var mapRect = panelRt;
-            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect),
+            const float minimapAspect = 248f / 392f;
+            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect, minimapAspect),
                 new Vector2(8f, 8f), Color.white).rectTransform;
             teeDot.name = "TeeDot";
 
-            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect),
+            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect, minimapAspect),
                 new Vector2(10f, 10f), new Color(1f, 0.55f, 0.25f)).rectTransform;
             basketDot.name = "BasketDot";
 
-            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect),
+            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect, minimapAspect),
                 new Vector2(8f, 8f), Color.cyan).rectTransform;
             discDot.name = "DiscDot";
 

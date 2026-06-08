@@ -103,7 +103,9 @@ namespace DiskGolf.Gameplay
 
             public const string SadCharacterPose = Root + "/Sad Character Pose.png";
 
-            public const string HoleSummaryBackground = ReferenceRoot + "/HoleSummaryScore.png";
+            public const string HoleSummaryBackground = Root + "/ScoreSummary_Background1.png";
+
+            public const string LegacyHoleSummaryBackground = ReferenceRoot + "/HoleSummaryScore.png";
 
             public static class DiscPreview
             {

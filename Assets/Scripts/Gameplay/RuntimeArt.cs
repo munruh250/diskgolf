@@ -134,7 +134,13 @@ namespace DiskGolf.Gameplay
 
         public static Sprite LoadSadCharacterPose() => LoadUiSprite(ProjectArtPaths.Ui.SadCharacterPose);
 
-        public static Sprite LoadHoleSummaryBackground() => LoadUiSprite(ProjectArtPaths.Ui.HoleSummaryBackground);
+        public static Sprite LoadHoleSummaryBackground()
+        {
+            var sprite = LoadUiSprite(ProjectArtPaths.Ui.HoleSummaryBackground);
+            return sprite != null
+                ? sprite
+                : LoadUiSprite(ProjectArtPaths.Ui.LegacyHoleSummaryBackground);
+        }
 
         static Sprite LoadUiSprite(string assetPath)
         {

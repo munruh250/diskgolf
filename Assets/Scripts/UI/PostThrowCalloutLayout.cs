@@ -9,9 +9,9 @@ namespace DiskGolf.UI
 
         public static readonly Vector2 ScoreBannerSize = new(1280f, 320f);
 
-        public static readonly Vector2 FeetLabelSize = new(900f, 140f);
+        public static readonly Vector2 FeetLabelSize = new(900f, 64f);
 
-        const float FeetGap = 2f;
+        const float FeetGap = 0f;
 
         public static void ApplyScoreBannerRect(RectTransform rt)
         {

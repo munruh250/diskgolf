@@ -88,6 +88,8 @@ namespace DiskGolf.Core
 
         bool _throwFromPutting;
 
+        bool _showOnGreenLandingCallout = true;
+
         Vector3 _lastThrowAim = Vector3.forward;
 
         public ThrowPhase Phase => _state.Phase;
@@ -159,6 +161,7 @@ namespace DiskGolf.Core
                 return;
 
             SyncDiscToHand();
+            HandlePreThrowAimInput();
             RefreshMeterPreview();
             RefreshTrajectoryZoomCamera();
             ApplyThrowerAimLean();
@@ -266,10 +269,7 @@ namespace DiskGolf.Core
             {
                 case ThrowPhase.Aiming:
                     if (_throwPresentationReady)
-                    {
                         HandleAimingDrive();
-                        HandlePreThrowAimInput();
-                    }
 
                     break;
                 case ThrowPhase.PowerMeter:
@@ -447,18 +447,16 @@ namespace DiskGolf.Core
             else if (wps != null && wps.Count > 0)
                 _discPosition = DiscLieGround.SnapLie(wps[wps.Count - 1].Position, wps[0].Position.y);
 
+            _cameraDirector?.HoldLandingCameraUntilThrowSummary();
             _state.Advance(); // InFlight → Landed
 
             EndMeterFlightDisplay();
 
             if (IsDiscHoled(_discPosition))
             {
-                _cameraDirector?.HoldLandingCameraUntilThrowSummary();
                 BeginHoleComplete();
                 return;
             }
-
-            _cameraDirector?.HoldLandingCameraUntilThrowSummary();
 
             _pendingRestFt = hole != null ? hole.DistanceToBasket(_discPosition) : float.PositiveInfinity;
             _pendingAllowPutting = allowEnterPutting;
@@ -493,11 +491,16 @@ namespace DiskGolf.Core
 
             bool onGreen = IsDiscOnGreenSurface(_discPosition)
                 || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
-            if (onGreen)
+
+            if (!onGreen)
+                _showOnGreenLandingCallout = true;
+
+            if (onGreen && _showOnGreenLandingCallout)
             {
                 onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
                 onTheGreenBanner?.Show();
                 wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : defaultWait;
+                _showOnGreenLandingCallout = false;
             }
             else if (hole != null && !hole.IsNearTee(_discPosition))
             {
@@ -861,6 +864,7 @@ namespace DiskGolf.Core
 
             _strokeCount = 0;
             _throwFromPutting = false;
+            _showOnGreenLandingCallout = true;
             _cameraDirector?.ClearTrajectoryZoom();
 
             if (hole != null)

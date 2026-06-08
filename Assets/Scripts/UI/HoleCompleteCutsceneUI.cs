@@ -59,6 +59,7 @@ namespace DiskGolf.UI
             if (existing != null)
             {
                 existing.BindReferences();
+                existing.ApplyLayout();
                 return existing;
             }
 
@@ -92,9 +93,9 @@ namespace DiskGolf.UI
             root.SetParent(canvas, false);
             ConfigureRootRect(root);
 
-            var background = CreateImageLayer(root, "Background", ConfigureBackgroundRect);
-            var character = CreateImageLayer(root, "CharacterPose", ConfigureCharacterRect);
-            var banner = CreateImageLayer(root, "ScoreBanner", ConfigureScoreBannerRect);
+            var background = CreateImageLayer(root, "Background", HoleCompleteCutsceneLayout.ApplyBackgroundRect);
+            var character = CreateImageLayer(root, "CharacterPose", HoleCompleteCutsceneLayout.ApplyCharacterRect);
+            var banner = CreateImageLayer(root, "ScoreBanner", HoleCompleteCutsceneLayout.ApplyScoreBannerRect);
 
             background.preserveAspect = false;
             character.preserveAspect = true;
@@ -132,31 +133,6 @@ namespace DiskGolf.UI
             rt.offsetMax = Vector2.zero;
         }
 
-        static void ConfigureBackgroundRect(RectTransform rt)
-        {
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-        }
-
-        static void ConfigureCharacterRect(RectTransform rt)
-        {
-            rt.anchorMin = new Vector2(0.5f, 0f);
-            rt.anchorMax = new Vector2(0.5f, 0f);
-            rt.pivot = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, -24f);
-            rt.sizeDelta = new Vector2(920f, 980f);
-        }
-
-        static void ConfigureScoreBannerRect(RectTransform rt)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.54f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(760f, 220f);
-        }
-
         static RectTransform FindHudCanvas()
         {
             var hud = GameObject.Find(HudCanvasName);
@@ -167,10 +143,12 @@ namespace DiskGolf.UI
         {
             _activeDisplaySeconds = overrideDisplaySeconds;
             BindReferences();
+            ApplyLayout();
 
             if (background != null)
             {
                 background.sprite = RuntimeArt.LoadHoleSummaryBackground();
+                background.preserveAspect = false;
                 background.enabled = background.sprite != null;
             }
 
@@ -180,6 +158,7 @@ namespace DiskGolf.UI
                 characterPose.sprite = happy
                     ? RuntimeArt.LoadHappyCharacterPose()
                     : RuntimeArt.LoadSadCharacterPose();
+                characterPose.preserveAspect = true;
                 characterPose.enabled = characterPose.sprite != null;
             }
 
@@ -187,6 +166,7 @@ namespace DiskGolf.UI
             {
                 var kind = ScoreBannerSprites.ResolveKind(strokes, par);
                 scoreBanner.sprite = ScoreBannerSprites.LoadKind(kind);
+                scoreBanner.preserveAspect = true;
                 scoreBanner.enabled = scoreBanner.sprite != null;
             }
 
@@ -200,6 +180,27 @@ namespace DiskGolf.UI
             gameObject.SetActive(false);
         }
 
-        void ApplyEditorPreview() => Show(3, 3);
+        void ApplyLayout()
+        {
+            if (background != null)
+                HoleCompleteCutsceneLayout.ApplyBackgroundRect(background.rectTransform);
+
+            if (characterPose != null)
+                HoleCompleteCutsceneLayout.ApplyCharacterRect(characterPose.rectTransform);
+
+            if (scoreBanner != null)
+                HoleCompleteCutsceneLayout.ApplyScoreBannerRect(scoreBanner.rectTransform);
+
+            if (background != null)
+                background.transform.SetSiblingIndex(0);
+
+            if (characterPose != null)
+                characterPose.transform.SetSiblingIndex(1);
+
+            if (scoreBanner != null)
+                scoreBanner.transform.SetSiblingIndex(2);
+        }
+
+        void ApplyEditorPreview() => Show(3, 4);
     }
 }

@@ -14,6 +14,8 @@ namespace DiskGolf.Gameplay
         public const string GreenObjectName = "Green1";
         public const string MinimapLayerName = "MinimapCourse";
 
+        public const float MinimapBoundsPadding = 1.1f;
+
         [SerializeField] Transform fairwayPlane;
 
         [SerializeField] Transform greenSurface;
@@ -159,17 +161,32 @@ namespace DiskGolf.Gameplay
             }
         }
 
-        public Vector2 WorldToNormalizedMap(Vector3 world)
+        public void ComputeMinimapFraming(float viewAspect, out Vector3 center, out float orthographicSize)
         {
             var b = WorldBounds;
-            float u = b.size.x > 1e-4f ? (world.x - b.min.x) / b.size.x : 0.5f;
-            float v = b.size.z > 1e-4f ? (world.z - b.min.z) / b.size.z : 0.5f;
+            center = b.center;
+
+            float halfHeight = b.extents.z * MinimapBoundsPadding;
+            float halfWidth = b.extents.x * MinimapBoundsPadding;
+            orthographicSize = Mathf.Max(halfHeight, halfWidth / Mathf.Max(viewAspect, 1e-4f));
+        }
+
+        public Vector2 WorldToNormalizedMap(Vector3 world, float viewAspect)
+        {
+            var b = WorldBounds;
+            ComputeMinimapFraming(viewAspect, out var center, out float orthoSize);
+
+            float halfX = orthoSize * viewAspect;
+            float halfZ = orthoSize;
+
+            float u = halfX > 1e-4f ? (world.x - (center.x - halfX)) / (halfX * 2f) : 0.5f;
+            float v = halfZ > 1e-4f ? (world.z - (center.z - halfZ)) / (halfZ * 2f) : 0.5f;
             return new Vector2(Mathf.Clamp01(u), Mathf.Clamp01(v));
         }
 
-        public Vector2 WorldToMapAnchored(Vector3 world, RectTransform mapRect)
+        public Vector2 WorldToMapAnchored(Vector3 world, RectTransform mapRect, float viewAspect)
         {
-            var uv = WorldToNormalizedMap(world);
+            var uv = WorldToNormalizedMap(world, viewAspect);
             var rect = mapRect.rect;
             return new Vector2(uv.x * rect.width - rect.width * 0.5f, uv.y * rect.height - rect.height * 0.5f);
         }

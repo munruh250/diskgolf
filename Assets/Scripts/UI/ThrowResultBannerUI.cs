@@ -81,13 +81,11 @@ namespace DiskGolf.UI
 
         public static void ApplyStyle(TextMeshProUGUI tmp)
         {
-            tmp.text = "200 FEET";
             tmp.fontSize = 64f;
             tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.alignment = TextAlignmentOptions.Top;
             tmp.color = Color.black;
             tmp.outlineWidth = 0f;
-            tmp.ForceMeshUpdate();
             tmp.raycastTarget = false;
 
             var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("InTheCircleBanner")
@@ -106,9 +104,10 @@ namespace DiskGolf.UI
             if (label == null)
                 return;
 
+            ApplyStyle(label);
             int feet = Mathf.Max(0, Mathf.RoundToInt(distanceFt));
             label.text = $"{feet} FEET";
-            ApplyStyle(label);
+            label.ForceMeshUpdate();
             ConfigureBannerRect(transform as RectTransform);
             transform.SetAsLastSibling();
             gameObject.SetActive(true);
