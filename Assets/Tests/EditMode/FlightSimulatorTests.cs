@@ -1,3 +1,4 @@
+using DiskGolf.Core;
 using DiskGolf.Disc;
 using DiskGolf.Flight;
 using NUnit.Framework;
@@ -7,6 +8,18 @@ namespace DiskGolf.Tests
 {
     public class FlightSimulatorTests
     {
+        PlayerCharacterRoster _savedRoster;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _savedRoster = GameSessionSettings.Roster;
+            GameSessionSettings.Roster = null;
+        }
+
+        [TearDown]
+        public void TearDown() => GameSessionSettings.Roster = _savedRoster;
+
         DiscProfile MakeDisc(int speed, int glide, int turn, int fade, float maxFt)
         {
             var d = ScriptableObject.CreateInstance<DiscProfile>();

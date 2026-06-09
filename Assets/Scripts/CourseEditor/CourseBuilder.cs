@@ -36,6 +36,7 @@ namespace DiskGolf.CourseEditor
 
             host.Bind(tee, basket);
             host.RefreshBounds();
+            host.ApplyMinimapLayer();
             return host;
         }
 

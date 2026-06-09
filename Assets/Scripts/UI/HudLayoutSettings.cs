@@ -60,7 +60,7 @@ namespace DiskGolf.UI
         public float HoleInfoHeight => rowHeight * 3f;
 
         public static bool ShouldPreserveLayout() =>
-            Active == null || Active.preserveManualLayout;
+            Active != null && Active.preserveManualLayout;
 
         public static bool ShouldApplyLayoutOnPlay() =>
             Active != null && !Active.preserveManualLayout && Active.applyLayoutOnPlay;

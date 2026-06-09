@@ -173,7 +173,9 @@ namespace DiskGolf.EditorTools
                 yield break;
             }
 
-            foreach (var tmp in Object.FindObjectsOfType<TextMeshProUGUI>(includeInactive))
+            foreach (var tmp in Object.FindObjectsByType<TextMeshProUGUI>(
+                         includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude,
+                         FindObjectsSortMode.None))
             {
                 if (EditorUtility.IsPersistent(tmp))
                     continue;

@@ -23,7 +23,7 @@ namespace DiskGolf.EditorTools
         {
             int count = 0;
 
-            foreach (var tree in Object.FindObjectsOfType<TreeObstacle>())
+            foreach (var tree in Object.FindObjectsByType<TreeObstacle>(FindObjectsSortMode.None))
             {
                 CourseTree.FitColliderToSprite(tree.gameObject);
                 EditorUtility.SetDirty(tree.gameObject);

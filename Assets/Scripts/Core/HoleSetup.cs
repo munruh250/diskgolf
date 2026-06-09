@@ -158,5 +158,15 @@ namespace DiskGolf.Core
                 speedMph = Random.Range(0f, 15f)
             };
         }
+
+        /// <summary>Wire tee/basket from a baked editor course into hole metadata.</summary>
+        public void BindBuiltCourse(Transform tee, Transform basketTransform, int holePar, float circleFt, float lengthFt)
+        {
+            teePad = tee;
+            basket = basketTransform;
+            par = holePar;
+            circleRadiusFt = circleFt;
+            holeLengthFt = lengthFt;
+        }
     }
 }

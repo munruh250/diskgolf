@@ -5,6 +5,7 @@ using System.Linq;
 using Cinemachine;
 using DiskGolf.Camera;
 using DiskGolf.Core;
+using DiskGolf.CourseEditor;
 using DiskGolf.Disc;
 using DiskGolf.Gameplay;
 using DiskGolf.Input;
@@ -27,6 +28,159 @@ namespace DiskGolf.EditorTools
         const string CoursePrefabsDir = ProjectArtPaths.Prefabs.CourseRoot;
 
         const string ScenePath = ProjectArtPaths.Scenes.PrototypeFlat3;
+
+        const string CourseEditorScenePath = ProjectArtPaths.Scenes.CourseEditor;
+
+        [MenuItem("Disk Golf/Course/Rebuild Course Editor Scene")]
+        public static void BuildCourseEditorSceneFromMenu()
+        {
+            if (!EditorUtility.DisplayDialog(
+                    "Rebuild Course Editor Scene",
+                    "Replace the Course Editor scene with a fresh throw rig (no hand-built fairway). Continue?",
+                    "Rebuild",
+                    "Cancel"))
+                return;
+
+            BuildCourseEditorScene();
+        }
+
+        public static void BuildCourseEditorScene()
+        {
+            Directory.CreateDirectory(PrefabsDir);
+            Directory.CreateDirectory(CoursePrefabsDir);
+            Directory.CreateDirectory(ProjectArtPaths.Scenes.PrototypeRoot);
+            Directory.CreateDirectory(ProjectArtPaths.Data.ThemesRoot);
+            Directory.CreateDirectory(ProjectArtPaths.Data.CoursesRoot);
+
+            EnsureTmpEssentials();
+            EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough", "Green" });
+
+            var fairRgb = new Color(0.2f, 0.52f, 0.26f);
+            var teeMat = LoadOrCreateMaterial("MAT_Tee", new Color(0.73f, 0.57f, 0.41f),
+                ProjectArtPaths.Environment.Tee.Material);
+            var metalMat = LoadOrCreateMaterial("MAT_Basket", new Color(0.46f, 0.49f, 0.53f),
+                ProjectArtPaths.Environment.Basket.Material);
+            var discOrange = LoadOrCreateMaterial("MAT_DiscOrange", new Color(0.92f, 0.42f, 0.06f),
+                ProjectArtPaths.Gameplay.DiscMaterial);
+
+            GameObject discPrefab = LoadOrCreateDiscPrefab(discOrange);
+            GameObject teePrefab = LoadOrCreateTeePrefab(teeMat);
+            GameObject basketPrefab = LoadOrCreateBasketPrefab(metalMat);
+
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            DirLight(out _);
+
+            var teePos = new Vector3(10f, 0f, 1f);
+            var basketPos = new Vector3(10f, 0f, 229f);
+            var teeTf = InstantiatePrefabIntoScene(teePrefab, teePos, Quaternion.identity);
+            var basketTf = InstantiatePrefabIntoScene(basketPrefab, basketPos, Quaternion.identity);
+
+            var aimRot = Quaternion.LookRotation((basketTf.position - teeTf.position).normalized, Vector3.up);
+            var throwerVisual = ThrowerVisual.Build(
+                teeTf.position + aimRot * Vector3.back * 0.55f,
+                aimRot);
+            var throwerTf = throwerVisual.transform;
+
+            var discTf = InstantiatePrefabIntoScene(discPrefab, throwerVisual.HandAnchor.position, aimRot);
+            discTf.SetPositionAndRotation(throwerVisual.HandAnchor.position, aimRot);
+
+            SpawnCircleVisualizer(basketTf);
+
+            MainCam(out CinemachineBrain _);
+            EventSystemBootstrap();
+
+            var gm = new GameObject("GameManager");
+            var hole = gm.AddComponent<HoleSetup>();
+            AssignSerialized(hole, "teePad", teeTf);
+            AssignSerialized(hole, "basket", basketTf);
+            AssignSerialized(hole, "thrower", throwerTf);
+
+            var bag = gm.AddComponent<DiscBag>();
+            PopulateDiscProfiles(bag);
+
+            var presenter = gm.AddComponent<DiscFlightPresenter>();
+            AssignSerialized(presenter, "discTransform", discTf);
+
+            var inputs = gm.AddComponent<ThrowInputHandler>();
+            var controller = gm.AddComponent<ThrowController>();
+            AssignSerialized(controller, "hole", hole);
+            AssignSerialized(controller, "bag", bag);
+            AssignSerialized(controller, "input", inputs);
+            AssignSerialized(controller, "presenter", presenter);
+
+            var powerMb = gm.AddComponent<PowerMeterUI>();
+            var heightMb = gm.AddComponent<HeightMeterUI>();
+            AssignSerialized(controller, "powerMeter", powerMb);
+            AssignSerialized(controller, "heightMeter", heightMb);
+
+            var hudCanvas = HudCanvas(out _);
+            var hud = hudCanvas.gameObject.AddComponent<HUDController>();
+            AssignSerialized(hud, "controller", controller);
+            AssignSerialized(hud, "hole", hole);
+            AssignSerialized(hud, "discTransform", discTf);
+
+            SpawnMinimap(hudCanvas, hole, discTf, null, controller);
+
+            var aimPoint = CameraRig.EnsureAimPoint(throwerVisual.transform, basketTf);
+            var cameraRoot = new GameObject("Camera").transform;
+            var side = Vcam(CameraRig.SideSetupName, cameraRoot, throwerTf, aimPoint, CameraRig.SideFollowOffset, 0f);
+            var flightChase = Vcam(CameraRig.FlightChaseName, cameraRoot, discTf, basketTf, CameraRig.FlightChaseOffset, 0f);
+            CameraRig.ConfigureSideThrowCam(side, throwerTf, aimPoint);
+            CameraRig.ConfigureFlightChaseCam(flightChase, discTf, Vector3.forward);
+            side.gameObject.SetActive(true);
+            flightChase.gameObject.SetActive(false);
+
+            var director = gm.AddComponent<CameraDirector>();
+            AssignSerialized(director, "sideSetupCam", side);
+            AssignSerialized(director, "flightChaseCam", flightChase);
+            AssignSerialized(director, "throwController", controller);
+            AssignSerialized(director, "flightPresenter", presenter);
+            AssignSerialized(director, "hole", hole);
+
+            var bootstrap = gm.AddComponent<CourseEditorRuntimeBootstrap>();
+            var scratch = AssetDatabase.LoadAssetAtPath<HoleDataAsset>(
+                ProjectArtPaths.Data.CoursesRoot + "/_EditorScratch.asset");
+            if (scratch == null)
+            {
+                scratch = ScriptableObject.CreateInstance<HoleDataAsset>();
+                AssetDatabase.CreateAsset(scratch, ProjectArtPaths.Data.CoursesRoot + "/_EditorScratch.asset");
+            }
+
+            var theme = AssetDatabase.LoadAssetAtPath<ThemePack>(
+                ProjectArtPaths.Data.ThemesRoot + "/ThemePack_Temperate.asset");
+            AssignSerialized(bootstrap, "playtestHole", scratch);
+            AssignSerialized(bootstrap, "theme", theme);
+            AssignSerialized(bootstrap, "holeSetup", hole);
+
+            hudCanvas.localScale = Vector3.one;
+            HudSceneAuthoring.BakeMissingSceneWidgets();
+            HudLayout.ApplyCleanupOnly();
+            hudCanvas.localScale = Vector3.one;
+
+            SceneHierarchy.Organize();
+
+            var scene = SceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(scene);
+            AssetDatabase.SaveAssets();
+            EditorSceneManager.SaveScene(scene, CourseEditorScenePath);
+            Debug.Log($"[Disk Golf] Saved {CourseEditorScenePath} — paint in Scene view, then Playtest.");
+        }
+
+        static Material LoadOrCreateMaterial(string name, Color color, string path)
+        {
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            return mat != null ? mat : SaveMaterialAsset(name, color, path);
+        }
+
+        static GameObject LoadOrCreateDiscPrefab(Material mat) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.Disc) ?? SaveDiscPrefab(mat);
+
+        static GameObject LoadOrCreateTeePrefab(Material mat) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.TeePad) ?? SaveTeePrefab(mat);
+
+        static GameObject LoadOrCreateBasketPrefab(Material mat) =>
+            AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.Basket) ?? SaveBasketPrefab(mat);
 
         public static void Build()
         {
@@ -211,6 +365,7 @@ namespace DiskGolf.EditorTools
         static void SpawnMinimap(RectTransform hudRoot, HoleSetup hole, Transform discTf, CourseLayout course,
             ThrowController throwController)
         {
+            // course may be null in CourseEditor scene — MinimapUI resolves BuiltCourseHost at runtime.
             var host = new GameObject("MinimapHost", typeof(RectTransform));
             var hostRt = host.GetComponent<RectTransform>();
             hostRt.SetParent(hudRoot, false);
@@ -238,20 +393,29 @@ namespace DiskGolf.EditorTools
 
             var mapRect = panelRt;
             const float minimapAspect = 248f / 392f;
-            var teeDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.TeePosition, mapRect, minimapAspect),
-                new Vector2(8f, 8f), Color.white).rectTransform;
+            Vector2 TeeMapPos() => course != null
+                ? course.WorldToMapAnchored(hole.TeePosition, mapRect, minimapAspect)
+                : Vector2.zero;
+            Vector2 BasketMapPos() => course != null
+                ? course.WorldToMapAnchored(hole.BasketPosition, mapRect, minimapAspect)
+                : Vector2.zero;
+            Vector2 DiscMapPos() => course != null
+                ? course.WorldToMapAnchored(discTf.position, mapRect, minimapAspect)
+                : Vector2.zero;
+
+            var teeDot = ImageRect(markerLayer, TeeMapPos(), new Vector2(8f, 8f), Color.white).rectTransform;
             teeDot.name = "TeeDot";
 
-            var basketDot = ImageRect(markerLayer, course.WorldToMapAnchored(hole.BasketPosition, mapRect, minimapAspect),
-                new Vector2(10f, 10f), new Color(1f, 0.55f, 0.25f)).rectTransform;
+            var basketDot = ImageRect(markerLayer, BasketMapPos(), new Vector2(10f, 10f), new Color(1f, 0.55f, 0.25f))
+                .rectTransform;
             basketDot.name = "BasketDot";
 
-            var discDot = ImageRect(markerLayer, course.WorldToMapAnchored(discTf.position, mapRect, minimapAspect),
-                new Vector2(8f, 8f), Color.cyan).rectTransform;
+            var discDot = ImageRect(markerLayer, DiscMapPos(), new Vector2(8f, 8f), Color.cyan).rectTransform;
             discDot.name = "DiscDot";
 
             var mini = host.AddComponent<MinimapUI>();
-            AssignSerialized(mini, "course", course);
+            if (course != null)
+                AssignSerialized(mini, "course", course);
             AssignSerialized(mini, "hole", hole);
             AssignSerialized(mini, "discTransform", discTf);
             AssignSerialized(mini, "controller", throwController);
@@ -296,13 +460,17 @@ namespace DiskGolf.EditorTools
 
         static void PopulateDiscProfiles(DiscBag bag)
         {
-            var profiles = new[]
+            var profiles = DiscDefaults.AssetPaths
+                .Select(AssetDatabase.LoadAssetAtPath<DiscProfile>)
+                .ToArray();
+
+            if (profiles[0] == null)
             {
-                "Assets/Data/Discs/P2.asset",
-                "Assets/Data/Discs/Buzzz.asset",
-                "Assets/Data/Discs/Teebird.asset",
-                "Assets/Data/Discs/Destroyer.asset",
-            }.Select(AssetDatabase.LoadAssetAtPath<DiscProfile>).ToArray();
+                Debug.LogError(
+                    "[PrototypeFlat3SceneBuilder] Missing disc profiles under Assets/Data/Discs/. "
+                    + "Expected Putter, Midrange, Fairway, and Distance assets.");
+                return;
+            }
 
             var so = new SerializedObject(bag);
             var prop = so.FindProperty("discs");

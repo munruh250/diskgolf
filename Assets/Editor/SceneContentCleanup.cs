@@ -40,7 +40,9 @@ namespace DiskGolf.EditorTools
 
         static void RemoveUnusedVirtualCameras()
         {
-            var vcams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
+            var vcams = Object.FindObjectsByType<CinemachineVirtualCamera>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
             foreach (var vcam in vcams)
             {
                 foreach (var name in UnusedVirtualCameraNames)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DiskGolf.Core;
+using DiskGolf.CourseEditor;
 using DiskGolf.Gameplay;
 using UnityEngine;
 using UnityEngine.UI;
@@ -51,9 +52,11 @@ namespace DiskGolf.UI
 
         RectTransform _trajectoryRoot;
 
+        BuiltCourseHost builtCourse;
+
         void Awake()
         {
-            course ??= CourseLayout.EnsureInScene();
+            ResolveCourseSources();
             controller ??= FindObjectOfType<ThrowController>();
             EnsureCaptureCamera();
             EnsureMapImage();
@@ -88,10 +91,9 @@ namespace DiskGolf.UI
 
         void LateUpdate()
         {
-            if (course == null)
-                course = CourseLayout.EnsureInScene();
+            ResolveCourseSources();
 
-            if (course == null || mapImage == null)
+            if (!HasCourseSource() || mapImage == null)
                 return;
 
             markerLayer ??= transform.Find("MapPanel/MarkerLayer") as RectTransform;
@@ -102,13 +104,13 @@ namespace DiskGolf.UI
             var mapRect = mapImage.rectTransform;
 
             if (teeDot != null && hole != null)
-                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect, ViewAspect);
+                teeDot.anchoredPosition = WorldToMapAnchored(hole.TeePosition, mapRect);
 
             if (basketDot != null && hole != null)
-                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect, ViewAspect);
+                basketDot.anchoredPosition = WorldToMapAnchored(hole.BasketPosition, mapRect);
 
             if (discDot != null && discTransform != null)
-                discDot.anchoredPosition = course.WorldToMapAnchored(discTransform.position, mapRect, ViewAspect);
+                discDot.anchoredPosition = WorldToMapAnchored(discTransform.position, mapRect);
 
             UpdateTreeMarkers(mapRect);
             UpdateTrajectoryOverlay(mapRect);
@@ -116,7 +118,9 @@ namespace DiskGolf.UI
 
         public void RefreshCapture()
         {
-            course ??= CourseLayout.EnsureInScene();
+            ResolveCourseSources();
+            builtCourse?.Refresh();
+            builtCourse?.ApplyMinimapLayer();
             course?.Refresh();
             course?.ApplyMinimapLayer();
             FrameCourse();
@@ -130,8 +134,8 @@ namespace DiskGolf.UI
             if (_captureCam != null)
                 return;
 
-            course ??= CourseLayout.EnsureInScene();
-            if (course == null)
+            ResolveCourseSources();
+            if (!HasCourseSource())
                 return;
 
             _renderTexture = new RenderTexture(TextureWidth, TextureHeight, 16, RenderTextureFormat.ARGB32);
@@ -139,7 +143,7 @@ namespace DiskGolf.UI
             _renderTexture.Create();
 
             var camGo = new GameObject("MinimapCaptureCamera");
-            var rigParent = course.transform.parent != null ? course.transform.parent : course.transform;
+            var rigParent = ResolveCaptureParent();
             camGo.transform.SetParent(rigParent, false);
 
             _captureCam = camGo.AddComponent<UnityEngine.Camera>();
@@ -161,10 +165,15 @@ namespace DiskGolf.UI
 
         void FrameCourse()
         {
-            if (_captureCam == null || course == null)
+            if (_captureCam == null || !HasCourseSource())
                 return;
 
-            course.ComputeMinimapFraming(ViewAspect, out var center, out float orthographicSize);
+            Vector3 center;
+            float orthographicSize;
+            if (builtCourse != null)
+                builtCourse.ComputeMinimapFraming(ViewAspect, out center, out orthographicSize);
+            else
+                course.ComputeMinimapFraming(ViewAspect, out center, out orthographicSize);
             _captureCam.transform.position = center + Vector3.up * 120f;
             _captureCam.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             _captureCam.orthographicSize = orthographicSize;
@@ -208,19 +217,19 @@ namespace DiskGolf.UI
             discDot ??= markerLayer.Find("DiscDot") as RectTransform;
 
             if (hole != null && teeDot != null)
-                teeDot.anchoredPosition = course.WorldToMapAnchored(hole.TeePosition, mapRect, ViewAspect);
+                teeDot.anchoredPosition = WorldToMapAnchored(hole.TeePosition, mapRect);
 
             if (hole != null && basketDot != null)
-                basketDot.anchoredPosition = course.WorldToMapAnchored(hole.BasketPosition, mapRect, ViewAspect);
+                basketDot.anchoredPosition = WorldToMapAnchored(hole.BasketPosition, mapRect);
         }
 
         void EnsureTreeMarkers()
         {
             markerLayer ??= transform.Find("MapPanel/MarkerLayer") as RectTransform;
-            if (markerLayer == null || course == null)
+            if (markerLayer == null || !HasCourseSource())
                 return;
 
-            var treesRoot = course.TreesRoot;
+            var treesRoot = ResolveTreesRoot();
             if (treesRoot == null)
                 return;
 
@@ -241,7 +250,7 @@ namespace DiskGolf.UI
             if (_treeDots.Count == 0)
                 EnsureTreeMarkers();
 
-            var treesRoot = course?.TreesRoot;
+            var treesRoot = ResolveTreesRoot();
             if (treesRoot == null)
                 return;
 
@@ -253,7 +262,7 @@ namespace DiskGolf.UI
                     continue;
 
                 dot.gameObject.SetActive(true);
-                dot.anchoredPosition = course.WorldToMapAnchored(treesRoot.GetChild(i).position, mapRect, ViewAspect);
+                dot.anchoredPosition = WorldToMapAnchored(treesRoot.GetChild(i).position, mapRect);
             }
 
             for (int i = treeCount; i < _treeDots.Count; i++)
@@ -341,8 +350,8 @@ namespace DiskGolf.UI
 
             for (int i = 0; i < segCount; i++)
             {
-                var a = course.WorldToMapAnchored(wps[i].Position, mapRect, ViewAspect);
-                var b = course.WorldToMapAnchored(wps[i + 1].Position, mapRect, ViewAspect);
+                var a = WorldToMapAnchored(wps[i].Position, mapRect);
+                var b = WorldToMapAnchored(wps[i + 1].Position, mapRect);
                 bool blocked = hitWaypointIndex >= 0 && i + 1 >= hitWaypointIndex;
                 PlaceTrajectorySegment(_trajectorySegments[i], a, b, blocked);
             }
@@ -382,8 +391,8 @@ namespace DiskGolf.UI
         void EnsureTrajectoryLine()
         {
             controller ??= FindObjectOfType<ThrowController>();
-            course ??= CourseLayout.EnsureInScene();
-            if (course == null)
+            ResolveCourseSources();
+            if (!HasCourseSource())
                 return;
 
             MinimapTrajectoryLine primary = null;
@@ -404,7 +413,7 @@ namespace DiskGolf.UI
             if (primary == null)
             {
                 var go = new GameObject("MinimapTrajectoryLine");
-                go.transform.SetParent(course.transform, false);
+                go.transform.SetParent(ResolveCaptureParent(), false);
                 go.AddComponent<LineRenderer>();
                 primary = go.AddComponent<MinimapTrajectoryLine>();
             }
@@ -412,8 +421,50 @@ namespace DiskGolf.UI
             primary.Bind(controller);
         }
 
+        void ResolveCourseSources()
+        {
+            builtCourse = FindObjectOfType<BuiltCourseHost>();
+            if (builtCourse == null)
+                course ??= CourseLayout.EnsureInScene();
+            else
+                course = null;
+        }
+
+        bool HasCourseSource() => builtCourse != null || course != null;
+
+        Vector2 WorldToMapAnchored(Vector3 world, RectTransform mapRect)
+        {
+            if (builtCourse != null)
+                return builtCourse.WorldToMapAnchored(world, mapRect, ViewAspect);
+
+            if (course != null)
+                return course.WorldToMapAnchored(world, mapRect, ViewAspect);
+
+            return Vector2.zero;
+        }
+
+        Transform ResolveCaptureParent()
+        {
+            if (builtCourse != null)
+                return builtCourse.transform;
+
+            if (course != null)
+                return course.transform.parent != null ? course.transform.parent : course.transform;
+
+            return transform;
+        }
+
+        Transform ResolveTreesRoot()
+        {
+            if (builtCourse != null)
+                return builtCourse.TreesRoot;
+
+            return course != null ? course.TreesRoot : null;
+        }
+
         public void Bind(CourseLayout layout, HoleSetup holeSetup, Transform disc, ThrowController throwController = null)
         {
+            builtCourse = null;
             course = layout ?? CourseLayout.EnsureInScene();
             hole = holeSetup;
             discTransform = disc;

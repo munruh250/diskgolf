@@ -1,3 +1,4 @@
+using DiskGolf.Gameplay;
 using UnityEngine;
 
 namespace DiskGolf.CourseEditor
@@ -108,6 +109,27 @@ namespace DiskGolf.CourseEditor
             float u = halfX > 1e-4f ? (world.x - (center.x - halfX)) / (halfX * 2f) : 0.5f;
             float v = halfZ > 1e-4f ? (world.z - (center.z - halfZ)) / (halfZ * 2f) : 0.5f;
             return new Vector2(Mathf.Clamp01(u), Mathf.Clamp01(v));
+        }
+
+        public Vector2 WorldToMapAnchored(Vector3 world, RectTransform mapRect, float viewAspect)
+        {
+            var uv = WorldToNormalizedMap(world, viewAspect);
+            var rect = mapRect.rect;
+            return new Vector2(uv.x * rect.width - rect.width * 0.5f, uv.y * rect.height - rect.height * 0.5f);
+        }
+
+        public Transform TreesRoot => transform.Find("Foliage");
+
+        public void Refresh() => RefreshBounds();
+
+        public void ApplyMinimapLayer()
+        {
+            int layer = LayerMask.NameToLayer(CourseLayout.MinimapLayerName);
+            if (layer < 0)
+                return;
+
+            foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+                renderer.gameObject.layer = layer;
         }
     }
 }

@@ -58,6 +58,7 @@ namespace DiskGolf.UI
             if (existing != null)
             {
                 existing.BindReferences();
+                existing.RepairInsetLayouts();
                 existing.ApplyTypography();
                 existing.HideLegacyHud();
                 return existing;
@@ -84,6 +85,7 @@ namespace DiskGolf.UI
             if (existing != null)
             {
                 existing.BakeSceneUpgrades();
+                existing.RepairInsetLayouts();
                 existing.HideLegacyHud();
                 return existing;
             }
@@ -129,7 +131,11 @@ namespace DiskGolf.UI
         }
 #endif
 
-        void Awake() => BindReferences();
+        void Awake()
+        {
+            BindReferences();
+            RepairInsetLayouts();
+        }
 
         void OnEnable()
         {
@@ -421,6 +427,29 @@ namespace DiskGolf.UI
         }
 
         public void ApplyTypography() => HudTypography.BindFontsPreservingStyle(transform);
+
+        public void RepairInsetLayouts()
+        {
+            ResolveOptionalReferences();
+            RepairInsetChild(stanceButton);
+            RepairInsetChild(discButton);
+            RepairInsetChild(arcButton);
+        }
+
+        static void RepairInsetChild(Button button)
+        {
+            var value = button != null ? button.transform.Find("Value") as RectTransform : null;
+            if (value == null)
+                return;
+
+            value.anchorMin = Vector2.zero;
+            value.anchorMax = Vector2.one;
+            value.pivot = new Vector2(0.5f, 0.5f);
+            value.anchoredPosition = Vector2.zero;
+            value.sizeDelta = Vector2.zero;
+            value.offsetMin = new Vector2(8f * S, 2f * S);
+            value.offsetMax = new Vector2(-8f * S, -2f * S);
+        }
 
         static void BindFont(TextMeshProUGUI tmp) => HudTypography.BindFont(tmp);
     }

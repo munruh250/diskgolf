@@ -80,7 +80,9 @@ Runtime loading goes through `RuntimeArt` / `GameplayArtCatalog`.
 
 ## Course editor (P0)
 
+- Open **Assets/Scenes/Prototype/CourseEditor.unity** (run **Disk Golf → Course → Rebuild Course Editor Scene** once if playtest lacks a throw rig)
 - Open **Disk Golf → Course Editor**
+- If **Theme** is empty: click **Create Default Theme Pack** in the window, or run **Disk Golf → Course → Create Default Theme Pack**
 - Paint tiles, place tee/basket, export `Assets/Data/Courses/<name>/hole_XX.json`
 - Themes live in `Assets/Data/Themes/ThemePack_*.asset`
 

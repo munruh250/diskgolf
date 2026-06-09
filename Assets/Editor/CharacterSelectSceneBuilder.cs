@@ -248,7 +248,7 @@ namespace DiskGolf.EditorTools
             tmp.color = color;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = align;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.raycastTarget = false;
             HudTypography.BindFont(tmp);

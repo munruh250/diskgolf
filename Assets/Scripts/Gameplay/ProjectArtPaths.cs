@@ -145,6 +145,8 @@ namespace DiskGolf.Gameplay
             public const string Settings = MenuRoot + "/Settings.unity";
 
             public const string PrototypeFlat3 = PrototypeRoot + "/PrototypeFlat3.unity";
+
+            public const string CourseEditor = PrototypeRoot + "/CourseEditor.unity";
         }
 
         public static class Runtime
@@ -160,6 +162,19 @@ namespace DiskGolf.Gameplay
             public const string ThemesRoot = Root + "/Themes";
 
             public const string CoursesRoot = Root + "/Courses";
+
+            public const string DiscsRoot = Root + "/Discs";
+
+            public static class Discs
+            {
+                public const string Putter = DiscsRoot + "/Putter.asset";
+
+                public const string Midrange = DiscsRoot + "/Midrange.asset";
+
+                public const string Fairway = DiscsRoot + "/Fairway.asset";
+
+                public const string Distance = DiscsRoot + "/Distance.asset";
+            }
         }
 
         public static class ThirdParty

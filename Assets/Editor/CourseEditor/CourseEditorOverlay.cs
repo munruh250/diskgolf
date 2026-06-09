@@ -26,16 +26,50 @@ namespace DiskGolf.EditorTools.CourseEditor
                 return;
             }
 
+            DrawSceneInstructions(data);
             DrawGridAndTiles(data);
             HandleInput(data);
             DrawMarkers(data);
+        }
+
+        static void DrawSceneInstructions(HoleData data)
+        {
+            string toolHint = CourseEditorState.ActiveTool switch
+            {
+                CourseEditorTool.Paint => $"Paint: click or drag in Scene view ({CourseEditorState.BrushType})",
+                CourseEditorTool.Erase => "Erase: click or drag to remove tiles",
+                CourseEditorTool.HoleTee => "Hole Tee: click a tile to place the tee",
+                CourseEditorTool.HoleBasket => "Hole Basket: click a tile to place the basket",
+                _ => string.Empty
+            };
+
+            Handles.BeginGUI();
+            var rect = new Rect(10f, 10f, 420f, 44f);
+            GUI.Box(rect, GUIContent.none);
+            GUI.Label(new Rect(rect.x + 8f, rect.y + 6f, rect.width - 16f, 36f),
+                "Course Editor — paint here in Scene view (not in the editor window).\n" + toolHint);
+            Handles.EndGUI();
+        }
+
+        public static void FocusSceneOnGrid()
+        {
+            var data = CourseEditorState.Data;
+            if (data == null)
+                return;
+
+            var sceneView = SceneView.lastActiveSceneView;
+            if (sceneView == null)
+                return;
+
+            sceneView.Frame(data.ComputeEditorWorldBounds(), false);
+            sceneView.Repaint();
         }
 
         static void DrawGridAndTiles(HoleData data)
         {
             float tileSize = data.TileSize > 0f ? data.TileSize : HoleData.DefaultTileSize;
             Vector2 origin = data.Origin;
-            Vector2Int bounds = data.ComputeBoundsMax();
+            Vector2Int bounds = data.ComputeEditorGridBounds();
 
             Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
             Handles.color = GridColor;
@@ -76,16 +110,18 @@ namespace DiskGolf.EditorTools.CourseEditor
         static void HandleInput(HoleData data)
         {
             Event evt = Event.current;
+            int controlId = GUIUtility.GetControlID("CourseEditorPaint".GetHashCode(), FocusType.Passive);
+            HandleUtility.AddDefaultControl(controlId);
+
+            if (evt.type == EventType.Layout)
+                return;
+
             bool isPaintEvent = evt.type == EventType.MouseDown || evt.type == EventType.MouseDrag;
             if (!isPaintEvent)
-            {
                 return;
-            }
 
             if (evt.button != 0 || evt.alt)
-            {
                 return;
-            }
 
             Ray ray = HandleUtility.GUIPointToWorldRay(evt.mousePosition);
             if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out float distance))

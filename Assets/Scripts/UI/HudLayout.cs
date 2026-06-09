@@ -80,11 +80,14 @@ namespace DiskGolf.UI
             HideLegacySliders(canvas);
             TimingMeterHud.Ensure();
 
-            var flatOffset = settings != null ? settings.flatLabelOffset : new Vector2(36f, 88f);
-            var discOffset = settings != null ? settings.discLabelOffset : new Vector2(36f, 48f);
-            PinBottomLeft(FindTmp(canvas, "StanceLabel") ?? FindTmp(canvas, "FLAT") ?? FindTmp(canvas, "TypeThrow"),
-                flatOffset);
-            PinBottomLeft(FindTmp(canvas, "Disc"), discOffset);
+            if (canvas.Find("NtmBottomBar") == null)
+            {
+                var flatOffset = settings != null ? settings.flatLabelOffset : new Vector2(36f, 88f);
+                var discOffset = settings != null ? settings.discLabelOffset : new Vector2(36f, 48f);
+                PinBottomLeft(FindTmp(canvas, "StanceLabel") ?? FindTmp(canvas, "FLAT") ?? FindTmp(canvas, "TypeThrow"),
+                    flatOffset);
+                PinBottomLeft(FindTmp(canvas, "Disc"), discOffset);
+            }
 
             HideLegacyPowerHeightLabels(canvas);
             ApplyRightStack(canvas);
@@ -281,6 +284,9 @@ namespace DiskGolf.UI
         {
             foreach (var t in root.GetComponentsInChildren<TextMeshProUGUI>(true))
             {
+                if (IsUnderNtmBottomBar(t))
+                    continue;
+
                 if (t.text.StartsWith(exact) || t.name.Contains(exact))
                     return t;
             }
@@ -292,12 +298,18 @@ namespace DiskGolf.UI
         {
             foreach (var t in root.GetComponentsInChildren<TextMeshProUGUI>(true))
             {
+                if (IsUnderNtmBottomBar(t))
+                    continue;
+
                 if (t.text.Contains(token))
                     return t;
             }
 
             return null;
         }
+
+        static bool IsUnderNtmBottomBar(Component component) =>
+            component != null && component.GetComponentInParent<NtmBottomBar>() != null;
 
         static Text FindUnityText(RectTransform root, string exact)
         {

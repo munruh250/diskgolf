@@ -26,6 +26,7 @@ namespace DiskGolf.EditorTools
 
             Undo.RegisterFullObjectHierarchyUndo(hud.gameObject, "Bake HUD widgets");
 
+            bool addedMeters = EnsureTimingMeters(hud);
             bool addedBar = UpgradeBottomBar(hud);
             bool upgradedBar = !addedBar && hud.Find("NtmBottomBar/ArcButton") != null;
             bool upgradedAccuracy = UpgradeAccuracyMeter(hud);
@@ -49,6 +50,7 @@ namespace DiskGolf.EditorTools
 
             Debug.Log(
                 "[Disk Golf] HUD bake complete. "
+                + (addedMeters ? "Created TimingMeters. " : "TimingMeters unchanged. ")
                 + (addedBar ? "Created NtmBottomBar. " : upgradedBar ? "Upgraded NtmBottomBar with ARC section. " : "NtmBottomBar unchanged. ")
                 + (upgradedAccuracy ? "Upgraded HeightMeter to ACCURACY layout. " : "Accuracy meter already current. ")
                 + (addedHoleBanner ? "Created HoleCompleteBanner under GameplayHUD. " : "HoleCompleteBanner already present. ")
@@ -94,7 +96,7 @@ namespace DiskGolf.EditorTools
 
         static void WireThrowControllerBannerRefs(RectTransform hud)
         {
-            var controller = Object.FindObjectOfType<DiskGolf.Core.ThrowController>();
+            var controller = Object.FindFirstObjectByType<DiskGolf.Core.ThrowController>();
             if (controller == null)
                 return;
 
@@ -122,6 +124,39 @@ namespace DiskGolf.EditorTools
             BakeMissingSceneWidgets();
             EditorSceneManager.SaveOpenScenes();
             Debug.Log("[Disk Golf] Saved baked HUD widgets to PrototypeFlat3.");
+        }
+
+        static bool EnsureTimingMeters(RectTransform hud)
+        {
+            var root = hud.Find("TimingMeters") as RectTransform;
+            if (root == null)
+            {
+                var go = new GameObject("TimingMeters", typeof(RectTransform));
+                root = go.GetComponent<RectTransform>();
+                Undo.RegisterCreatedObjectUndo(go, "Create TimingMeters");
+                root.SetParent(hud, false);
+                root.anchorMin = Vector2.zero;
+                root.anchorMax = Vector2.one;
+                root.offsetMin = Vector2.zero;
+                root.offsetMax = Vector2.zero;
+            }
+
+            bool hadPower = root.Find(PowerMeterVisual.VisualNameForFind) != null;
+            bool hadHeight = HeightMeterVisual.FindMeterRoot(root) != null;
+
+            var power = PowerMeterVisual.Ensure(root);
+            var height = HeightMeterVisual.Ensure(root);
+            power?.EnsureBuilt();
+            height?.EnsureBuilt();
+            power?.SetChromeVisible(true);
+            height?.SetChromeVisible(true);
+
+            if (power != null)
+                EditorUtility.SetDirty(power.gameObject);
+            if (height != null)
+                EditorUtility.SetDirty(height.gameObject);
+
+            return !hadPower || !hadHeight;
         }
 
         static bool UpgradeBottomBar(RectTransform hud)

@@ -93,6 +93,24 @@ namespace DiskGolf.CourseEditor
             return new Vector2Int(maxX + 1, maxY + 1);
         }
 
+        /// <summary>Grid extent for editor overlay — at least <paramref name="minTilesX"/> × <paramref name="minTilesY"/>.</summary>
+        public Vector2Int ComputeEditorGridBounds(int minTilesX = 20, int minTilesY = 120)
+        {
+            var painted = ComputeBoundsMax();
+            return new Vector2Int(
+                Mathf.Max(painted.x, minTilesX),
+                Mathf.Max(painted.y, minTilesY));
+        }
+
+        public Bounds ComputeEditorWorldBounds(int minTilesX = 20, int minTilesY = 120)
+        {
+            var grid = ComputeEditorGridBounds(minTilesX, minTilesY);
+            float width = grid.x * TileSize;
+            float depth = grid.y * TileSize;
+            var center = new Vector3(Origin.x + width * 0.5f, 0f, Origin.y + depth * 0.5f);
+            return new Bounds(center, new Vector3(width, 1f, depth));
+        }
+
         public float HoleLengthYards()
         {
             var delta = Hole.Basket - Hole.Tee;

@@ -53,7 +53,7 @@ namespace DiskGolf.EditorTools.CourseEditor
 
             if (CourseEditorState.Theme == null)
             {
-                CourseEditorState.Theme = FindDefaultTheme();
+                CourseEditorState.Theme = FindDefaultTheme() ?? ThemePackBootstrap.EnsureTemperateThemePack();
             }
         }
 
@@ -89,14 +89,15 @@ namespace DiskGolf.EditorTools.CourseEditor
 
         static ThemePack FindDefaultTheme()
         {
+            var temperate = AssetDatabase.LoadAssetAtPath<ThemePack>(ThemePackBootstrap.TemperateAssetPath);
+            if (temperate != null)
+                return temperate;
+
             string[] guids = AssetDatabase.FindAssets("t:ThemePack");
             if (guids.Length == 0)
-            {
                 return null;
-            }
 
-            string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-            return AssetDatabase.LoadAssetAtPath<ThemePack>(path);
+            return AssetDatabase.LoadAssetAtPath<ThemePack>(AssetDatabase.GUIDToAssetPath(guids[0]));
         }
 
         static string AssetPathToAbsolute(string assetPath)
@@ -153,6 +154,19 @@ namespace DiskGolf.EditorTools.CourseEditor
             EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Tools", EditorStyles.boldLabel);
 
+            EditorGUILayout.HelpBox(
+                "Use scene Assets/Scenes/Prototype/CourseEditor.unity for playtests.\n"
+                + "If Playtest warns about missing ThrowController, run Disk Golf → Course → Rebuild Course Editor Scene.\n\n"
+                + "Painting happens in the Scene view (3D tab), not this window:\n"
+                + "1. Focus Paint Grid if you do not see a grid.\n"
+                + "2. Paint, place tee/basket, then Bake or Playtest.",
+                MessageType.Info);
+
+            if (GUILayout.Button("Focus Paint Grid in Scene View"))
+            {
+                CourseEditorOverlay.FocusSceneOnGrid();
+            }
+
             string[] toolLabels = { "Paint", "Erase", "HoleTee", "HoleBasket" };
             int selectedTool = (int)CourseEditorState.ActiveTool;
             int nextTool = GUILayout.Toolbar(selectedTool, toolLabels);
@@ -166,6 +180,20 @@ namespace DiskGolf.EditorTools.CourseEditor
             if (nextBrushType != CourseEditorState.BrushType)
             {
                 CourseEditorState.BrushType = nextBrushType;
+            }
+
+            if (CourseEditorState.Theme == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "No Theme Pack assigned. Use the button below or Disk Golf → Course → Create Default Theme Pack.",
+                    MessageType.Warning);
+
+                if (GUILayout.Button("Create Default Theme Pack"))
+                {
+                    CourseEditorState.Theme = ThemePackBootstrap.EnsureTemperateThemePack(forceRecreate: true);
+                    if (CourseEditorState.Theme != null)
+                        data.ThemeId = CourseEditorState.Theme.themeId;
+                }
             }
 
             ThemePack nextTheme =

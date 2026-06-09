@@ -10,8 +10,20 @@ namespace DiskGolf.Disc
 
         public event Action<DiscProfile> SelectionChanged;
 
-        public DiscProfile Active => discs[_index];
+        public DiscProfile Active => discs != null && discs.Length > 0 ? discs[_index] : null;
         public DiscProfile[] All => discs;
+
+        void Awake() => DiscBagBootstrap.EnsurePopulated(this);
+
+        public void SetDiscs(DiscProfile[] profiles)
+        {
+            if (profiles == null || profiles.Length == 0)
+                return;
+
+            discs = profiles;
+            _index = Mathf.Clamp(_index, 0, discs.Length - 1);
+            SelectionChanged?.Invoke(Active);
+        }
 
         public void SelectIndex(int index)
         {
