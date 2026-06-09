@@ -139,6 +139,11 @@ namespace DiskGolf.EditorTools.CourseEditor
                 OnBake();
             }
 
+            if (GUILayout.Button("Playtest", EditorStyles.toolbarButton))
+            {
+                OnPlaytest();
+            }
+
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
         }
@@ -303,6 +308,12 @@ namespace DiskGolf.EditorTools.CourseEditor
             ApplyThemeId();
             CourseBuilder.Build(CourseEditorState.Data, CourseEditorState.Theme);
             CourseEditorState.IsDirty = false;
+        }
+
+        void OnPlaytest()
+        {
+            ApplyThemeId();
+            CourseEditorPlaytest.Run(CourseEditorState.Data, CourseEditorState.Theme);
         }
 
         void ReplaceData(HoleData data)
