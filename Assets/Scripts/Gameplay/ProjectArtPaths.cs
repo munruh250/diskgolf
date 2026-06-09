@@ -153,6 +153,15 @@ namespace DiskGolf.Gameplay
             public const string GameplayArtCatalog = "Assets/Resources/GameplayArtCatalog.asset";
         }
 
+        public static class Data
+        {
+            public const string Root = "Assets/Data";
+
+            public const string ThemesRoot = Root + "/Themes";
+
+            public const string CoursesRoot = Root + "/Courses";
+        }
+
         public static class ThirdParty
         {
             public const string TextMeshProRoot = "Assets/ThirdParty/TextMesh Pro";
