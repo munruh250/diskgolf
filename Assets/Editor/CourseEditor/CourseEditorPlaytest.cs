@@ -31,6 +31,17 @@ namespace DiskGolf.EditorTools.CourseEditor
                 holeSetup = go.AddComponent<HoleSetup>();
             }
 
+            if (Object.FindFirstObjectByType<ThrowController>() == null)
+            {
+                bool proceed = EditorUtility.DisplayDialog(
+                    "Course Editor",
+                    "No ThrowController found in this scene. Open PrototypeFlat3 (or a scene with a throw rig) for a playable playtest. Continue anyway?",
+                    "Continue",
+                    "Cancel");
+                if (!proceed)
+                    return;
+            }
+
             ApplyHoleSetup(holeSetup, host, data);
             EditorApplication.isPlaying = true;
         }
@@ -38,13 +49,25 @@ namespace DiskGolf.EditorTools.CourseEditor
         static void ApplyHoleSetup(HoleSetup setup, BuiltCourseHost host, HoleData data)
         {
             var serializedSetup = new SerializedObject(setup);
-            serializedSetup.FindProperty("teePad").objectReferenceValue = host.TeePad;
-            serializedSetup.FindProperty("basket").objectReferenceValue = host.Basket;
-            serializedSetup.FindProperty("par").intValue = data.Hole.Par;
-            serializedSetup.FindProperty("circleRadiusFt").floatValue = data.Hole.CircleRadiusFt;
-            serializedSetup.FindProperty("holeLengthFt").floatValue = data.HoleLengthYards() * 3f;
+            SetProperty(serializedSetup, "teePad", p => p.objectReferenceValue = host.TeePad);
+            SetProperty(serializedSetup, "basket", p => p.objectReferenceValue = host.Basket);
+            SetProperty(serializedSetup, "par", p => p.intValue = data.Hole.Par);
+            SetProperty(serializedSetup, "circleRadiusFt", p => p.floatValue = data.Hole.CircleRadiusFt);
+            SetProperty(serializedSetup, "holeLengthFt", p => p.floatValue = data.HoleLengthYards() * 3f);
             serializedSetup.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(setup);
+        }
+
+        static void SetProperty(SerializedObject so, string name, System.Action<SerializedProperty> assign)
+        {
+            var prop = so.FindProperty(name);
+            if (prop == null)
+            {
+                Debug.LogWarning($"[CourseEditorPlaytest] HoleSetup missing serialized field: {name}");
+                return;
+            }
+
+            assign(prop);
         }
     }
 }

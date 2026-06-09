@@ -7,17 +7,34 @@ namespace DiskGolf.Tests.EditMode
     public sealed class CourseValidatorTests
     {
         [Test]
-        public void Validate_MissingBasket_IsError()
+        public void Validate_NoTeeNoBasket_IsError()
         {
             var data = new HoleData();
             data.SetTile(0, 0, SurfaceTileType.Fairway);
-            data.Hole.Tee = new Vector2(0f, 0f);
+            data.Hole.Tee = Vector2.zero;
             data.Hole.Basket = Vector2.zero;
 
             var result = CourseValidator.Validate(data);
 
             Assert.IsFalse(result.CanPlaytest);
-            Assert.IsTrue(result.HasCode("E002") || result.HasCode("E001"));
+            Assert.IsTrue(result.HasCode("E001"));
+            Assert.IsTrue(result.HasCode("E002"));
+        }
+
+        [Test]
+        public void Validate_MissingBasket_IsError()
+        {
+            var data = new HoleData();
+            data.SetTile(5, 0, SurfaceTileType.Tee);
+            data.SetTile(5, 1, SurfaceTileType.Fairway);
+            data.Hole.Tee = new Vector2(10f, 1f);
+            data.Hole.Basket = Vector2.zero;
+
+            var result = CourseValidator.Validate(data);
+
+            Assert.IsFalse(result.CanPlaytest);
+            Assert.IsTrue(result.HasCode("E001"));
+            Assert.IsFalse(result.HasCode("E002"));
         }
 
         [Test]

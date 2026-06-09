@@ -51,12 +51,6 @@ namespace DiskGolf.CourseEditor
             {
                 if (SurfaceTiles[i].X == x && SurfaceTiles[i].Y == y)
                 {
-                    if (type == SurfaceTileType.Tee && SurfaceTiles[i].Type != SurfaceTileType.Tee)
-                    {
-                        SurfaceTiles[i] = new HoleTile(x, y, type);
-                        return;
-                    }
-
                     SurfaceTiles[i] = new HoleTile(x, y, type);
                     return;
                 }
