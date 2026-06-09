@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fe2818b250f48df8da9fc6f03fdb616, type: 3}
+  m_Name: _EditorScratch
+  m_EditorClassIdentifier: 
+  Data:
+    SchemaVersionField: 1
+    Id: hole_01
+    Name: New Hole
+    TileSize: 2
+    Origin: {x: 0, y: 0}
+    ThemeId: temperate
+    SurfaceTiles: []
+    Hole:
+      Tee: {x: 0, y: 0}
+      Basket: {x: 0, y: 0}
+      Par: 3
+      CircleRadiusFt: 33
