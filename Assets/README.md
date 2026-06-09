@@ -78,6 +78,12 @@ Runtime loading goes through `RuntimeArt` / `GameplayArtCatalog`.
 3. Tune the scene directly in the Hierarchy/Inspector — no auto-setup menu runs on load
 4. Always commit `.meta` files with assets
 
+## Course editor (P0)
+
+- Open **Disk Golf → Course Editor**
+- Paint tiles, place tee/basket, export `Assets/Data/Courses/<name>/hole_XX.json`
+- Themes live in `Assets/Data/Themes/ThemePack_*.asset`
+
 ## Cursor / AI agents
 
 See `.cursor/rules/asset-structure.mdc` — agents must follow this layout when creating files.
