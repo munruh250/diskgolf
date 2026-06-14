@@ -86,7 +86,7 @@ namespace DiskGolf.UI
             tmp.color = s.textColor;
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = align;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.raycastTarget = false;
             BindFont(tmp);

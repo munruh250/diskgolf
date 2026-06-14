@@ -17,8 +17,8 @@ namespace DiskGolf.UI
 
         void Awake()
         {
-            throwController ??= FindObjectOfType<ThrowController>();
-            bag ??= throwController != null ? throwController.GetComponent<DiscBag>() : FindObjectOfType<DiscBag>();
+            throwController ??= FindFirstObjectByType<ThrowController>();
+            bag ??= throwController != null ? throwController.GetComponent<DiscBag>() : FindFirstObjectByType<DiscBag>();
             EnsureButtonRow();
             RebuildButtons();
         }

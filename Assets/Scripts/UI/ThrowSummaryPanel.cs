@@ -16,7 +16,6 @@ namespace DiskGolf.UI
         const string BannerName = "ThrowSummaryBanner";
 
         static readonly Color PanelColor = new(0.52f, 0.32f, 0.68f, 1f);
-        static readonly Color NameTextColor = new(1f, 0.82f, 0.15f, 1f);
 
         static Sprite _whiteSprite;
 
@@ -122,13 +121,8 @@ namespace DiskGolf.UI
                 _ = bannerGo.AddComponent<ThrowSummaryBannerUI>();
         }
 
-        static void ConfigureRootRect(RectTransform rt)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.2f, 0.56f);
-            rt.pivot = new Vector2(0f, 0.5f);
-            rt.anchoredPosition = new Vector2(16f, 0f);
-            rt.sizeDelta = new Vector2(500f, 132f);
-        }
+        static void ConfigureRootRect(RectTransform rt) =>
+            ThrowSummaryLayout.ApplyRootRect(rt);
 
         void CacheRestPosition()
         {
@@ -152,22 +146,14 @@ namespace DiskGolf.UI
 
         static Image EnsurePanelImage(ref Image image, RectTransform parent, string name, Color color)
         {
-            if (image != null)
+            if (image == null)
             {
-                ApplyPanelImage(image, color);
-                return image;
+                var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+                go.transform.SetParent(parent, false);
+                image = go.GetComponent<Image>();
             }
 
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = new Vector2(0f, 0.5f);
-            rt.anchorMax = new Vector2(1f, 0.5f);
-            rt.pivot = new Vector2(0f, 0.5f);
-            rt.anchoredPosition = name == "Shadow" ? new Vector2(94f, -6f) : new Vector2(88f, 0f);
-            rt.sizeDelta = new Vector2(-88f, 96f);
-
-            image = go.GetComponent<Image>();
+            ThrowSummaryLayout.ApplyPanelRect(image.rectTransform, name == "Shadow");
             ApplyPanelImage(image, color);
             return image;
         }
@@ -182,21 +168,14 @@ namespace DiskGolf.UI
 
         static Image EnsurePortraitImage(Image image, RectTransform parent)
         {
-            if (image != null)
+            if (image == null)
             {
-                image.raycastTarget = false;
-                return image;
+                var go = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
+                go.transform.SetParent(parent, false);
+                image = go.GetComponent<Image>();
             }
 
-            var go = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.38f);
-            rt.anchoredPosition = new Vector2(52f, 6f);
-            rt.sizeDelta = new Vector2(112f, 128f);
-
-            image = go.GetComponent<Image>();
+            ThrowSummaryLayout.ApplyPortraitRect(image.rectTransform);
             image.preserveAspect = true;
             image.raycastTarget = false;
             return image;
@@ -210,73 +189,44 @@ namespace DiskGolf.UI
                 var go = new GameObject("TextBlock", typeof(RectTransform));
                 textBlock = go.GetComponent<RectTransform>();
                 textBlock.SetParent(parent, false);
-                textBlock.anchorMin = textBlock.anchorMax = new Vector2(0f, 0.5f);
-                textBlock.pivot = new Vector2(0f, 0.5f);
-                textBlock.anchoredPosition = new Vector2(108f, 0f);
-                textBlock.sizeDelta = new Vector2(380f, 96f);
             }
+
+            ThrowSummaryLayout.ApplyTextBlockRect(textBlock);
 
             playerNameLabel = EnsureLabel(
                 playerNameLabel,
                 textBlock,
                 "PlayerName",
-                ApplyNameStyle,
-                new Vector2(0f, 28f),
-                new Vector2(380f, 56f));
+                tmp => ThrowSummaryLayout.ApplyNameStyle(tmp, "PLAYER 1"));
 
             throwLabel = EnsureLabel(
                 throwLabel,
                 textBlock,
                 "ThrowLabel",
-                ApplyThrowStyle,
-                new Vector2(0f, -24f),
-                new Vector2(380f, 40f));
+                tmp => ThrowSummaryLayout.ApplyThrowStyle(tmp, ThrowSummaryLabels.Format(1)));
         }
 
         static TextMeshProUGUI EnsureLabel(
             TextMeshProUGUI label,
             RectTransform parent,
             string name,
-            Action<TextMeshProUGUI> applyStyle,
-            Vector2 anchoredPosition,
-            Vector2 sizeDelta)
+            Action<TextMeshProUGUI> applyStyle)
         {
-            if (label != null)
+            if (label == null)
             {
-                applyStyle(label);
-                return label;
+                var go = new GameObject(name, typeof(RectTransform));
+                go.transform.SetParent(parent, false);
+                label = go.AddComponent<TextMeshProUGUI>();
             }
 
-            var go = new GameObject(name, typeof(RectTransform));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-            rt.pivot = new Vector2(0f, 0.5f);
-            rt.anchoredPosition = anchoredPosition;
-            rt.sizeDelta = sizeDelta;
+            if (name == "PlayerName")
+                ThrowSummaryLayout.ApplyNameLabelRect(label.rectTransform);
+            else
+                ThrowSummaryLayout.ApplyThrowLabelRect(label.rectTransform);
 
-            label = go.AddComponent<TextMeshProUGUI>();
             applyStyle(label);
+            BindSummaryFont(label);
             return label;
-        }
-
-        static void ApplyNameStyle(TextMeshProUGUI tmp) =>
-            ApplyLabelStyle(tmp, "PLAYER 1", 46f);
-
-        static void ApplyThrowStyle(TextMeshProUGUI tmp) =>
-            ApplyLabelStyle(tmp, ThrowSummaryLabels.Format(1), 26f);
-
-        static void ApplyLabelStyle(TextMeshProUGUI tmp, string text, float fontSize)
-        {
-            tmp.text = text;
-            tmp.fontSize = fontSize;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.MidlineLeft;
-            tmp.color = NameTextColor;
-            tmp.enableWordWrapping = false;
-            tmp.overflowMode = TextOverflowModes.Overflow;
-            tmp.raycastTarget = false;
-            BindSummaryFont(tmp);
         }
 
         static void BindSummaryFont(TextMeshProUGUI tmp)
@@ -400,8 +350,10 @@ namespace DiskGolf.UI
 
         void ApplyContent(int upcomingThrowNumber, PlayerCharacterProfile character)
         {
-            playerNameLabel.text = ResolvePlayerName(character);
-            throwLabel.text = ThrowSummaryLabels.Format(upcomingThrowNumber);
+            ThrowSummaryLayout.ApplyNameStyle(playerNameLabel, ResolvePlayerName(character));
+            ThrowSummaryLayout.ApplyThrowStyle(throwLabel, ThrowSummaryLabels.Format(upcomingThrowNumber));
+            BindSummaryFont(playerNameLabel);
+            BindSummaryFont(throwLabel);
             ApplyPortrait(character);
         }
 

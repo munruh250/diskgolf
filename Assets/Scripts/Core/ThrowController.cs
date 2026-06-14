@@ -143,7 +143,7 @@ namespace DiskGolf.Core
             inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
             if (inTheCircleBanner != null)
                 inTheCircleBanner.SetActive(false);
-            _cameraDirector ??= FindObjectOfType<CameraDirector>();
+            _cameraDirector ??= FindFirstObjectByType<CameraDirector>();
         }
 
         void Start()
@@ -943,7 +943,7 @@ namespace DiskGolf.Core
             _cameraDirector?.ClearLandingCameraHold();
             _throwPresentationReady = false;
             ApplyThrowPresentationVisibility();
-            sweetSpotBanner?.Hide();
+            HideSweetSpotBanner();
 
             if (_sweetBannerRoutine != null)
             {
@@ -1003,24 +1003,32 @@ namespace DiskGolf.Core
 
         IEnumerator SweetBannerRoutine()
         {
-            var sweetHost = ResolveCalloutHost()?.SweetSpot;
-            if (sweetHost != null)
-            {
-                sweetHost.ApplySweetSpotStyle();
-                sweetHost.Show("SWEET!");
-            }
+            var sweetBanner = ResolveCalloutHost()?.SweetSpot;
+            if (sweetBanner != null)
+                sweetBanner.ShowBriefly(ScoreBannerSprites.SweetSpot);
             else
             {
                 sweetSpotBanner ??= SweetSpotBannerUI.Ensure();
-                sweetSpotBanner?.Show();
+                sweetSpotBanner?.ShowBriefly();
             }
 
-            float wait = sweetHost != null ? sweetHost.DisplaySeconds : sweetSpotBanner != null ? sweetSpotBanner.DisplaySeconds : 2f;
+            float wait = sweetBanner != null
+                ? sweetBanner.DisplaySeconds
+                : sweetSpotBanner != null
+                    ? sweetSpotBanner.DisplaySeconds
+                    : 2f;
             yield return new WaitForSeconds(wait);
 
-            sweetHost?.Hide();
-            sweetSpotBanner?.Hide();
+            HideSweetSpotBanner();
             _sweetBannerRoutine = null;
+        }
+
+        void HideSweetSpotBanner()
+        {
+            if (ResolveCalloutHost()?.SweetSpot != null)
+                calloutHost.SweetSpot.Hide();
+            else
+                sweetSpotBanner?.Hide();
         }
 
         GameplayCalloutHost ResolveCalloutHost()

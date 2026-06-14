@@ -43,9 +43,9 @@ namespace DiskGolf.UI.Callouts
 
         public void ShowBriefly(Sprite sprite)
         {
-            CalloutLifecycle.ShowBriefly(
+            _hideRoutine = CalloutLifecycle.ShowBriefly(
                 this,
-                ref _hideRoutine,
+                _hideRoutine,
                 displaySeconds,
                 () => Show(sprite),
                 Hide);

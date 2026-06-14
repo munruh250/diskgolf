@@ -31,7 +31,7 @@ namespace DiskGolf.EditorTools
             CreateSpriteChild(root.transform, "LieLandingBanner");
             CreateSpriteChild(root.transform, "OnTheGreenBanner");
             CreateTextChild(root.transform, "ThrowResultBanner", TextCalloutLayout.FeetLabel);
-            CreateTextChild(root.transform, "SweetSpotBanner", TextCalloutLayout.CenterPopup);
+            CreateSpriteChild(root.transform, "SweetSpotBanner", typeof(SweetSpotBannerUI));
             CreateHoleComplete(root.transform);
             ThrowSummaryPanel.CreateForScene(rt);
             HoleCompleteCutsceneUI.CreateForScene(rt);
@@ -58,30 +58,64 @@ namespace DiskGolf.EditorTools
             if (hud.Find(GameplayCalloutHost.RootName) != null)
             {
                 Debug.LogWarning("[Disk Golf] GameplayCallouts already present.");
-                return;
             }
-
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.GameplayCallouts);
-            if (prefab == null)
+            else
             {
-                CreatePrefab();
-                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.GameplayCallouts);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.GameplayCallouts);
+                if (prefab == null)
+                {
+                    CreatePrefab();
+                    prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.GameplayCallouts);
+                }
+
+                if (prefab == null)
+                {
+                    Debug.LogError("[Disk Golf] Could not load GameplayCallouts prefab.");
+                    return;
+                }
+
+                _ = PrefabUtility.InstantiatePrefab(prefab, hud);
             }
 
-            if (prefab == null)
-            {
-                Debug.LogError("[Disk Golf] Could not load GameplayCallouts prefab.");
-                return;
-            }
-
-            _ = PrefabUtility.InstantiatePrefab(prefab, hud);
+            RemoveLegacyDuplicateCallouts(hud);
             EditorSceneManager.MarkSceneDirty(hud.gameObject.scene);
         }
 
-        static void CreateSpriteChild(Transform parent, string name)
+        /// <summary>Removes pre-prefab callout objects left as direct GameplayHUD children.</summary>
+        public static void RemoveLegacyDuplicateCallouts(RectTransform hud)
+        {
+            if (hud == null)
+                return;
+
+            var hostRoot = hud.Find(GameplayCalloutHost.RootName);
+            RemoveLegacyCalloutChild(hud, hostRoot, "HoleCompleteBanner");
+            RemoveLegacyCalloutChild(hud, hostRoot, "HoleCompleteCutscene");
+            RemoveLegacyCalloutChild(hud, hostRoot, "ThrowSummaryBanner");
+            RemoveLegacyCalloutChild(hud, hostRoot, "LieLandingBanner");
+            RemoveLegacyCalloutChild(hud, hostRoot, "OnTheGreenBanner");
+            RemoveLegacyCalloutChild(hud, hostRoot, "ThrowResultBanner");
+            RemoveLegacyCalloutChild(hud, hostRoot, "SweetSpotBanner");
+        }
+
+        static void RemoveLegacyCalloutChild(RectTransform hud, Transform hostRoot, string name)
+        {
+            var legacy = hud.Find(name);
+            if (legacy == null)
+                return;
+
+            if (hostRoot != null && legacy.IsChildOf(hostRoot))
+                return;
+
+            UnityEngine.Object.DestroyImmediate(legacy.gameObject);
+        }
+
+        static void CreateSpriteChild(Transform parent, string name, System.Type facadeType = null)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(SpriteCalloutBanner));
             go.transform.SetParent(parent, false);
+            if (facadeType != null)
+                go.AddComponent(facadeType);
+            go.SetActive(false);
         }
 
         static void CreateTextChild(Transform parent, string name, TextCalloutLayout layout)
@@ -91,6 +125,8 @@ namespace DiskGolf.EditorTools
             var banner = go.GetComponent<TextCalloutBanner>();
             banner.Layout = layout;
             banner.ResolveLabel();
+
+            go.SetActive(false);
         }
 
         static void CreateHoleComplete(Transform parent)
@@ -121,6 +157,7 @@ namespace DiskGolf.EditorTools
             }
 
             root.GetComponent<MultiSlotSpriteBanner>().BindSceneReferences();
+            root.GetComponent<MultiSlotSpriteBanner>().Hide();
         }
     }
 }

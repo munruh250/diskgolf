@@ -57,7 +57,7 @@ namespace DiskGolf.UI
         void Awake()
         {
             ResolveCourseSources();
-            controller ??= FindObjectOfType<ThrowController>();
+            controller ??= FindFirstObjectByType<ThrowController>();
             EnsureCaptureCamera();
             EnsureMapImage();
             EnsureMarkers();
@@ -390,13 +390,13 @@ namespace DiskGolf.UI
 
         void EnsureTrajectoryLine()
         {
-            controller ??= FindObjectOfType<ThrowController>();
+            controller ??= FindFirstObjectByType<ThrowController>();
             ResolveCourseSources();
             if (!HasCourseSource())
                 return;
 
             MinimapTrajectoryLine primary = null;
-            foreach (var line in FindObjectsOfType<MinimapTrajectoryLine>(true))
+            foreach (var line in FindObjectsByType<MinimapTrajectoryLine>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (primary == null)
                 {
@@ -423,7 +423,7 @@ namespace DiskGolf.UI
 
         void ResolveCourseSources()
         {
-            builtCourse = FindObjectOfType<BuiltCourseHost>();
+            builtCourse = FindFirstObjectByType<BuiltCourseHost>();
             if (builtCourse == null)
                 course ??= CourseLayout.EnsureInScene();
             else
@@ -468,7 +468,7 @@ namespace DiskGolf.UI
             course = layout ?? CourseLayout.EnsureInScene();
             hole = holeSetup;
             discTransform = disc;
-            controller = throwController ?? FindObjectOfType<ThrowController>();
+            controller = throwController ?? FindFirstObjectByType<ThrowController>();
             RefreshCapture();
         }
     }

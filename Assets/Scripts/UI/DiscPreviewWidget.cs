@@ -33,7 +33,7 @@ namespace DiskGolf.UI
         public void BindReferences()
         {
             display ??= GetComponent<Image>();
-            bag ??= FindObjectOfType<DiscBag>();
+            bag ??= FindFirstObjectByType<DiscBag>();
             defaultSprite ??= RuntimeArt.LoadDiscPreviewSprite();
             Refresh();
         }

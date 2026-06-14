@@ -18,7 +18,7 @@ namespace DiskGolf.Disc
         void Awake()
         {
             targetRenderer ??= GetComponent<Renderer>();
-            bag ??= FindObjectOfType<DiscBag>();
+            bag ??= FindFirstObjectByType<DiscBag>();
             fallbackMaterial ??= RuntimeArt.LoadDiscMaterial();
         }
 

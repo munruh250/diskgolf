@@ -72,7 +72,7 @@ namespace DiskGolf.UI
 
         void RefreshApexLabel(System.Collections.Generic.IReadOnlyList<FlightWaypoint> waypoints)
         {
-            _cameraDirector ??= FindObjectOfType<CameraDirector>();
+            _cameraDirector ??= FindFirstObjectByType<CameraDirector>();
             if (_cameraDirector != null && _cameraDirector.TrajectoryZoomActive)
             {
                 ClearApexPreview();
@@ -87,7 +87,7 @@ namespace DiskGolf.UI
         void ClearApexPreview()
         {
             if (_apexMarker == null)
-                _apexMarker = FindObjectOfType<TrajectoryLandingMarker>(true);
+                _apexMarker = FindFirstObjectByType<TrajectoryLandingMarker>(FindObjectsInactive.Include);
 
             _apexMarker?.ClearApexPreview();
         }

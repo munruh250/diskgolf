@@ -44,7 +44,7 @@ namespace DiskGolf.UI
         {
             HudLayoutSettings.EnsureOnHudRoot();
             TimingMeterHud.Ensure();
-            flightPresenter ??= FindObjectOfType<DiscFlightPresenter>();
+            flightPresenter ??= FindFirstObjectByType<DiscFlightPresenter>();
             ResolveLegacyLabelRefs();
 
             var hudRoot = GameObject.Find("GameplayHUD")?.GetComponent<RectTransform>();

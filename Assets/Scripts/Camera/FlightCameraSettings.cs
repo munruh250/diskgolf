@@ -74,7 +74,7 @@ namespace DiskGolf.Camera
                     return onHost;
             }
 
-            return FindObjectOfType<FlightCameraSettings>();
+            return FindFirstObjectByType<FlightCameraSettings>();
         }
     }
 }

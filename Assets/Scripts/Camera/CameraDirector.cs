@@ -59,7 +59,7 @@ namespace DiskGolf.Camera
         {
             sideSetupCam ??= CameraRig.FindSideSetupCam();
             flightChaseCam ??= CameraRig.FindFlightChaseCam();
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
 
             if (flightPresenter == null && throwController != null)
                 flightPresenter = throwController.GetComponent<DiscFlightPresenter>();
@@ -178,7 +178,7 @@ namespace DiskGolf.Camera
 
         IEnumerator EnterZoomRoutine(FlightPath path, Vector3 targetWorld)
         {
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
             if (thrower == null || path?.Waypoints == null || path.Waypoints.Count < 2)
             {
@@ -220,7 +220,7 @@ namespace DiskGolf.Camera
 
         IEnumerator ExitZoomRoutine(FlightPath path, Vector3 targetWorld)
         {
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
 
             _zoomDriver.ExitSideBlend = 0f;
@@ -269,7 +269,7 @@ namespace DiskGolf.Camera
             if (sideSetupCam == null)
                 return;
 
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
             if (thrower == null)
                 return;
@@ -502,7 +502,7 @@ namespace DiskGolf.Camera
                     return aim.normalized;
             }
 
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
 
             if (hole != null)
             {
@@ -536,7 +536,7 @@ namespace DiskGolf.Camera
                 return;
 
             SetPathDriveActive(false);
-            hole ??= FindObjectOfType<HoleSetup>();
+            hole ??= FindFirstObjectByType<HoleSetup>();
             var thrower = hole != null ? hole.Thrower : null;
             if (thrower == null)
                 return;

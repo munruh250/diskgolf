@@ -13,6 +13,12 @@ namespace DiskGolf.UI
 
         public static Sprite Rough => Load("ScoreBanner_Rough");
 
+        public static Sprite PenaltyStroke => Load("ScoreBanner_PenaltyStroke");
+
+        public static Sprite Great => Load("ScoreBanner_Great");
+
+        public static Sprite SweetSpot => Great;
+
         public static HoleCompleteScoreKind ResolveKind(int strokes, int par)
         {
             if (strokes == 1)

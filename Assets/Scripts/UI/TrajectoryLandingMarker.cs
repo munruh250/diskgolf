@@ -42,7 +42,7 @@ namespace DiskGolf.UI
 
         public static TrajectoryLandingMarker Ensure()
         {
-            var existing = FindObjectOfType<TrajectoryLandingMarker>(true);
+            var existing = FindFirstObjectByType<TrajectoryLandingMarker>(FindObjectsInactive.Include);
             if (existing != null)
                 return existing;
 
@@ -84,7 +84,7 @@ namespace DiskGolf.UI
                 yardLabel.alignment = TextAlignmentOptions.Center;
                 yardLabel.fontSize = 3.2f;
                 yardLabel.color = Color.white;
-                yardLabel.enableWordWrapping = false;
+                yardLabel.textWrappingMode = TextWrappingModes.NoWrap;
                 HudTypography.BindFont(yardLabel);
 
                 labelAnchor = labelGo.transform;

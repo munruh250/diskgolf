@@ -156,13 +156,13 @@ namespace DiskGolf.UI
 
         void BindReferences()
         {
-            throwController ??= FindObjectOfType<ThrowController>();
+            throwController ??= FindFirstObjectByType<ThrowController>();
             input ??= throwController != null
                 ? throwController.GetComponent<ThrowInputHandler>()
-                : FindObjectOfType<ThrowInputHandler>();
+                : FindFirstObjectByType<ThrowInputHandler>();
             bag ??= throwController != null
                 ? throwController.GetComponent<DiscBag>()
-                : FindObjectOfType<DiscBag>();
+                : FindFirstObjectByType<DiscBag>();
 
             ResolveOptionalReferences();
             WireButtons();
@@ -294,7 +294,7 @@ namespace DiskGolf.UI
 
             var aim = throwController != null
                 ? throwController.GetComponent<ThrowAimAdjust>()
-                : FindObjectOfType<ThrowAimAdjust>();
+                : FindFirstObjectByType<ThrowAimAdjust>();
             if (aim != null && input != null)
                 aim.SetPlannedHeight(input.ArcHeight);
 

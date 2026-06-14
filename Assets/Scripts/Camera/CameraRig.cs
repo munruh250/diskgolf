@@ -243,7 +243,7 @@ namespace DiskGolf.Camera
         public static CinemachineVirtualCamera FindNamedVcam(string name)
         {
             CinemachineVirtualCamera found = null;
-            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
+            var cams = Object.FindObjectsByType<CinemachineVirtualCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
             foreach (var cam in cams)
             {
@@ -265,7 +265,7 @@ namespace DiskGolf.Camera
         static void RemoveDuplicateNamed(string name)
         {
             CinemachineVirtualCamera keep = null;
-            var cams = Object.FindObjectsOfType<CinemachineVirtualCamera>(true);
+            var cams = Object.FindObjectsByType<CinemachineVirtualCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
             foreach (var cam in cams)
             {

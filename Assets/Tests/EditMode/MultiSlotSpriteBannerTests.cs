@@ -32,5 +32,28 @@ namespace DiskGolf.Tests.EditMode
 
             Object.DestroyImmediate(root);
         }
+
+        [Test]
+        public void Hide_DeactivatesRootAfterPreviewShow()
+        {
+            var root = new GameObject("Banner", typeof(RectTransform), typeof(MultiSlotSpriteBanner));
+            var banner = root.GetComponent<MultiSlotSpriteBanner>();
+
+            var parGo = new GameObject("Par", typeof(RectTransform), typeof(Image));
+            parGo.transform.SetParent(root.transform, false);
+
+            banner.ConfigureSlotsForTests(new[]
+            {
+                (HoleCompleteScoreKind.Par, parGo.GetComponent<Image>()),
+            });
+
+            banner.ShowKind(HoleCompleteScoreKind.Par);
+            banner.Hide();
+
+            Assert.IsFalse(root.activeSelf);
+            Assert.IsFalse(parGo.activeSelf);
+
+            Object.DestroyImmediate(root);
+        }
     }
 }

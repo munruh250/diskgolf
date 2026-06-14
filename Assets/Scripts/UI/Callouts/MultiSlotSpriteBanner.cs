@@ -26,6 +26,13 @@ namespace DiskGolf.UI.Callouts
             HideAll();
         }
 
+        void Awake()
+        {
+            BindSceneReferences();
+            if (Application.isPlaying)
+                Hide();
+        }
+
         void RegisterSlot(HoleCompleteScoreKind kind, string childName)
         {
             var image = transform.Find(childName)?.GetComponent<Image>();

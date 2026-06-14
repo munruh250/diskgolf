@@ -14,24 +14,22 @@ namespace DiskGolf.UI.Callouts
 
         public static Coroutine ShowBriefly(
             MonoBehaviour runner,
-            ref Coroutine routine,
+            Coroutine existing,
             float seconds,
             Action show,
             Action hide)
         {
-            if (routine != null)
-                runner.StopCoroutine(routine);
+            if (existing != null)
+                runner.StopCoroutine(existing);
 
             show?.Invoke();
-            routine = runner.StartCoroutine(HideAfter(runner, seconds, hide, () => routine = null));
-            return routine;
+            return runner.StartCoroutine(HideAfter(seconds, hide));
         }
 
-        static IEnumerator HideAfter(MonoBehaviour runner, float seconds, Action hide, Action clearRoutine)
+        static IEnumerator HideAfter(float seconds, Action hide)
         {
             yield return new WaitForSeconds(seconds);
             hide?.Invoke();
-            clearRoutine?.Invoke();
         }
 
         public static void Cancel(ref Coroutine routine, MonoBehaviour runner)

@@ -13,7 +13,7 @@ namespace DiskGolf.UI.Callouts
 
         [SerializeField] TextCalloutBanner throwDistance;
 
-        [SerializeField] TextCalloutBanner sweetSpot;
+        [SerializeField] SpriteCalloutBanner sweetSpot;
 
         [SerializeField] MultiSlotSpriteBanner holeComplete;
 
@@ -27,7 +27,7 @@ namespace DiskGolf.UI.Callouts
 
         public TextCalloutBanner ThrowDistance => throwDistance;
 
-        public TextCalloutBanner SweetSpot => sweetSpot;
+        public SpriteCalloutBanner SweetSpot => sweetSpot;
 
         public MultiSlotSpriteBanner HoleComplete => holeComplete;
 
@@ -56,7 +56,7 @@ namespace DiskGolf.UI.Callouts
             lieLanding ??= transform.Find("LieLandingBanner")?.GetComponent<SpriteCalloutBanner>();
             onTheGreen ??= transform.Find("OnTheGreenBanner")?.GetComponent<SpriteCalloutBanner>();
             throwDistance ??= transform.Find("ThrowResultBanner")?.GetComponent<TextCalloutBanner>();
-            sweetSpot ??= transform.Find("SweetSpotBanner")?.GetComponent<TextCalloutBanner>();
+            sweetSpot ??= transform.Find("SweetSpotBanner")?.GetComponent<SpriteCalloutBanner>();
             holeComplete ??= transform.Find("HoleCompleteBanner")?.GetComponent<MultiSlotSpriteBanner>();
             var throwSummaryBanner = transform.Find("ThrowSummaryBanner");
             throwSummary ??= throwSummaryBanner?.GetComponent<ThrowSummaryBannerUI>();

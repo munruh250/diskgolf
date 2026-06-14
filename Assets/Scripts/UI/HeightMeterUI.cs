@@ -26,7 +26,7 @@ namespace DiskGolf.UI
                 {
                     _visual = TimingMeterHud.Height;
                     if (_visual == null)
-                        _visual = FindObjectOfType<HeightMeterVisual>(true);
+                        _visual = FindFirstObjectByType<HeightMeterVisual>(FindObjectsInactive.Include);
                 }
 
                 return _visual;
