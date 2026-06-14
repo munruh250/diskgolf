@@ -78,5 +78,34 @@ namespace DiskGolf.Tests.EditMode
 
             Assert.AreEqual(HazardType.OB, restored.Hazards[0].Type);
         }
+
+        [Test]
+        public void RoundTrip_PreservesFoliagePlacements()
+        {
+            var original = new HoleData();
+            original.Placements.Add(new FoliagePlacement("tree_round", 8.5f, 40f, 12f, 1.05f));
+
+            var restored = HoleDataJson.FromJson(HoleDataJson.ToJson(original));
+
+            Assert.AreEqual(1, restored.Placements.Count);
+            Assert.AreEqual("tree_round", restored.Placements[0].Archetype);
+            Assert.AreEqual(40f, restored.Placements[0].Z, 0.001f);
+        }
+
+        [Test]
+        public void LoadExampleHole_IncludesElevationHazardsAndTrees()
+        {
+            string path = System.IO.Path.Combine(
+                UnityEngine.Application.dataPath,
+                "Data/Courses/Example/hole_01.json");
+            Assume.That(System.IO.File.Exists(path), Is.True, "Example hole JSON missing");
+
+            var data = HoleDataJson.LoadFromFile(path);
+
+            Assert.IsNotNull(data.Elevation);
+            Assert.Greater(data.Elevation.Heights.Length, 0);
+            Assert.GreaterOrEqual(data.Hazards.Count, 1);
+            Assert.GreaterOrEqual(data.Placements.Count, 1);
+        }
     }
 }

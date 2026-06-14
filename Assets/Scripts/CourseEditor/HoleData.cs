@@ -46,6 +46,7 @@ namespace DiskGolf.CourseEditor
         public HoleMeta Hole = new();
         public ElevationGrid Elevation;
         public List<HazardPolygon> Hazards = new();
+        public List<FoliagePlacement> Placements = new();
 
         public void SetTile(int x, int y, SurfaceTileType type)
         {

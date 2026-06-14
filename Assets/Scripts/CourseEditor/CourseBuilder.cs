@@ -10,6 +10,7 @@ namespace DiskGolf.CourseEditor
     {
         const string GroundRootName = "Ground";
         const string HazardsRootName = "Hazards";
+        const string FoliageRootName = "Foliage";
         const string TeeMarkerName = "TeePad";
         const string BasketName = "Basket";
 
@@ -40,6 +41,10 @@ namespace DiskGolf.CourseEditor
             var hazardsRoot = new GameObject(HazardsRootName).transform;
             hazardsRoot.SetParent(root.transform, false);
             BuildHazards(data, hazardsRoot);
+
+            var foliageRoot = new GameObject(FoliageRootName).transform;
+            foliageRoot.SetParent(root.transform, false);
+            BuildFoliage(data, theme, foliageRoot);
 
             var tee = CreateTeeMarker(data, root.transform, theme);
             var basket = ResolveOrCreateBasket(data, root.transform);
@@ -194,6 +199,63 @@ namespace DiskGolf.CourseEditor
             var collider = go.AddComponent<BoxCollider>();
             collider.isTrigger = true;
             collider.size = bounds.size;
+        }
+
+        static void BuildFoliage(HoleData data, ThemePack theme, Transform foliageRoot)
+        {
+            if (data.Placements == null || data.Placements.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var placement in data.Placements)
+            {
+                if (placement == null || string.IsNullOrEmpty(placement.Archetype))
+                {
+                    continue;
+                }
+
+                float groundY = HeightGridSampler.SampleWorldY(data, placement.X, placement.Z);
+                var position = new Vector3(placement.X, groundY, placement.Z);
+                var variant = ResolveTreeVariant(placement.Archetype);
+                var tree = CourseTree.Spawn(foliageRoot, position, variant, placement.Yaw);
+                if (tree == null)
+                {
+                    continue;
+                }
+
+                if (theme != null && tree.TryGetComponent<SpriteRenderer>(out var renderer))
+                {
+                    var sprite = theme.ResolveFoliage(placement.Archetype);
+                    if (sprite != null)
+                    {
+                        renderer.sprite = sprite;
+                        CourseTree.FitColliderToSprite(tree.gameObject);
+                    }
+                }
+
+                if (Mathf.Abs(placement.Scale - 1f) > 0.01f)
+                {
+                    tree.localScale = Vector3.one * placement.Scale;
+                    CourseTree.FitColliderToSprite(tree.gameObject);
+                }
+            }
+        }
+
+        static CourseTreeVariant ResolveTreeVariant(string archetypeId)
+        {
+            if (string.IsNullOrEmpty(archetypeId))
+            {
+                return CourseTreeVariant.Round;
+            }
+
+            if (archetypeId.Contains("pine", System.StringComparison.OrdinalIgnoreCase)
+                || archetypeId.Contains("conical", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return CourseTreeVariant.Conical;
+            }
+
+            return CourseTreeVariant.Round;
         }
 
         static Transform CreateTeeMarker(HoleData data, Transform root, ThemePack theme)

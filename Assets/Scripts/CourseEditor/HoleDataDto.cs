@@ -44,6 +44,16 @@ namespace DiskGolf.CourseEditor
     }
 
     [Serializable]
+    public sealed class FoliagePlacementDto
+    {
+        public string archetype = "tree_round";
+        public float x;
+        public float z;
+        public float yaw;
+        public float scale = 1f;
+    }
+
+    [Serializable]
     public sealed class HoleDataDto
     {
         public int schemaVersion = HoleData.SchemaVersion;
@@ -56,6 +66,7 @@ namespace DiskGolf.CourseEditor
         public ElevationGridDto elevation;
         public HoleTileDto[] surfaceTiles = Array.Empty<HoleTileDto>();
         public HazardPolygonDto[] hazards = Array.Empty<HazardPolygonDto>();
+        public FoliagePlacementDto[] placements = Array.Empty<FoliagePlacementDto>();
         public HoleMetaDto hole = new();
 
         public static HoleDataDto FromDomain(HoleData data)
@@ -83,6 +94,7 @@ namespace DiskGolf.CourseEditor
                 elevation = ToElevationDto(data.Elevation),
                 surfaceTiles = tiles,
                 hazards = ToHazardDtos(data.Hazards),
+                placements = ToPlacementDtos(data.Placements),
                 hole = new HoleMetaDto
                 {
                     tee = new[] { data.Hole.Tee.x, data.Hole.Tee.y },
@@ -107,6 +119,7 @@ namespace DiskGolf.CourseEditor
 
             data.Elevation = ToElevationDomain(elevation);
             data.Hazards = ToHazardDomain(hazards);
+            data.Placements = ToPlacementDomain(placements);
 
             if (surfaceTiles != null)
             {
@@ -250,6 +263,56 @@ namespace DiskGolf.CourseEditor
             }
 
             return Enum.TryParse(value, true, out type);
+        }
+
+        static FoliagePlacementDto[] ToPlacementDtos(System.Collections.Generic.List<FoliagePlacement> placements)
+        {
+            if (placements == null || placements.Count == 0)
+            {
+                return Array.Empty<FoliagePlacementDto>();
+            }
+
+            var dtos = new FoliagePlacementDto[placements.Count];
+            for (int i = 0; i < placements.Count; i++)
+            {
+                var placement = placements[i];
+                dtos[i] = new FoliagePlacementDto
+                {
+                    archetype = placement.Archetype,
+                    x = placement.X,
+                    z = placement.Z,
+                    yaw = placement.Yaw,
+                    scale = placement.Scale
+                };
+            }
+
+            return dtos;
+        }
+
+        static System.Collections.Generic.List<FoliagePlacement> ToPlacementDomain(FoliagePlacementDto[] dtos)
+        {
+            var placements = new System.Collections.Generic.List<FoliagePlacement>();
+            if (dtos == null)
+            {
+                return placements;
+            }
+
+            foreach (var dto in dtos)
+            {
+                if (dto == null || string.IsNullOrEmpty(dto.archetype))
+                {
+                    continue;
+                }
+
+                placements.Add(new FoliagePlacement(
+                    dto.archetype,
+                    dto.x,
+                    dto.z,
+                    dto.yaw,
+                    dto.scale <= 0f ? 1f : dto.scale));
+            }
+
+            return placements;
         }
     }
 }
