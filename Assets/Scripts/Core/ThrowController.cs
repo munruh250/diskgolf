@@ -68,6 +68,8 @@ namespace DiskGolf.Core
 
         bool _pendingHazardPenalty;
 
+        bool _holeCompletePending;
+
         Coroutine _holeCompleteRoutine;
 
         bool _pendingPutOutcome;

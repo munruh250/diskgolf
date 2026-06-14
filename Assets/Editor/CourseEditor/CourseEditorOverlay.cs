@@ -545,8 +545,8 @@ namespace DiskGolf.EditorTools.CourseEditor
         static Vector3 TileCenter(HoleData data, int x, int y)
         {
             Vector2 center2D = TileCenter2D(data, x, y);
-            float y = HeightGridSampler.SampleWorldY(data, center2D.x, center2D.y);
-            return new Vector3(center2D.x, y + OverlayY, center2D.y);
+            float elevationY = HeightGridSampler.SampleWorldY(data, center2D.x, center2D.y);
+            return new Vector3(center2D.x, elevationY + OverlayY, center2D.y);
         }
 
         static Vector2 TileCenter2D(HoleData data, int x, int y)
