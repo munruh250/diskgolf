@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using DiskGolf.Gameplay;
 using DiskGolf.UI;
+using DiskGolf.UI.Callouts;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -86,11 +87,13 @@ namespace DiskGolf.EditorTools
 
         static bool EnsureScoreBanners(RectTransform hud)
         {
-            bool added = hud.Find("HoleCompleteBanner") == null;
-            HoleCompleteBannerUI.CreateForScene(hud);
-            HoleCompleteCutsceneUI.CreateForScene(hud);
-            OnTheGreenBannerUI.Ensure();
-            ThrowSummaryBannerUI.CreateForScene(hud);
+            bool added = hud.Find(GameplayCalloutHost.RootName) == null;
+            CalloutPrefabAuthoring.InstantiateInScene();
+
+            var host = GameplayCalloutHost.Ensure(hud);
+            if (host?.HoleCutscene == null)
+                HoleCompleteCutsceneUI.CreateForScene(hud);
+
             return added;
         }
 
@@ -103,17 +106,31 @@ namespace DiskGolf.EditorTools
             var holeBanner = hud.GetComponentInChildren<HoleCompleteBannerUI>(true);
             var holeCutscene = hud.GetComponentInChildren<HoleCompleteCutsceneUI>(true);
             var onGreenBanner = hud.GetComponentInChildren<OnTheGreenBannerUI>(true);
+            var lieLandingBanner = hud.GetComponentInChildren<LieLandingBannerUI>(true);
+            var throwResultBanner = hud.GetComponentInChildren<ThrowResultBannerUI>(true);
             var throwSummaryBanner = hud.GetComponentInChildren<ThrowSummaryBannerUI>(true);
+            var sweetSpotBanner = hud.GetComponentInChildren<SweetSpotBannerUI>(true);
+            var host = hud.Find(GameplayCalloutHost.RootName)?.GetComponent<GameplayCalloutHost>();
 
             var so = new SerializedObject(controller);
+            var calloutHostProp = so.FindProperty("calloutHost");
+            if (calloutHostProp != null && host != null)
+                calloutHostProp.objectReferenceValue = host;
+
             if (holeBanner != null)
                 so.FindProperty("holeCompleteBanner").objectReferenceValue = holeBanner;
             if (holeCutscene != null)
                 so.FindProperty("holeCompleteCutscene").objectReferenceValue = holeCutscene;
             if (onGreenBanner != null)
                 so.FindProperty("onTheGreenBanner").objectReferenceValue = onGreenBanner;
+            if (lieLandingBanner != null)
+                so.FindProperty("lieLandingBanner").objectReferenceValue = lieLandingBanner;
+            if (throwResultBanner != null)
+                so.FindProperty("throwResultBanner").objectReferenceValue = throwResultBanner;
             if (throwSummaryBanner != null)
                 so.FindProperty("throwSummaryBanner").objectReferenceValue = throwSummaryBanner;
+            if (sweetSpotBanner != null)
+                so.FindProperty("sweetSpotBanner").objectReferenceValue = sweetSpotBanner;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(controller);
         }

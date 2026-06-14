@@ -6,6 +6,7 @@ using DiskGolf.Gameplay;
 using DiskGolf.Input;
 using DiskGolf.UI;
 using DiskGolf.Camera;
+using DiskGolf.UI.Callouts;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -40,6 +41,8 @@ namespace DiskGolf.Core
         [SerializeField] HoleCompleteCutsceneUI holeCompleteCutscene;
 
         [SerializeField] ThrowSummaryBannerUI throwSummaryBanner;
+
+        [SerializeField] GameplayCalloutHost calloutHost;
 
         [SerializeField] SweetSpotBannerUI sweetSpotBanner;
 
@@ -128,9 +131,15 @@ namespace DiskGolf.Core
         void Awake()
         {
             aimAdjust ??= GetComponent<ThrowAimAdjust>() ?? gameObject.AddComponent<ThrowAimAdjust>();
-            holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
-            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-            lieLandingBanner ??= LieLandingBannerUI.Ensure();
+            calloutHost ??= GameplayCalloutHost.Ensure();
+            calloutHost?.BindReferences();
+            if (calloutHost == null)
+            {
+                holeCompleteBanner ??= HoleCompleteBannerUI.Ensure();
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                lieLandingBanner ??= LieLandingBannerUI.Ensure();
+            }
+
             inTheCircleBanner ??= GameObject.Find("InTheCircleBanner") ?? GameObject.Find("TMPRow");
             if (inTheCircleBanner != null)
                 inTheCircleBanner.SetActive(false);
@@ -139,6 +148,8 @@ namespace DiskGolf.Core
 
         void Start()
         {
+            calloutHost ??= GameplayCalloutHost.Ensure();
+            calloutHost?.BindReferences();
             _state.PhaseChanged += p => PhaseChanged?.Invoke(p);
             _state.PhaseChanged += OnPhaseChangedInternal;
             ResetHole();
@@ -383,7 +394,7 @@ namespace DiskGolf.Core
             if (presenter == null || hole == null)
                 return;
 
-            throwResultBanner?.Hide();
+            HideThrowDistanceCallout();
 
             bool isPutt = _throwFromPutting;
             _throwFromPutting = false;
@@ -497,9 +508,19 @@ namespace DiskGolf.Core
 
             if (onGreen && _showOnGreenLandingCallout)
             {
-                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-                onTheGreenBanner?.Show();
-                wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : defaultWait;
+                var onGreenCallout = ResolveCalloutHost()?.OnTheGreen;
+                if (onGreenCallout != null)
+                {
+                    onGreenCallout.ShowBriefly(ScoreBannerSprites.OnTheGreen);
+                    wait = onGreenCallout.DisplaySeconds;
+                }
+                else
+                {
+                    onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                    onTheGreenBanner?.Show();
+                    wait = onTheGreenBanner != null ? onTheGreenBanner.DisplaySeconds : defaultWait;
+                }
+
                 _showOnGreenLandingCallout = false;
             }
             else if (hole != null && !hole.IsNearTee(_discPosition))
@@ -508,20 +529,44 @@ namespace DiskGolf.Core
                 var lie = DiscLieGround.SampleLieType(_discPosition, fallbackGroundY);
                 if (lie is LieType.Fairway or LieType.Rough)
                 {
-                    lieLandingBanner ??= LieLandingBannerUI.Ensure();
-                    lieLandingBanner?.Show(lie);
-                    wait = lieLandingBanner != null ? lieLandingBanner.DisplaySeconds : defaultWait;
+                    var lieCallout = ResolveCalloutHost()?.LieLanding;
+                    var lieSprite = lie == LieType.Fairway
+                        ? ScoreBannerSprites.Fairway
+                        : ScoreBannerSprites.Rough;
+                    if (lieCallout != null && lieSprite != null)
+                    {
+                        lieCallout.Show(lieSprite);
+                        wait = lieCallout.DisplaySeconds;
+                    }
+                    else
+                    {
+                        lieLandingBanner ??= LieLandingBannerUI.Ensure();
+                        lieLandingBanner?.Show(lie);
+                        wait = lieLandingBanner != null ? lieLandingBanner.DisplaySeconds : defaultWait;
+                    }
                 }
             }
 
             if (completedPath != null)
             {
-                throwResultBanner ??= ThrowResultBannerUI.Ensure();
-                throwResultBanner?.ShowThrowDistance(completedPath.TotalDistanceFt);
+                if (ResolveCalloutHost()?.ThrowDistance != null)
+                {
+                    calloutHost.ThrowDistance.ApplyFeetStyle();
+                    calloutHost.ThrowDistance.ShowThrowDistance(completedPath.TotalDistanceFt);
+                }
+                else
+                {
+                    throwResultBanner ??= ThrowResultBannerUI.Ensure();
+                    throwResultBanner?.ShowThrowDistance(completedPath.TotalDistanceFt);
+                }
             }
 
-            if (onGreen && onTheGreenBanner != null && onTheGreenBanner.gameObject.activeSelf)
+            if (onGreen && ResolveCalloutHost()?.OnTheGreen != null && calloutHost.OnTheGreen.gameObject.activeSelf)
+                calloutHost.OnTheGreen.transform.SetAsLastSibling();
+            else if (onGreen && onTheGreenBanner != null && onTheGreenBanner.gameObject.activeSelf)
                 onTheGreenBanner.transform.SetAsLastSibling();
+            else if (ResolveCalloutHost()?.LieLanding != null && calloutHost.LieLanding.gameObject.activeSelf)
+                calloutHost.LieLanding.transform.SetAsLastSibling();
             else if (lieLandingBanner != null && lieLandingBanner.gameObject.activeSelf)
                 lieLandingBanner.transform.SetAsLastSibling();
 
@@ -530,7 +575,7 @@ namespace DiskGolf.Core
 
         void HideLandingCallout()
         {
-            throwResultBanner?.Hide();
+            HideThrowDistanceCallout();
             HideOnTheGreenBanner();
             HideLieLandingBanner();
         }
@@ -626,7 +671,7 @@ namespace DiskGolf.Core
                 _throwPresentationRoutine = null;
             }
 
-            throwResultBanner?.Hide();
+            HideThrowDistanceCallout();
             EndMeterFlightDisplay();
             HideOnTheGreenBanner();
             HideLieLandingBanner();
@@ -650,16 +695,29 @@ namespace DiskGolf.Core
 
             PlayBasketChainSfx();
 
-            holeCompleteCutscene ??= HoleCompleteCutsceneUI.Ensure();
-            holeCompleteCutscene?.Show(_strokeCount, HolePar, holeCompleteCutsceneSeconds);
+            var hostCutscene = ResolveCalloutHost()?.HoleCutscene;
+            if (hostCutscene != null)
+                hostCutscene.Show(_strokeCount, HolePar, holeCompleteCutsceneSeconds);
+            else
+            {
+                holeCompleteCutscene ??= HoleCompleteCutsceneUI.Ensure();
+                holeCompleteCutscene?.Show(_strokeCount, HolePar, holeCompleteCutsceneSeconds);
+            }
 
-            float wait = holeCompleteCutscene != null
-                ? holeCompleteCutscene.DisplaySeconds
-                : holeCompleteCutsceneSeconds;
+            float wait = hostCutscene != null
+                ? hostCutscene.DisplaySeconds
+                : holeCompleteCutscene != null
+                    ? holeCompleteCutscene.DisplaySeconds
+                    : holeCompleteCutsceneSeconds;
             yield return new WaitForSeconds(Mathf.Max(0f, wait));
 
+            hostCutscene?.Hide();
             holeCompleteCutscene?.Hide();
-            holeCompleteBanner?.Hide();
+            var holeCompleteCallout = ResolveCalloutHost()?.HoleComplete;
+            if (holeCompleteCallout != null)
+                holeCompleteCallout.Hide();
+            else
+                holeCompleteBanner?.Hide();
 
             _holeCompleteRoutine = null;
             ResetHole();
@@ -741,9 +799,12 @@ namespace DiskGolf.Core
         {
             _cameraDirector?.ReleaseLandingCameraHold();
 
-            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+            var summaryHost = ResolveCalloutHost()?.ThrowSummary;
+            if (summaryHost == null)
+                throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
 
-            if (throwSummaryBanner == null)
+            var summary = summaryHost ?? throwSummaryBanner;
+            if (summary == null)
             {
                 _throwPresentationReady = true;
                 ApplyThrowPresentationVisibility();
@@ -753,7 +814,7 @@ namespace DiskGolf.Core
             }
 
             bool dismissed = false;
-            throwSummaryBanner.ShowBriefly(
+            summary.ShowBriefly(
                 _strokeCount + 1,
                 GameSessionSettings.ActiveCharacter,
                 () => dismissed = true);
@@ -790,16 +851,27 @@ namespace DiskGolf.Core
 
         void HideThrowSummaryBanner()
         {
-            throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
-            throwSummaryBanner?.Hide();
+            if (ResolveCalloutHost()?.ThrowSummary != null)
+                calloutHost.ThrowSummary.Hide();
+            else
+            {
+                throwSummaryBanner ??= ThrowSummaryBannerUI.Ensure();
+                throwSummaryBanner?.Hide();
+            }
         }
 
         void EnableCircleBanner(bool on)
         {
             if (on)
             {
-                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-                onTheGreenBanner?.ShowBriefly();
+                if (calloutHost?.OnTheGreen != null)
+                    calloutHost.OnTheGreen.ShowBriefly(ScoreBannerSprites.OnTheGreen);
+                else
+                {
+                    onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                    onTheGreenBanner?.ShowBriefly();
+                }
+
                 return;
             }
 
@@ -809,8 +881,13 @@ namespace DiskGolf.Core
 
         void HideOnTheGreenBanner()
         {
-            onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
-            onTheGreenBanner?.Hide();
+            if (ResolveCalloutHost()?.OnTheGreen != null)
+                calloutHost.OnTheGreen.Hide();
+            else
+            {
+                onTheGreenBanner ??= OnTheGreenBannerUI.Ensure();
+                onTheGreenBanner?.Hide();
+            }
 
             if (inTheCircleBanner != null)
                 inTheCircleBanner.SetActive(false);
@@ -818,8 +895,13 @@ namespace DiskGolf.Core
 
         void HideLieLandingBanner()
         {
-            lieLandingBanner ??= LieLandingBannerUI.Ensure();
-            lieLandingBanner?.Hide();
+            if (ResolveCalloutHost()?.LieLanding != null)
+                calloutHost.LieLanding.Hide();
+            else
+            {
+                lieLandingBanner ??= LieLandingBannerUI.Ensure();
+                lieLandingBanner?.Hide();
+            }
         }
 
         public void ResetHole()
@@ -846,9 +928,16 @@ namespace DiskGolf.Core
                 _throwPresentationRoutine = null;
             }
 
-            throwResultBanner?.Hide();
-            holeCompleteBanner?.Hide();
-            holeCompleteCutscene?.Hide();
+            HideThrowDistanceCallout();
+            if (ResolveCalloutHost()?.HoleComplete != null)
+                calloutHost.HoleComplete.Hide();
+            else
+                holeCompleteBanner?.Hide();
+
+            if (ResolveCalloutHost()?.HoleCutscene != null)
+                calloutHost.HoleCutscene.Hide();
+            else
+                holeCompleteCutscene?.Hide();
             HideThrowSummaryBanner();
             HideLieLandingBanner();
             _cameraDirector?.ClearLandingCameraHold();
@@ -914,14 +1003,39 @@ namespace DiskGolf.Core
 
         IEnumerator SweetBannerRoutine()
         {
-            sweetSpotBanner ??= SweetSpotBannerUI.Ensure();
-            sweetSpotBanner?.Show();
+            var sweetHost = ResolveCalloutHost()?.SweetSpot;
+            if (sweetHost != null)
+            {
+                sweetHost.ApplySweetSpotStyle();
+                sweetHost.Show("SWEET!");
+            }
+            else
+            {
+                sweetSpotBanner ??= SweetSpotBannerUI.Ensure();
+                sweetSpotBanner?.Show();
+            }
 
-            float wait = sweetSpotBanner != null ? sweetSpotBanner.DisplaySeconds : 2f;
+            float wait = sweetHost != null ? sweetHost.DisplaySeconds : sweetSpotBanner != null ? sweetSpotBanner.DisplaySeconds : 2f;
             yield return new WaitForSeconds(wait);
 
+            sweetHost?.Hide();
             sweetSpotBanner?.Hide();
             _sweetBannerRoutine = null;
+        }
+
+        GameplayCalloutHost ResolveCalloutHost()
+        {
+            calloutHost ??= GameplayCalloutHost.Ensure();
+            calloutHost?.BindReferences();
+            return calloutHost;
+        }
+
+        void HideThrowDistanceCallout()
+        {
+            if (ResolveCalloutHost()?.ThrowDistance != null)
+                calloutHost.ThrowDistance.Hide();
+            else
+                throwResultBanner?.Hide();
         }
 
         void EndMeterFlightDisplay()

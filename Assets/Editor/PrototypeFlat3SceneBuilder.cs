@@ -10,6 +10,7 @@ using DiskGolf.Disc;
 using DiskGolf.Gameplay;
 using DiskGolf.Input;
 using DiskGolf.UI;
+using DiskGolf.UI.Callouts;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -115,6 +116,11 @@ namespace DiskGolf.EditorTools
             AssignSerialized(controller, "heightMeter", heightMb);
 
             var hudCanvas = HudCanvas(out _);
+            CalloutPrefabAuthoring.InstantiateInScene();
+            var calloutHost = hudCanvas.Find(GameplayCalloutHost.RootName)?.GetComponent<GameplayCalloutHost>();
+            if (calloutHost != null)
+                AssignSerialized(controller, "calloutHost", calloutHost);
+
             var hud = hudCanvas.gameObject.AddComponent<HUDController>();
             AssignSerialized(hud, "controller", controller);
             AssignSerialized(hud, "hole", hole);
@@ -280,6 +286,10 @@ namespace DiskGolf.EditorTools
                 presenter);
 
             var hudCanvas = HudCanvas(out _);
+            CalloutPrefabAuthoring.InstantiateInScene();
+            var calloutHost = hudCanvas.Find(GameplayCalloutHost.RootName)?.GetComponent<GameplayCalloutHost>();
+            if (calloutHost != null)
+                AssignSerialized(controller, "calloutHost", calloutHost);
 
             HudTmpLabel(hudCanvas, new Vector2(36f, 48f), "Disc", 28f, out TextMeshProUGUI discUi);
             discUi.gameObject.name = "Disc";
@@ -291,30 +301,6 @@ namespace DiskGolf.EditorTools
 
             AssignSerialized(controller, "powerMeter", powerMb);
             AssignSerialized(controller, "heightMeter", heightMb);
-
-            var banner =
-                HudTmpLabelRow(hudCanvas,
-                    new Vector2(0f, -36f),
-                    "IN THE CIRCLE",
-                    40f,
-                    TextAlignmentOptions.Center);
-
-            banner.gameObject.name = "InTheCircleBanner";
-            banner.gameObject.SetActive(false);
-            AssignSerialized(controller, "inTheCircleBanner", banner.gameObject);
-
-            var throwLabel = HudTmpLabelRow(hudCanvas, Vector2.zero, "200 FEET", 64f,
-                TextAlignmentOptions.Center);
-            var throwRt = throwLabel.rectTransform;
-            throwRt.anchorMin = throwRt.anchorMax = new Vector2(0.5f, 0.5f);
-            throwRt.anchoredPosition = Vector2.zero;
-            throwRt.sizeDelta = new Vector2(900f, 140f);
-            throwLabel.gameObject.name = "ThrowResultBanner";
-            ThrowResultBannerUI.ApplyStyle(throwLabel);
-            var throwBanner = throwLabel.gameObject.AddComponent<ThrowResultBannerUI>();
-            AssignSerialized(throwBanner, "label", throwLabel);
-            throwLabel.gameObject.SetActive(false);
-            AssignSerialized(controller, "throwResultBanner", throwBanner);
 
             var hud = hudCanvas.gameObject.AddComponent<HUDController>();
             AssignSerialized(hud, "controller", controller);
