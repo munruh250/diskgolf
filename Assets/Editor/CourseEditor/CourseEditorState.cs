@@ -9,7 +9,9 @@ namespace DiskGolf.EditorTools.CourseEditor
         Paint,
         Erase,
         HoleTee,
-        HoleBasket
+        HoleBasket,
+        Elevate,
+        Hazard
     }
 
     /// <summary>
@@ -23,6 +25,13 @@ namespace DiskGolf.EditorTools.CourseEditor
         public static CourseEditorTool ActiveTool { get; set; } = CourseEditorTool.Paint;
         public static SurfaceTileType BrushType { get; set; } = SurfaceTileType.Fairway;
         public static bool IsDirty { get; set; }
+
+        public static int ElevateRadius { get; set; } = 2;
+        public static float ElevateStrength { get; set; } = 0.25f;
+        public static bool ElevateSmooth { get; set; }
+
+        public static HazardType HazardBrushType { get; set; } = HazardType.Water;
+        public static System.Collections.Generic.List<Vector2Int> HazardDraftVertices { get; } = new();
 
         public static void SetData(HoleData data)
         {
@@ -39,6 +48,8 @@ namespace DiskGolf.EditorTools.CourseEditor
             DataAsset = asset;
             SetData(asset != null ? asset.Data : null);
         }
+
+        public static void ClearHazardDraft() => HazardDraftVertices.Clear();
 
         public static bool TryWorldToTile(Vector3 world, out Vector2Int tile)
         {
@@ -57,6 +68,14 @@ namespace DiskGolf.EditorTools.CourseEditor
 
             tile = new Vector2Int(x, y);
             return true;
+        }
+
+        public static Vector3 TileCornerWorld(HoleData data, int tileX, int tileY)
+        {
+            return new Vector3(
+                data.Origin.x + tileX * data.TileSize,
+                HeightGridSampler.SampleWorldY(data, data.Origin.x + tileX * data.TileSize, data.Origin.y + tileY * data.TileSize),
+                data.Origin.y + tileY * data.TileSize);
         }
     }
 }

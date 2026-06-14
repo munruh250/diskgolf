@@ -167,19 +167,65 @@ namespace DiskGolf.EditorTools.CourseEditor
                 CourseEditorOverlay.FocusSceneOnGrid();
             }
 
-            string[] toolLabels = { "Paint", "Erase", "HoleTee", "HoleBasket" };
+            string[] toolLabels = { "Paint", "Erase", "Tee", "Basket", "Elevate", "Hazard" };
             int selectedTool = (int)CourseEditorState.ActiveTool;
             int nextTool = GUILayout.Toolbar(selectedTool, toolLabels);
             if (nextTool != selectedTool)
             {
                 CourseEditorState.ActiveTool = (CourseEditorTool)nextTool;
+                if ((CourseEditorTool)nextTool != CourseEditorTool.Hazard)
+                {
+                    CourseEditorState.ClearHazardDraft();
+                }
             }
 
-            SurfaceTileType nextBrushType =
-                (SurfaceTileType)EditorGUILayout.EnumPopup("Brush Type", CourseEditorState.BrushType);
-            if (nextBrushType != CourseEditorState.BrushType)
+            if (CourseEditorState.ActiveTool == CourseEditorTool.Elevate)
             {
-                CourseEditorState.BrushType = nextBrushType;
+                CourseEditorState.ElevateRadius = EditorGUILayout.IntSlider("Brush Radius", CourseEditorState.ElevateRadius, 1, 5);
+                CourseEditorState.ElevateStrength = EditorGUILayout.Slider("Strength (m)", CourseEditorState.ElevateStrength, 0.05f, 1f);
+                CourseEditorState.ElevateSmooth = EditorGUILayout.Toggle("Smooth Mode", CourseEditorState.ElevateSmooth);
+                EditorGUILayout.HelpBox("Click or drag to raise terrain. Hold Shift while clicking to lower.", MessageType.None);
+            }
+
+            if (CourseEditorState.ActiveTool == CourseEditorTool.Hazard)
+            {
+                CourseEditorState.HazardBrushType =
+                    (HazardType)EditorGUILayout.EnumPopup("Hazard Type", CourseEditorState.HazardBrushType);
+                EditorGUILayout.LabelField("Draft Vertices", CourseEditorState.HazardDraftVertices.Count.ToString());
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Finish Polygon"))
+                {
+                    if (CourseEditorState.HazardDraftVertices.Count >= 3)
+                    {
+                        Undo.RecordObject(s_ScratchAsset, "Add Hazard Polygon");
+                        string prefix = CourseEditorState.HazardBrushType == HazardType.OB ? "ob" : "water";
+                        data.Hazards.Add(new HazardPolygon(
+                            $"{prefix}_{data.Hazards.Count + 1}",
+                            CourseEditorState.HazardBrushType,
+                            new System.Collections.Generic.List<Vector2Int>(CourseEditorState.HazardDraftVertices)));
+                        CourseEditorState.ClearHazardDraft();
+                        MarkDataDirty();
+                    }
+                }
+
+                if (GUILayout.Button("Cancel Draft"))
+                {
+                    CourseEditorState.ClearHazardDraft();
+                    Repaint();
+                }
+                EditorGUILayout.EndHorizontal();
+
+                DrawHazardList(data);
+            }
+
+            if (CourseEditorState.ActiveTool == CourseEditorTool.Paint)
+            {
+                SurfaceTileType nextBrushType =
+                    (SurfaceTileType)EditorGUILayout.EnumPopup("Brush Type", CourseEditorState.BrushType);
+                if (nextBrushType != CourseEditorState.BrushType)
+                {
+                    CourseEditorState.BrushType = nextBrushType;
+                }
             }
 
             if (CourseEditorState.Theme == null)
@@ -220,6 +266,30 @@ namespace DiskGolf.EditorTools.CourseEditor
             }
 
             EditorGUILayout.LabelField("Yardage", $"{data.HoleLengthYards():F0} yd");
+        }
+
+        void DrawHazardList(HoleData data)
+        {
+            if (data.Hazards == null || data.Hazards.Count == 0)
+            {
+                return;
+            }
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField("Hazards", EditorStyles.boldLabel);
+            for (int i = data.Hazards.Count - 1; i >= 0; i--)
+            {
+                var hazard = data.Hazards[i];
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"{hazard.Id} ({hazard.Type}, {hazard.Vertices.Count} verts)");
+                if (GUILayout.Button("Delete", GUILayout.Width(60f)))
+                {
+                    Undo.RecordObject(s_ScratchAsset, "Delete Hazard");
+                    data.Hazards.RemoveAt(i);
+                    MarkDataDirty();
+                }
+                EditorGUILayout.EndHorizontal();
+            }
         }
 
         void DrawValidation(HoleData data)
