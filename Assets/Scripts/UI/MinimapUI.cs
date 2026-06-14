@@ -42,7 +42,13 @@ namespace DiskGolf.UI
 
         static readonly Vector2 TreeDotSize = new(8f, 8f);
 
+        static readonly Color WaterTint = new(0.2f, 0.45f, 1f, 0.35f);
+
+        static readonly Color ObTint = new(1f, 0.25f, 0.25f, 0.35f);
+
         readonly List<RectTransform> _treeDots = new();
+
+        readonly List<RectTransform> _hazardQuads = new();
 
         UnityEngine.Camera _captureCam;
 
@@ -62,6 +68,7 @@ namespace DiskGolf.UI
             EnsureMapImage();
             EnsureMarkers();
             EnsureTreeMarkers();
+            EnsureHazardMarkers();
             EnsureTrajectoryOverlay();
             EnsureTrajectoryLine();
         }
@@ -113,6 +120,7 @@ namespace DiskGolf.UI
                 discDot.anchoredPosition = WorldToMapAnchored(discTransform.position, mapRect);
 
             UpdateTreeMarkers(mapRect);
+            UpdateHazardMarkers(mapRect);
             UpdateTrajectoryOverlay(mapRect);
         }
 
@@ -123,6 +131,7 @@ namespace DiskGolf.UI
             builtCourse?.ApplyMinimapLayer();
             course?.Refresh();
             course?.ApplyMinimapLayer();
+            EnsureHazardMarkers();
             FrameCourse();
 
             if (mapImage != null && _renderTexture != null)
@@ -269,6 +278,70 @@ namespace DiskGolf.UI
             {
                 if (_treeDots[i] != null)
                     _treeDots[i].gameObject.SetActive(false);
+            }
+        }
+
+        void EnsureHazardMarkers()
+        {
+            markerLayer ??= transform.Find("MapPanel/MarkerLayer") as RectTransform;
+            if (markerLayer == null || builtCourse?.SourceData?.Hazards == null)
+                return;
+
+            int hazardCount = builtCourse.SourceData.Hazards.Count;
+            while (_hazardQuads.Count < hazardCount)
+            {
+                var quad = CreateMarkerDot(markerLayer, "HazardQuad", Vector2.zero, WaterTint);
+                quad.anchorMin = quad.anchorMax = new Vector2(0.5f, 0.5f);
+                quad.SetAsFirstSibling();
+                _hazardQuads.Add(quad);
+            }
+
+            for (int i = hazardCount; i < _hazardQuads.Count; i++)
+            {
+                if (_hazardQuads[i] != null)
+                    _hazardQuads[i].gameObject.SetActive(false);
+            }
+        }
+
+        void UpdateHazardMarkers(RectTransform mapRect)
+        {
+            if (builtCourse?.SourceData?.Hazards == null)
+            {
+                foreach (var quad in _hazardQuads)
+                {
+                    if (quad != null)
+                        quad.gameObject.SetActive(false);
+                }
+
+                return;
+            }
+
+            EnsureHazardMarkers();
+            var hazards = builtCourse.SourceData.Hazards;
+            for (int i = 0; i < hazards.Count && i < _hazardQuads.Count; i++)
+            {
+                var hazard = hazards[i];
+                var quad = _hazardQuads[i];
+                if (quad == null || hazard?.Vertices == null || hazard.Vertices.Count == 0)
+                    continue;
+
+                HazardGeometry.ComputeWorldBounds(builtCourse.SourceData, hazard, out Bounds bounds);
+                Vector2 min = WorldToMapAnchored(new Vector3(bounds.min.x, 0f, bounds.min.z), mapRect);
+                Vector2 max = WorldToMapAnchored(new Vector3(bounds.max.x, 0f, bounds.max.z), mapRect);
+
+                quad.gameObject.SetActive(true);
+                quad.anchoredPosition = (min + max) * 0.5f;
+                quad.sizeDelta = new Vector2(Mathf.Abs(max.x - min.x), Mathf.Abs(max.y - min.y));
+
+                var image = quad.GetComponent<Image>();
+                if (image != null)
+                    image.color = hazard.Type == HazardType.OB ? ObTint : WaterTint;
+            }
+
+            for (int i = hazards.Count; i < _hazardQuads.Count; i++)
+            {
+                if (_hazardQuads[i] != null)
+                    _hazardQuads[i].gameObject.SetActive(false);
             }
         }
 
