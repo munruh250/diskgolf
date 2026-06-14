@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using DiskGolf.CourseEditor;
 using DiskGolf.Disc;
 using DiskGolf.Flight;
 using DiskGolf.Gameplay;
@@ -65,7 +66,7 @@ namespace DiskGolf.Core
 
         int _strokeCount;
 
-        bool _holeCompletePending;
+        bool _pendingHazardPenalty;
 
         Coroutine _holeCompleteRoutine;
 
@@ -458,6 +459,8 @@ namespace DiskGolf.Core
             else if (wps != null && wps.Count > 0)
                 _discPosition = DiscLieGround.SnapLie(wps[wps.Count - 1].Position, wps[0].Position.y);
 
+            ApplyHazardPenaltyIfNeeded();
+
             _cameraDirector?.HoldLandingCameraUntilThrowSummary();
             _state.Advance(); // InFlight → Landed
 
@@ -499,6 +502,20 @@ namespace DiskGolf.Core
         {
             const float defaultWait = 2.25f;
             float wait = defaultWait;
+            bool showedPenaltyBanner = false;
+
+            if (_pendingHazardPenalty)
+            {
+                var penaltyCallout = ResolveCalloutHost()?.LieLanding;
+                if (penaltyCallout != null && ScoreBannerSprites.PenaltyStroke != null)
+                {
+                    penaltyCallout.ShowBriefly(ScoreBannerSprites.PenaltyStroke);
+                    wait = Mathf.Max(wait, penaltyCallout.DisplaySeconds);
+                }
+
+                showedPenaltyBanner = true;
+                _pendingHazardPenalty = false;
+            }
 
             bool onGreen = IsDiscOnGreenSurface(_discPosition)
                 || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
@@ -523,7 +540,7 @@ namespace DiskGolf.Core
 
                 _showOnGreenLandingCallout = false;
             }
-            else if (hole != null && !hole.IsNearTee(_discPosition))
+            else if (hole != null && !hole.IsNearTee(_discPosition) && !showedPenaltyBanner)
             {
                 float fallbackGroundY = _discPosition.y - DiscLieGround.DiscRestLift;
                 var lie = DiscLieGround.SampleLieType(_discPosition, fallbackGroundY);
@@ -610,6 +627,24 @@ namespace DiskGolf.Core
         {
             float fallbackGroundY = discPosition.y - DiscLieGround.DiscRestLift;
             return DiscLieGround.SampleLieType(discPosition, fallbackGroundY) == LieType.Green;
+        }
+
+        void ApplyHazardPenaltyIfNeeded()
+        {
+            _pendingHazardPenalty = false;
+            float fallbackGroundY = _discPosition.y - DiscLieGround.DiscRestLift;
+            var lie = DiscLieGround.SampleLieType(_discPosition, fallbackGroundY);
+            if (lie != LieType.Water && lie != LieType.OB)
+                return;
+
+            var host = FindFirstObjectByType<BuiltCourseHost>();
+            if (host?.SourceData == null)
+                return;
+
+            _strokeCount++;
+            _discPosition = HazardRules.ResolveDrop(host.SourceData, lie, _discPosition);
+            presenter?.SetPosition(_discPosition);
+            _pendingHazardPenalty = true;
         }
 
         void ResumeAimingFromLanded()

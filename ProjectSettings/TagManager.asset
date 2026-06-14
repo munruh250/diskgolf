@@ -10,6 +10,8 @@ TagManager:
   - Circle
   - Rough
   - Green
+  - Water
+  - OB
   layers:
   - Default
   - TransparentFX

@@ -1,3 +1,4 @@
+using DiskGolf.CourseEditor;
 using DiskGolf.Flight;
 using UnityEngine;
 
@@ -22,6 +23,12 @@ namespace DiskGolf.Gameplay
 
         public static LieType SampleLieType(Vector3 worldPos, float fallbackGroundY)
         {
+            if (TrySampleBuiltCourseHazard(worldPos, out LieType hazardLie))
+                return hazardLie;
+
+            if (TrySampleHazardTrigger(worldPos, out hazardLie))
+                return hazardLie;
+
             if (!TrySampleClosestGroundHit(worldPos, out RaycastHit hit))
                 return LieType.Fairway;
 
@@ -97,7 +104,53 @@ namespace DiskGolf.Gameplay
             if (collider.CompareTag("Tee"))
                 return LieType.Tee;
 
+            if (collider.CompareTag("Water"))
+                return LieType.Water;
+
+            if (collider.CompareTag("OB"))
+                return LieType.OB;
+
             return LieType.Fairway;
+        }
+
+        static bool TrySampleBuiltCourseHazard(Vector3 worldPos, out LieType lie)
+        {
+            lie = default;
+            var host = Object.FindFirstObjectByType<BuiltCourseHost>();
+            if (host?.SourceData == null)
+                return false;
+
+            return HazardRules.TryClassifyHazard(host.SourceData, worldPos, out lie);
+        }
+
+        static bool TrySampleHazardTrigger(Vector3 worldPos, out LieType lie)
+        {
+            lie = default;
+            var hits = Physics.OverlapSphere(
+                worldPos,
+                0.15f,
+                ~0,
+                QueryTriggerInteraction.Collide);
+
+            foreach (var collider in hits)
+            {
+                if (collider == null || !collider.isTrigger)
+                    continue;
+
+                if (collider.CompareTag("Water"))
+                {
+                    lie = LieType.Water;
+                    return true;
+                }
+
+                if (collider.CompareTag("OB"))
+                {
+                    lie = LieType.OB;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         static bool IsFairwayName(string objectName) =>

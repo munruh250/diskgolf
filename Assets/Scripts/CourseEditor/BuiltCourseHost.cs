@@ -14,11 +14,13 @@ namespace DiskGolf.CourseEditor
         [SerializeField] Transform teePad;
         [SerializeField] Transform basket;
 
+        HoleData sourceData;
         Bounds worldBounds;
         bool boundsReady;
 
         public Transform TeePad => teePad;
         public Transform Basket => basket;
+        public HoleData SourceData => sourceData;
 
         public Bounds WorldBounds
         {
@@ -31,10 +33,11 @@ namespace DiskGolf.CourseEditor
             }
         }
 
-        public void Bind(Transform tee, Transform basketTransform)
+        public void Bind(Transform tee, Transform basketTransform, HoleData data)
         {
             teePad = tee;
             basket = basketTransform;
+            sourceData = data;
             RefreshBounds();
         }
 

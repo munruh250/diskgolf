@@ -1,18 +1,24 @@
 using System.Collections.Generic;
+using DiskGolf.CourseEditor;
+using DiskGolf.Flight;
 using DiskGolf.Gameplay;
 using UnityEngine;
-
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace DiskGolf.CourseEditor
 {
     public static class CourseBuilder
     {
         const string GroundRootName = "Ground";
+        const string HazardsRootName = "Hazards";
         const string TeeMarkerName = "TeePad";
         const string BasketName = "Basket";
+
+        struct TileBuildInfo
+        {
+            public int X;
+            public int Y;
+            public Vector3 Center;
+        }
 
         public static BuiltCourseHost Build(HoleData data, ThemePack theme, Transform parent = null)
         {
@@ -31,10 +37,14 @@ namespace DiskGolf.CourseEditor
             groundRoot.SetParent(root.transform, false);
             BuildSurfaceMeshes(data, theme, groundRoot);
 
+            var hazardsRoot = new GameObject(HazardsRootName).transform;
+            hazardsRoot.SetParent(root.transform, false);
+            BuildHazards(data, hazardsRoot);
+
             var tee = CreateTeeMarker(data, root.transform, theme);
             var basket = ResolveOrCreateBasket(data, root.transform);
 
-            host.Bind(tee, basket);
+            host.Bind(tee, basket, data);
             host.RefreshBounds();
             host.ApplyMinimapLayer();
             return host;
@@ -58,34 +68,39 @@ namespace DiskGolf.CourseEditor
 
         static void BuildSurfaceMeshes(HoleData data, ThemePack theme, Transform groundRoot)
         {
-            var grouped = new Dictionary<SurfaceTileType, List<Vector3>>();
+            var grouped = new Dictionary<SurfaceTileType, List<TileBuildInfo>>();
 
             foreach (var tile in data.SurfaceTiles)
             {
-                if (!grouped.TryGetValue(tile.Type, out var centers))
+                if (!grouped.TryGetValue(tile.Type, out var tiles))
                 {
-                    centers = new List<Vector3>();
-                    grouped[tile.Type] = centers;
+                    tiles = new List<TileBuildInfo>();
+                    grouped[tile.Type] = tiles;
                 }
 
                 float x = data.Origin.x + tile.X * data.TileSize + data.TileSize * 0.5f;
                 float z = data.Origin.y + tile.Y * data.TileSize + data.TileSize * 0.5f;
-                centers.Add(new Vector3(x, 0f, z));
+                tiles.Add(new TileBuildInfo
+                {
+                    X = tile.X,
+                    Y = tile.Y,
+                    Center = new Vector3(x, 0f, z)
+                });
             }
 
             foreach (var entry in grouped)
             {
                 var surfaceType = entry.Key;
-                var centers = entry.Value;
+                var tiles = entry.Value;
 
-                if (centers.Count == 0)
+                if (tiles.Count == 0)
                     continue;
 
                 var go = new GameObject($"{surfaceType}Mesh");
                 go.transform.SetParent(groundRoot, false);
                 go.tag = SurfaceTileTags.ToUnityTag(surfaceType);
 
-                var mesh = BuildTileMesh(centers, data.TileSize);
+                var mesh = BuildTileMesh(data, tiles, data.TileSize);
                 mesh.name = $"{surfaceType}SurfaceMesh";
 
                 var meshFilter = go.AddComponent<MeshFilter>();
@@ -99,25 +114,27 @@ namespace DiskGolf.CourseEditor
             }
         }
 
-        static Mesh BuildTileMesh(List<Vector3> tileCenters, float tileSize)
+        static Mesh BuildTileMesh(HoleData data, List<TileBuildInfo> tiles, float tileSize)
         {
             var mesh = new Mesh();
 
-            var vertices = new List<Vector3>(tileCenters.Count * 4);
-            var triangles = new List<int>(tileCenters.Count * 6);
-            var uv = new List<Vector2>(tileCenters.Count * 4);
+            var vertices = new List<Vector3>(tiles.Count * 4);
+            var triangles = new List<int>(tiles.Count * 6);
+            var uv = new List<Vector2>(tiles.Count * 4);
 
             float half = tileSize * 0.5f;
 
-            for (int i = 0; i < tileCenters.Count; i++)
+            for (int i = 0; i < tiles.Count; i++)
             {
                 int baseIndex = vertices.Count;
-                var center = tileCenters[i];
+                var tile = tiles[i];
+                var center = tile.Center;
+                var corners = HeightGridSampler.TileCornerHeights(data, tile.X, tile.Y);
 
-                vertices.Add(center + new Vector3(-half, 0f, -half));
-                vertices.Add(center + new Vector3(-half, 0f, half));
-                vertices.Add(center + new Vector3(half, 0f, half));
-                vertices.Add(center + new Vector3(half, 0f, -half));
+                vertices.Add(new Vector3(center.x - half, corners[0], center.z - half));
+                vertices.Add(new Vector3(center.x - half, corners[1], center.z + half));
+                vertices.Add(new Vector3(center.x + half, corners[2], center.z + half));
+                vertices.Add(new Vector3(center.x + half, corners[3], center.z - half));
 
                 uv.Add(new Vector2(0f, 0f));
                 uv.Add(new Vector2(0f, 1f));
@@ -142,13 +159,52 @@ namespace DiskGolf.CourseEditor
             return mesh;
         }
 
+        static void BuildHazards(HoleData data, Transform hazardsRoot)
+        {
+            if (data.Hazards == null || data.Hazards.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var hazard in data.Hazards)
+            {
+                if (hazard?.Vertices == null || hazard.Vertices.Count < 3)
+                {
+                    continue;
+                }
+
+                CreateHazardTrigger(data, hazardsRoot, hazard);
+            }
+        }
+
+        static void CreateHazardTrigger(HoleData data, Transform hazardsRoot, HazardPolygon hazard)
+        {
+            HazardGeometry.ComputeWorldBounds(data, hazard, out Bounds bounds);
+            if (bounds.size.sqrMagnitude <= 0f)
+            {
+                return;
+            }
+
+            string prefix = hazard.Type == HazardType.OB ? "OB" : "Water";
+            var go = new GameObject($"{prefix}_{hazard.Id}");
+            go.transform.SetParent(hazardsRoot, false);
+            go.transform.position = bounds.center;
+            go.tag = HazardTags.ToUnityTag(hazard.Type);
+
+            var collider = go.AddComponent<BoxCollider>();
+            collider.isTrigger = true;
+            collider.size = bounds.size;
+        }
+
         static Transform CreateTeeMarker(HoleData data, Transform root, ThemePack theme)
         {
             var tee = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             tee.name = TeeMarkerName;
             tee.tag = "Tee";
             tee.transform.SetParent(root, false);
-            tee.transform.position = new Vector3(data.Hole.Tee.x, 0.05f, data.Hole.Tee.y);
+
+            float teeY = HeightGridSampler.SampleWorldY(data, data.Hole.Tee.x, data.Hole.Tee.y);
+            tee.transform.position = new Vector3(data.Hole.Tee.x, teeY + 0.05f, data.Hole.Tee.y);
             tee.transform.localScale = new Vector3(data.TileSize * 0.6f, 0.05f, data.TileSize * 0.6f);
 
             if (theme != null && tee.TryGetComponent<Renderer>(out var renderer))
@@ -163,25 +219,26 @@ namespace DiskGolf.CourseEditor
 
         static Transform ResolveOrCreateBasket(HoleData data, Transform root)
         {
+            float basketY = HeightGridSampler.SampleWorldY(data, data.Hole.Basket.x, data.Hole.Basket.y);
+
             var existing = GameObject.FindGameObjectWithTag("Basket");
             if (existing != null)
             {
-                var pos = existing.transform.position;
-                existing.transform.position = new Vector3(data.Hole.Basket.x, pos.y, data.Hole.Basket.y);
+                existing.transform.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
                 return existing.transform;
             }
 
             var fromPrefab = TryCreateBasketFromPrefab(root);
             if (fromPrefab != null)
             {
-                fromPrefab.position = new Vector3(data.Hole.Basket.x, fromPrefab.position.y, data.Hole.Basket.y);
+                fromPrefab.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
                 return fromPrefab;
             }
 
             var basket = new GameObject(BasketName);
             basket.tag = "Basket";
             basket.transform.SetParent(root, false);
-            basket.transform.position = new Vector3(data.Hole.Basket.x, 0f, data.Hole.Basket.y);
+            basket.transform.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
 
             BasketVisual.Ensure(basket.transform);
             BasketCatchDetector.Ensure(basket.transform);
@@ -191,11 +248,11 @@ namespace DiskGolf.CourseEditor
         static Transform TryCreateBasketFromPrefab(Transform root)
         {
 #if UNITY_EDITOR
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.Basket);
+            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ProjectArtPaths.Prefabs.Basket);
             if (prefab == null)
                 return null;
 
-            var instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+            var instance = UnityEditor.PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             if (instance == null)
                 return null;
 
