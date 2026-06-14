@@ -1,61 +1,60 @@
-using System.Collections;
 using DiskGolf.Flight;
+using DiskGolf.UI.Callouts;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Brief centered banner when the disc lands on fairway or rough.</summary>
+    /// <summary>Facade — delegates to SpriteCalloutBanner on same GameObject.</summary>
+    [RequireComponent(typeof(SpriteCalloutBanner))]
     public sealed class LieLandingBannerUI : MonoBehaviour
     {
-        const string HudCanvasName = "GameplayHUD";
         const string BannerName = "LieLandingBanner";
 
-        [SerializeField] Image bannerImage;
+        SpriteCalloutBanner _banner;
 
-        [SerializeField] float displaySeconds = 2.25f;
+        public float DisplaySeconds => Banner.DisplaySeconds;
 
-        Coroutine _hideRoutine;
-
-        public float DisplaySeconds => displaySeconds;
+        SpriteCalloutBanner Banner => _banner ??= GetComponent<SpriteCalloutBanner>();
 
         public static LieLandingBannerUI Ensure()
         {
-            var canvas = FindHudCanvas();
+            var canvas = HudCanvasUtility.FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<LieLandingBannerUI>();
-            if (existing != null)
+            var bannerTransform = canvas.Find(BannerName);
+            if (bannerTransform != null)
+                return EnsureOn(bannerTransform.gameObject);
+
+            if (SceneHudAuthoring.IsActive)
             {
-                existing.EnsureBuilt();
-                return existing;
+                Debug.LogWarning("[Disk Golf] LieLandingBanner missing. Bake GameplayCallouts prefab.");
+                return null;
             }
 
             return Build(canvas);
         }
 
-        void Awake() => EnsureBuilt();
+        public void Show(LieType lie) => Banner.Show(ResolveSprite(lie));
 
-        public void EnsureBuilt()
+        public void ShowBriefly(LieType lie) => Banner.ShowBriefly(ResolveSprite(lie));
+
+        public void Hide() => Banner.Hide();
+
+        static LieLandingBannerUI EnsureOn(GameObject go)
         {
-            if (bannerImage != null)
-                return;
+            EnsureSpritePrimitive(go);
+            return go.GetComponent<LieLandingBannerUI>() ?? go.AddComponent<LieLandingBannerUI>();
+        }
 
-            var canvas = transform.parent as RectTransform ?? FindHudCanvas();
-            if (canvas == null)
-                return;
+        static void EnsureSpritePrimitive(GameObject go)
+        {
+            var image = go.GetComponent<Image>() ?? go.AddComponent<Image>();
+            image.raycastTarget = false;
 
-            if (transform.parent != canvas)
-            {
-                transform.SetParent(canvas, false);
-                gameObject.name = BannerName;
-            }
-
-            ConfigureBannerRect(transform as RectTransform);
-            bannerImage = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
-            bannerImage.raycastTarget = false;
-            gameObject.SetActive(false);
+            if (go.GetComponent<SpriteCalloutBanner>() == null)
+                go.AddComponent<SpriteCalloutBanner>();
         }
 
         static LieLandingBannerUI Build(RectTransform canvas)
@@ -63,55 +62,15 @@ namespace DiskGolf.UI
             var bannerGo = new GameObject(BannerName, typeof(RectTransform), typeof(Image));
             var rt = bannerGo.GetComponent<RectTransform>();
             rt.SetParent(canvas, false);
-            ConfigureBannerRect(rt);
+            PostThrowCalloutLayout.ApplyScoreBannerRect(rt);
 
             var image = bannerGo.GetComponent<Image>();
             image.raycastTarget = false;
 
-            var banner = bannerGo.AddComponent<LieLandingBannerUI>();
-            banner.bannerImage = image;
+            bannerGo.AddComponent<SpriteCalloutBanner>();
+            var facade = bannerGo.AddComponent<LieLandingBannerUI>();
             bannerGo.SetActive(false);
-            return banner;
-        }
-
-        static void ConfigureBannerRect(RectTransform rt) =>
-            PostThrowCalloutLayout.ApplyScoreBannerRect(rt);
-
-        static RectTransform FindHudCanvas()
-        {
-            var hud = GameObject.Find(HudCanvasName);
-            return hud != null ? hud.GetComponent<RectTransform>() : null;
-        }
-
-        public void Show(LieType lie)
-        {
-            EnsureBuilt();
-
-            if (bannerImage == null)
-                return;
-
-            var sprite = ResolveSprite(lie);
-            if (sprite == null)
-                return;
-
-            bannerImage.sprite = sprite;
-            bannerImage.preserveAspect = true;
-            bannerImage.color = Color.white;
-            bannerImage.enabled = true;
-
-            ConfigureBannerRect(transform as RectTransform);
-            transform.SetAsLastSibling();
-            gameObject.SetActive(true);
-        }
-
-        public void ShowBriefly(LieType lie)
-        {
-            Show(lie);
-
-            if (_hideRoutine != null)
-                StopCoroutine(_hideRoutine);
-
-            _hideRoutine = StartCoroutine(HideAfterDelay());
+            return facade;
         }
 
         static Sprite ResolveSprite(LieType lie) => lie switch
@@ -120,23 +79,5 @@ namespace DiskGolf.UI
             LieType.Rough => ScoreBannerSprites.Rough,
             _ => null,
         };
-
-        IEnumerator HideAfterDelay()
-        {
-            yield return new WaitForSeconds(displaySeconds);
-            Hide();
-            _hideRoutine = null;
-        }
-
-        public void Hide()
-        {
-            if (_hideRoutine != null)
-            {
-                StopCoroutine(_hideRoutine);
-                _hideRoutine = null;
-            }
-
-            gameObject.SetActive(false);
-        }
     }
 }

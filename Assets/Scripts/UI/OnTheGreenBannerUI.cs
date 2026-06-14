@@ -1,150 +1,86 @@
-using System.Collections;
+using DiskGolf.UI.Callouts;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Brief centered score banner when the disc lands in the circle.</summary>
+    /// <summary>Facade — delegates to SpriteCalloutBanner on same GameObject.</summary>
+    [RequireComponent(typeof(SpriteCalloutBanner))]
     public sealed class OnTheGreenBannerUI : MonoBehaviour
     {
-        const string HudCanvasName = "GameplayHUD";
         const string BannerName = "OnTheGreenBanner";
         const string LegacyBannerName = "InTheCircleBanner";
 
-        [SerializeField] Image bannerImage;
+        SpriteCalloutBanner _banner;
 
-        [SerializeField] float displaySeconds = 2.25f;
+        public float DisplaySeconds => Banner.DisplaySeconds;
 
-        Coroutine _hideRoutine;
-
-        public float DisplaySeconds => displaySeconds;
+        SpriteCalloutBanner Banner => _banner ??= GetComponent<SpriteCalloutBanner>();
 
         public static OnTheGreenBannerUI Ensure()
         {
-            var canvas = FindHudCanvas();
+            var canvas = HudCanvasUtility.FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<OnTheGreenBannerUI>();
-            if (existing != null)
+            var bannerTransform = canvas.Find(BannerName);
+            if (bannerTransform != null)
+                return EnsureOn(bannerTransform.gameObject);
+
+            if (SceneHudAuthoring.IsActive)
             {
-                existing.EnsureBuilt();
-                return existing;
+                Debug.LogWarning("[Disk Golf] OnTheGreenBanner missing. Bake GameplayCallouts prefab.");
+                return null;
             }
 
             return Build(canvas);
         }
 
-        void Awake() => EnsureBuilt();
-
-        public void EnsureBuilt()
+        void Awake()
         {
-            HideLegacyTextBanner();
+            var canvas = transform.parent;
+            canvas?.Find(LegacyBannerName)?.gameObject.SetActive(false);
+        }
 
-            if (bannerImage != null)
-                return;
+        public void Show() => Banner.Show(ScoreBannerSprites.OnTheGreen);
 
-            var canvas = transform.parent as RectTransform ?? FindHudCanvas();
-            if (canvas == null)
-                return;
+        public void ShowBriefly() => Banner.ShowBriefly(ScoreBannerSprites.OnTheGreen);
 
-            if (transform.parent != canvas)
-            {
-                transform.SetParent(canvas, false);
-                gameObject.name = BannerName;
-            }
+        public void Hide() => Banner.Hide();
 
-            ConfigureBannerRect(transform as RectTransform);
-            bannerImage = GetComponent<Image>() ?? gameObject.AddComponent<Image>();
-            ApplySprite(bannerImage);
-            bannerImage.raycastTarget = false;
-            gameObject.SetActive(false);
+        static OnTheGreenBannerUI EnsureOn(GameObject go)
+        {
+            EnsureSpritePrimitive(go);
+            return go.GetComponent<OnTheGreenBannerUI>() ?? go.AddComponent<OnTheGreenBannerUI>();
+        }
+
+        static void EnsureSpritePrimitive(GameObject go)
+        {
+            var image = go.GetComponent<Image>() ?? go.AddComponent<Image>();
+            image.raycastTarget = false;
+
+            if (go.GetComponent<SpriteCalloutBanner>() == null)
+                go.AddComponent<SpriteCalloutBanner>();
         }
 
         static OnTheGreenBannerUI Build(RectTransform canvas)
         {
-            HideLegacyTextBanner(canvas);
+            var legacy = canvas.Find(LegacyBannerName);
+            if (legacy != null)
+                legacy.gameObject.SetActive(false);
 
             var bannerGo = new GameObject(BannerName, typeof(RectTransform), typeof(Image));
             var rt = bannerGo.GetComponent<RectTransform>();
             rt.SetParent(canvas, false);
-            ConfigureBannerRect(rt);
-
-            var image = bannerGo.GetComponent<Image>();
-            ApplySprite(image);
-            image.raycastTarget = false;
-
-            var banner = bannerGo.AddComponent<OnTheGreenBannerUI>();
-            banner.bannerImage = image;
-            bannerGo.SetActive(false);
-            return banner;
-        }
-
-        static void HideLegacyTextBanner(RectTransform canvas = null)
-        {
-            canvas ??= FindHudCanvas();
-            var legacy = canvas != null ? canvas.Find(LegacyBannerName) : null;
-            if (legacy != null)
-                legacy.gameObject.SetActive(false);
-        }
-
-        static void ApplySprite(Image image)
-        {
-            var sprite = ScoreBannerSprites.OnTheGreen;
-            image.sprite = sprite;
-            image.preserveAspect = true;
-            image.color = Color.white;
-            image.enabled = sprite != null;
-        }
-
-        static void ConfigureBannerRect(RectTransform rt) =>
             PostThrowCalloutLayout.ApplyScoreBannerRect(rt);
 
-        static RectTransform FindHudCanvas()
-        {
-            var hud = GameObject.Find(HudCanvasName);
-            return hud != null ? hud.GetComponent<RectTransform>() : null;
-        }
+            var image = bannerGo.GetComponent<Image>();
+            image.raycastTarget = false;
 
-        public void Show()
-        {
-            EnsureBuilt();
-
-            if (bannerImage == null)
-                return;
-
-            ApplySprite(bannerImage);
-            ConfigureBannerRect(transform as RectTransform);
-            transform.SetAsLastSibling();
-            gameObject.SetActive(true);
-        }
-
-        public void ShowBriefly()
-        {
-            Show();
-
-            if (_hideRoutine != null)
-                StopCoroutine(_hideRoutine);
-
-            _hideRoutine = StartCoroutine(HideAfterDelay());
-        }
-
-        IEnumerator HideAfterDelay()
-        {
-            yield return new WaitForSeconds(displaySeconds);
-            Hide();
-            _hideRoutine = null;
-        }
-
-        public void Hide()
-        {
-            if (_hideRoutine != null)
-            {
-                StopCoroutine(_hideRoutine);
-                _hideRoutine = null;
-            }
-
-            gameObject.SetActive(false);
+            bannerGo.AddComponent<SpriteCalloutBanner>();
+            var facade = bannerGo.AddComponent<OnTheGreenBannerUI>();
+            bannerGo.SetActive(false);
+            return facade;
         }
     }
 }

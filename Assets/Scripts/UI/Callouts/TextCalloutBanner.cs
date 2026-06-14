@@ -19,6 +19,12 @@ namespace DiskGolf.UI.Callouts
 
         public float DisplaySeconds => displaySeconds;
 
+        public TextCalloutLayout Layout
+        {
+            get => layout;
+            set => layout = value;
+        }
+
         void Awake() => ResolveLabel();
 
         public void ResolveLabel()

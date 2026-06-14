@@ -1,83 +1,39 @@
+using DiskGolf.UI.Callouts;
 using TMPro;
 using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Centered popup when the disc stops (e.g. "200 FEET").</summary>
+    /// <summary>Facade — delegates to TextCalloutBanner on same GameObject.</summary>
+    [RequireComponent(typeof(TextCalloutBanner))]
     public sealed class ThrowResultBannerUI : MonoBehaviour
     {
-        const string HudCanvasName = "GameplayHUD";
         const string BannerName = "ThrowResultBanner";
 
-        [SerializeField] TextMeshProUGUI label;
+        TextCalloutBanner _banner;
 
-        [SerializeField] float displaySeconds = 2.75f;
+        public float DisplaySeconds => Banner.DisplaySeconds;
 
-        public float DisplaySeconds => displaySeconds;
+        TextCalloutBanner Banner => _banner ??= GetComponent<TextCalloutBanner>();
 
         public static ThrowResultBannerUI Ensure()
         {
-            var canvas = FindHudCanvas();
+            var canvas = HudCanvasUtility.FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<ThrowResultBannerUI>();
-            if (existing != null)
+            var bannerTransform = canvas.Find(BannerName);
+            if (bannerTransform != null)
+                return EnsureOn(bannerTransform.gameObject);
+
+            if (SceneHudAuthoring.IsActive)
             {
-                existing.EnsureBuilt();
-                return existing;
+                Debug.LogWarning("[Disk Golf] ThrowResultBanner missing. Bake GameplayCallouts prefab.");
+                return null;
             }
 
             return Build(canvas);
         }
-
-        void Awake() => EnsureBuilt();
-
-        public void EnsureBuilt()
-        {
-            if (label != null)
-                return;
-
-            var canvas = transform.parent as RectTransform ?? FindHudCanvas();
-            if (canvas == null)
-                return;
-
-            if (transform.parent != canvas)
-            {
-                transform.SetParent(canvas, false);
-                gameObject.name = BannerName;
-            }
-
-            ConfigureBannerRect(transform as RectTransform);
-            label = GetComponent<TextMeshProUGUI>() ?? gameObject.AddComponent<TextMeshProUGUI>();
-            ApplyStyle(label);
-            gameObject.SetActive(false);
-        }
-
-        static ThrowResultBannerUI Build(RectTransform canvas)
-        {
-            var bannerGo = new GameObject(BannerName, typeof(RectTransform));
-            var rt = bannerGo.GetComponent<RectTransform>();
-            rt.SetParent(canvas, false);
-            ConfigureBannerRect(rt);
-
-            var tmp = bannerGo.AddComponent<TextMeshProUGUI>();
-            ApplyStyle(tmp);
-
-            var banner = bannerGo.AddComponent<ThrowResultBannerUI>();
-            banner.label = tmp;
-            bannerGo.SetActive(false);
-            return banner;
-        }
-
-        static RectTransform FindHudCanvas()
-        {
-            var hud = GameObject.Find(HudCanvasName);
-            return hud != null ? hud.GetComponent<RectTransform>() : null;
-        }
-
-        static void ConfigureBannerRect(RectTransform rt) =>
-            PostThrowCalloutLayout.ApplyFeetLabelRect(rt);
 
         public static void ApplyStyle(TextMeshProUGUI tmp)
         {
@@ -88,8 +44,8 @@ namespace DiskGolf.UI
             tmp.outlineWidth = 0f;
             tmp.raycastTarget = false;
 
-            var circleBanner = GameObject.Find(HudCanvasName)?.transform.Find("InTheCircleBanner")
-                ?? GameObject.Find(HudCanvasName)?.transform.Find("TMPRow");
+            var circleBanner = GameObject.Find(HudCanvasUtility.HudCanvasName)?.transform.Find("InTheCircleBanner")
+                ?? GameObject.Find(HudCanvasUtility.HudCanvasName)?.transform.Find("TMPRow");
             var circleTmp = circleBanner != null ? circleBanner.GetComponent<TextMeshProUGUI>() : null;
             if (circleTmp != null && circleTmp.font != null)
                 tmp.font = circleTmp.font;
@@ -97,22 +53,42 @@ namespace DiskGolf.UI
                 HudTypography.BindFont(tmp);
         }
 
-        public void ShowThrowDistance(float distanceFt)
+        public void ShowThrowDistance(float distanceFt) => Banner.ShowThrowDistance(distanceFt);
+
+        public void Hide() => Banner.Hide();
+
+        static ThrowResultBannerUI EnsureOn(GameObject go)
         {
-            EnsureBuilt();
-
-            if (label == null)
-                return;
-
-            ApplyStyle(label);
-            int feet = Mathf.Max(0, Mathf.RoundToInt(distanceFt));
-            label.text = $"{feet} FEET";
-            label.ForceMeshUpdate();
-            ConfigureBannerRect(transform as RectTransform);
-            transform.SetAsLastSibling();
-            gameObject.SetActive(true);
+            EnsureTextPrimitive(go);
+            return go.GetComponent<ThrowResultBannerUI>() ?? go.AddComponent<ThrowResultBannerUI>();
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        static void EnsureTextPrimitive(GameObject go)
+        {
+            var label = go.GetComponent<TextMeshProUGUI>() ?? go.AddComponent<TextMeshProUGUI>();
+            ApplyStyle(label);
+
+            if (go.GetComponent<TextCalloutBanner>() == null)
+            {
+                var banner = go.AddComponent<TextCalloutBanner>();
+                banner.Layout = TextCalloutLayout.FeetLabel;
+            }
+        }
+
+        static ThrowResultBannerUI Build(RectTransform canvas)
+        {
+            var bannerGo = new GameObject(BannerName, typeof(RectTransform));
+            var rt = bannerGo.GetComponent<RectTransform>();
+            rt.SetParent(canvas, false);
+            PostThrowCalloutLayout.ApplyFeetLabelRect(rt);
+
+            var tmp = bannerGo.AddComponent<TextMeshProUGUI>();
+            ApplyStyle(tmp);
+
+            bannerGo.AddComponent<TextCalloutBanner>();
+            var facade = bannerGo.AddComponent<ThrowResultBannerUI>();
+            bannerGo.SetActive(false);
+            return facade;
+        }
     }
 }

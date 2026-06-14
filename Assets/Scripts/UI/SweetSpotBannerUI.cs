@@ -1,57 +1,67 @@
+using DiskGolf.UI.Callouts;
 using TMPro;
 using UnityEngine;
 
 namespace DiskGolf.UI
 {
-    /// <summary>Centered overlay when both timing meters hit the sweet spot.</summary>
+    /// <summary>Facade — delegates to TextCalloutBanner on same GameObject.</summary>
+    [RequireComponent(typeof(TextCalloutBanner))]
     public sealed class SweetSpotBannerUI : MonoBehaviour
     {
-        const string HudCanvasName = "GameplayHUD";
         const string BannerName = "SweetSpotBanner";
 
-        [SerializeField] TextMeshProUGUI label;
+        TextCalloutBanner _banner;
 
-        [SerializeField] float displaySeconds = 2f;
+        public float DisplaySeconds => Banner.DisplaySeconds;
 
-        public float DisplaySeconds => displaySeconds;
+        TextCalloutBanner Banner => _banner ??= GetComponent<TextCalloutBanner>();
 
         public static SweetSpotBannerUI Ensure()
         {
-            var canvas = FindHudCanvas();
+            var canvas = HudCanvasUtility.FindHudCanvas();
             if (canvas == null)
                 return null;
 
-            var existing = canvas.Find(BannerName)?.GetComponent<SweetSpotBannerUI>();
-            if (existing != null)
+            var bannerTransform = canvas.Find(BannerName);
+            if (bannerTransform != null)
+                return EnsureOn(bannerTransform.gameObject);
+
+            if (SceneHudAuthoring.IsActive)
             {
-                existing.EnsureBuilt();
-                return existing;
+                Debug.LogWarning("[Disk Golf] SweetSpotBanner missing. Bake GameplayCallouts prefab.");
+                return null;
             }
 
             return Build(canvas);
         }
 
-        void Awake() => EnsureBuilt();
-
-        public void EnsureBuilt()
+        public void Show()
         {
-            if (label != null)
-                return;
+            Banner.ApplySweetSpotStyle();
+            Banner.Show("SWEET!");
+        }
 
-            var canvas = transform.parent as RectTransform ?? FindHudCanvas();
-            if (canvas == null)
-                return;
+        public void ShowBriefly()
+        {
+            Banner.ApplySweetSpotStyle();
+            Banner.ShowBriefly("SWEET!");
+        }
 
-            if (transform.parent != canvas)
-            {
-                transform.SetParent(canvas, false);
-                gameObject.name = BannerName;
-            }
+        public void Hide() => Banner.Hide();
 
-            ConfigureBannerRect(transform as RectTransform);
-            label = GetComponent<TextMeshProUGUI>() ?? gameObject.AddComponent<TextMeshProUGUI>();
-            ApplyStyle(label);
-            gameObject.SetActive(false);
+        static SweetSpotBannerUI EnsureOn(GameObject go)
+        {
+            EnsureTextPrimitive(go);
+            return go.GetComponent<SweetSpotBannerUI>() ?? go.AddComponent<SweetSpotBannerUI>();
+        }
+
+        static void EnsureTextPrimitive(GameObject go)
+        {
+            var label = go.GetComponent<TextMeshProUGUI>() ?? go.AddComponent<TextMeshProUGUI>();
+            label.raycastTarget = false;
+
+            var banner = go.GetComponent<TextCalloutBanner>() ?? go.AddComponent<TextCalloutBanner>();
+            SetLayout(banner, TextCalloutLayout.CenterPopup);
         }
 
         static SweetSpotBannerUI Build(RectTransform canvas)
@@ -59,57 +69,17 @@ namespace DiskGolf.UI
             var bannerGo = new GameObject(BannerName, typeof(RectTransform));
             var rt = bannerGo.GetComponent<RectTransform>();
             rt.SetParent(canvas, false);
-            ConfigureBannerRect(rt);
 
-            var tmp = bannerGo.AddComponent<TextMeshProUGUI>();
-            ApplyStyle(tmp);
+            bannerGo.AddComponent<TextMeshProUGUI>();
+            var textBanner = bannerGo.AddComponent<TextCalloutBanner>();
+            SetLayout(textBanner, TextCalloutLayout.CenterPopup);
 
-            var banner = bannerGo.AddComponent<SweetSpotBannerUI>();
-            banner.label = tmp;
+            var facade = bannerGo.AddComponent<SweetSpotBannerUI>();
             bannerGo.SetActive(false);
-            return banner;
+            return facade;
         }
 
-        static RectTransform FindHudCanvas()
-        {
-            var hud = GameObject.Find(HudCanvasName);
-            return hud != null ? hud.GetComponent<RectTransform>() : null;
-        }
-
-        static void ConfigureBannerRect(RectTransform rt)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.62f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2(640f, 120f);
-        }
-
-        static void ApplyStyle(TextMeshProUGUI tmp)
-        {
-            tmp.text = "SWEET!";
-            tmp.fontSize = 72f;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.82f, 0.28f, 1f);
-            tmp.outlineWidth = 0.35f;
-            tmp.outlineColor = Color.black;
-            tmp.raycastTarget = false;
-
-            HudTypography.BindFont(tmp);
-        }
-
-        public void Show()
-        {
-            EnsureBuilt();
-
-            if (label == null)
-                return;
-
-            label.text = "SWEET!";
-            transform.SetAsLastSibling();
-            gameObject.SetActive(true);
-        }
-
-        public void Hide() => gameObject.SetActive(false);
+        static void SetLayout(TextCalloutBanner banner, TextCalloutLayout layout) =>
+            banner.Layout = layout;
     }
 }
