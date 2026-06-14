@@ -80,5 +80,67 @@ namespace DiskGolf.Tests.EditMode
             Assert.AreEqual(HazardType.Water, hazard.Type);
             Assert.AreEqual(3, hazard.Vertices.Count);
         }
+
+        [Test]
+        public void GridSizeForHole_AddsPaddingBeyondPaintedBounds()
+        {
+            var data = new HoleData();
+            data.SetTile(0, 0, SurfaceTileType.Fairway);
+            data.SetTile(5, 10, SurfaceTileType.Fairway);
+
+            var size = HeightGridSampler.GridSizeForHole(data);
+
+            Assert.AreEqual(7, size.x);
+            Assert.AreEqual(12, size.y);
+        }
+
+        [Test]
+        public void SampleWorldY_MapsOriginAndTileSizeToGridCorners()
+        {
+            var data = new HoleData
+            {
+                Origin = new Vector2(10f, 20f),
+                TileSize = 2f
+            };
+            data.SetTile(0, 0, SurfaceTileType.Fairway);
+            data.Elevation = new ElevationGrid(2, 2);
+            data.Elevation.Set(0, 0, 1f);
+            data.Elevation.Set(1, 0, 3f);
+            data.Elevation.Set(0, 1, 0f);
+            data.Elevation.Set(1, 1, 2f);
+
+            Assert.AreEqual(1f, HeightGridSampler.SampleWorldY(data, 10f, 20f), 0.001f);
+            Assert.AreEqual(3f, HeightGridSampler.SampleWorldY(data, 12f, 20f), 0.001f);
+            Assert.AreEqual(2f, HeightGridSampler.SampleWorldY(data, 11f, 20f), 0.001f);
+        }
+
+        [Test]
+        public void SampleWorldY_ReturnsZeroWhenElevationMissing()
+        {
+            var data = new HoleData { Origin = Vector2.zero, TileSize = 2f };
+            data.SetTile(0, 0, SurfaceTileType.Fairway);
+
+            Assert.AreEqual(0f, HeightGridSampler.SampleWorldY(data, 0f, 0f));
+        }
+
+        [Test]
+        public void TileCornerHeights_ReturnsCornersInMeshOrder()
+        {
+            var data = new HoleData();
+            data.SetTile(1, 2, SurfaceTileType.Fairway);
+            data.Elevation = new ElevationGrid(4, 5);
+            data.Elevation.Set(1, 2, 1f);
+            data.Elevation.Set(2, 2, 2f);
+            data.Elevation.Set(1, 3, 3f);
+            data.Elevation.Set(2, 3, 4f);
+
+            var corners = HeightGridSampler.TileCornerHeights(data, 1, 2);
+
+            Assert.AreEqual(4, corners.Length);
+            Assert.AreEqual(1f, corners[0], 0.001f);
+            Assert.AreEqual(3f, corners[1], 0.001f);
+            Assert.AreEqual(4f, corners[2], 0.001f);
+            Assert.AreEqual(2f, corners[3], 0.001f);
+        }
     }
 }
