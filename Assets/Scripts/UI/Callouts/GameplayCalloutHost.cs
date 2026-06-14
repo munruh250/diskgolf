@@ -58,7 +58,8 @@ namespace DiskGolf.UI.Callouts
             throwDistance ??= transform.Find("ThrowResultBanner")?.GetComponent<TextCalloutBanner>();
             sweetSpot ??= transform.Find("SweetSpotBanner")?.GetComponent<TextCalloutBanner>();
             holeComplete ??= transform.Find("HoleCompleteBanner")?.GetComponent<MultiSlotSpriteBanner>();
-            throwSummary ??= transform.Find("ThrowSummaryBanner")?.GetComponent<ThrowSummaryBannerUI>();
+            var throwSummaryBanner = transform.Find("ThrowSummaryBanner");
+            throwSummary ??= throwSummaryBanner?.GetComponent<ThrowSummaryBannerUI>();
             holeCutscene ??= transform.Find("HoleCompleteCutscene")?.GetComponent<HoleCompleteCutsceneUI>();
         }
     }
