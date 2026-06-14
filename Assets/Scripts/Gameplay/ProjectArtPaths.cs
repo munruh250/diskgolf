@@ -121,6 +121,10 @@ namespace DiskGolf.Gameplay
 
             public const string CourseRoot = "Assets/Prefabs/Course";
 
+            public const string UiRoot = "Assets/Prefabs/UI";
+
+            public const string GameplayCallouts = UiRoot + "/GameplayCallouts.prefab";
+
             public const string Disc = GameplayRoot + "/Disc.prefab";
 
             public const string Basket = GameplayRoot + "/Basket.prefab";
