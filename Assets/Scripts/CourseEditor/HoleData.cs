@@ -44,6 +44,8 @@ namespace DiskGolf.CourseEditor
         public string ThemeId = "temperate";
         public List<HoleTile> SurfaceTiles = new();
         public HoleMeta Hole = new();
+        public ElevationGrid Elevation;
+        public List<HazardPolygon> Hazards = new();
 
         public void SetTile(int x, int y, SurfaceTileType type)
         {
