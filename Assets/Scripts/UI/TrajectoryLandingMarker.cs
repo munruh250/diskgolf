@@ -84,7 +84,7 @@ namespace DiskGolf.UI
                 yardLabel.alignment = TextAlignmentOptions.Center;
                 yardLabel.fontSize = 3.2f;
                 yardLabel.color = Color.white;
-                yardLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                yardLabel.enableWordWrapping = false;
                 HudTypography.BindFont(yardLabel);
 
                 labelAnchor = labelGo.transform;

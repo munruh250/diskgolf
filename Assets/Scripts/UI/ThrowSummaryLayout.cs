@@ -75,7 +75,7 @@ namespace DiskGolf.UI
             tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
             tmp.color = new Color(1f, 0.82f, 0.15f, 1f);
-            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            tmp.enableWordWrapping = false;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.raycastTarget = false;
         }
