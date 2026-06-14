@@ -86,6 +86,13 @@ Runtime loading goes through `RuntimeArt` / `GameplayArtCatalog`.
 - Paint tiles, place tee/basket, export `Assets/Data/Courses/<name>/hole_XX.json`
 - Themes live in `Assets/Data/Themes/ThemePack_*.asset`
 
+## HUD callouts
+
+- All post-throw banners live under `GameplayHUD/GameplayCallouts` (prefab).
+- **Disk Golf → HUD → Create Gameplay Callouts Prefab** — generates `Assets/Prefabs/UI/GameplayCallouts.prefab`
+- **Disk Golf → HUD → Instantiate Gameplay Callouts In Scene** — adds to active scene
+- **Disk Golf → HUD → Bake Score Banners** — ensures prefab + wires ThrowController
+
 ## Cursor / AI agents
 
 See `.cursor/rules/asset-structure.mdc` — agents must follow this layout when creating files.
