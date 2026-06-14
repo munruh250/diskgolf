@@ -1,5 +1,6 @@
 using DiskGolf.Core;
 using DiskGolf.Gameplay;
+using DiskGolf.UI.Callouts;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,7 +9,6 @@ namespace DiskGolf.UI
     /// <summary>Full-screen hole summary cutscene with pose, background, and score banner.</summary>
     public sealed class HoleCompleteCutsceneUI : MonoBehaviour
     {
-        const string HudCanvasName = "GameplayHUD";
         const string RootName = "HoleCompleteCutscene";
 
         [SerializeField] Image background;
@@ -25,7 +25,7 @@ namespace DiskGolf.UI
 
         public static HoleCompleteCutsceneUI Ensure()
         {
-            var canvas = FindHudCanvas();
+            var canvas = HudCanvasUtility.FindHudCanvas();
             if (canvas == null)
                 return null;
 
@@ -131,12 +131,6 @@ namespace DiskGolf.UI
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
-        }
-
-        static RectTransform FindHudCanvas()
-        {
-            var hud = GameObject.Find(HudCanvasName);
-            return hud != null ? hud.GetComponent<RectTransform>() : null;
         }
 
         public void Show(int strokes, int par, float overrideDisplaySeconds = -1f)
