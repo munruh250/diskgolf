@@ -98,6 +98,10 @@ namespace DiskGolf.Core
 
         Vector3 _lastThrowAim = Vector3.forward;
 
+        FlightPath _cachedPreviewPath;
+
+        int _previewPathCacheKey = int.MinValue;
+
         public ThrowPhase Phase => _state.Phase;
 
         public event Action<ThrowPhase> PhaseChanged;
@@ -408,7 +412,7 @@ namespace DiskGolf.Core
 
             SyncArcHeightToAim();
             var height = aimAdjust.PlannedHeight;
-            var aim = aimAdjust.AimDirection(hole, _discPosition);
+            aimAdjust.BuildAdjustedThrowVectors(hole, _discPosition, bag.Active, out var aim, out _);
             AccuracyMeterZones.ApplyToThrow(ref aim, ref power, accuracy);
             _lastThrowAim = aim;
             var release = isPutt ? ReleaseAngle.Flat : input.ReleaseAngle;
@@ -422,7 +426,8 @@ namespace DiskGolf.Core
                 _discPosition,
                 aim);
 
-            var path = FlightSimulator.Compute(throwInput);
+            var path = FlightPathGrounding.Apply(FlightSimulator.Compute(throwInput), _discPosition);
+            InvalidatePreviewPathCache();
 
             _strokeCount++;
 
@@ -519,8 +524,7 @@ namespace DiskGolf.Core
                 _pendingHazardPenalty = false;
             }
 
-            bool onGreen = IsDiscOnGreenSurface(_discPosition)
-                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
+            bool onGreen = IsDiscOnGreenSurface(_discPosition);
 
             if (!onGreen)
                 _showOnGreenLandingCallout = true;
@@ -617,9 +621,7 @@ namespace DiskGolf.Core
 
             RelocateThrowerForNextShot();
 
-            bool onGreen = IsDiscOnGreenSurface(_discPosition)
-                || (_pendingAllowPutting && hole != null && _pendingRestFt <= hole.CircleRadiusFt);
-            if (onGreen)
+            if (IsDiscOnGreenSurface(_discPosition))
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
@@ -671,7 +673,7 @@ namespace DiskGolf.Core
 
             RelocateThrowerForNextShot();
 
-            if (hole != null && (IsDiscOnGreenSurface(_discPosition) || restFt <= hole.CircleRadiusFt))
+            if (hole != null && IsDiscOnGreenSurface(_discPosition))
                 _state.EnterPutting();
             else
                 ResumeAimingFromLanded();
@@ -992,6 +994,7 @@ namespace DiskGolf.Core
             _throwFromPutting = false;
             _showOnGreenLandingCallout = true;
             _cameraDirector?.ClearTrajectoryZoom();
+            InvalidatePreviewPathCache();
 
             if (hole != null)
             {
@@ -1097,18 +1100,50 @@ namespace DiskGolf.Core
             if (hole == null || bag?.Active == null || input == null || aimAdjust == null)
                 return null;
 
-            var aim = aimAdjust.AimDirection(hole, _discPosition);
-            float previewPower = FlightSimulator.MeterPowerForTargetDistance(
-                bag.Active, aimAdjust.TargetDistanceFt, aimAdjust.PlannedHeight);
+            int cacheKey = ComputePreviewPathCacheKey();
+            if (_cachedPreviewPath != null && cacheKey == _previewPathCacheKey)
+                return _cachedPreviewPath;
 
-            return FlightSimulator.Compute(new ThrowInput(
-                bag.Active,
-                _state.Phase == ThrowPhase.Putting ? ReleaseAngle.Flat : input.ReleaseAngle,
-                previewPower,
-                aimAdjust.PlannedHeight,
-                _wind,
-                _discPosition,
-                aim));
+            aimAdjust.BuildAdjustedThrowVectors(hole, _discPosition, bag.Active, out var aim, out var distanceFt);
+            float previewPower = FlightSimulator.MeterPowerForTargetDistance(
+                bag.Active, distanceFt, aimAdjust.PlannedHeight);
+
+            _cachedPreviewPath = FlightPathGrounding.Apply(
+                FlightSimulator.Compute(new ThrowInput(
+                    bag.Active,
+                    _state.Phase == ThrowPhase.Putting ? ReleaseAngle.Flat : input.ReleaseAngle,
+                    previewPower,
+                    aimAdjust.PlannedHeight,
+                    _wind,
+                    _discPosition,
+                    aim)),
+                _discPosition);
+            _previewPathCacheKey = cacheKey;
+            return _cachedPreviewPath;
+        }
+
+        int ComputePreviewPathCacheKey()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + _discPosition.GetHashCode();
+                hash = hash * 31 + Mathf.RoundToInt(aimAdjust.YawOffsetDegrees * 100f);
+                hash = hash * 31 + Mathf.RoundToInt(aimAdjust.DownholeOffsetFt * 10f);
+                hash = hash * 31 + Mathf.RoundToInt(aimAdjust.TargetDistanceFt);
+                hash = hash * 31 + (int)aimAdjust.PlannedHeight;
+                hash = hash * 31 + (int)input.ReleaseAngle;
+                hash = hash * 31 + bag.Active.GetInstanceID();
+                hash = hash * 31 + _wind.direction.GetHashCode();
+                hash = hash * 31 + Mathf.RoundToInt(_wind.speedMph * 10f);
+                return hash;
+            }
+        }
+
+        void InvalidatePreviewPathCache()
+        {
+            _cachedPreviewPath = null;
+            _previewPathCacheKey = int.MinValue;
         }
 
         public Vector3 GetPreviewTargetWorld()

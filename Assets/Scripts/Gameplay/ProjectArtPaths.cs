@@ -73,6 +73,8 @@ namespace DiskGolf.Gameplay
                 public const string Panoramic = Root + "/TEX_Sky_Panoramic.png";
 
                 public const string Material = Root + "/MAT_PrototypeSkybox.mat";
+
+                public const string OvercastMaterial = Root + "/MAT_Sky_Overcast.mat";
             }
         }
 
@@ -147,6 +149,8 @@ namespace DiskGolf.Gameplay
             public const string CourseSelect = MenuRoot + "/CourseSelect.unity";
 
             public const string Settings = MenuRoot + "/Settings.unity";
+
+            public const string CourseEditorHub = MenuRoot + "/CourseEditorHub.unity";
 
             public const string PrototypeFlat3 = PrototypeRoot + "/PrototypeFlat3.unity";
 

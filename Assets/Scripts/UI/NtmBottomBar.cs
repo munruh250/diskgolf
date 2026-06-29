@@ -59,6 +59,7 @@ namespace DiskGolf.UI
             {
                 existing.BindReferences();
                 existing.RepairInsetLayouts();
+                existing.ApplyCanonicalLayout();
                 existing.ApplyTypography();
                 existing.HideLegacyHud();
                 return existing;
@@ -86,11 +87,13 @@ namespace DiskGolf.UI
             {
                 existing.BakeSceneUpgrades();
                 existing.RepairInsetLayouts();
+                existing.ApplyCanonicalLayout();
                 existing.HideLegacyHud();
                 return existing;
             }
 
             var bar = Build(hudRoot);
+            bar.ApplyCanonicalLayout();
             bar.HideLegacyHud();
             return bar;
         }
@@ -174,7 +177,8 @@ namespace DiskGolf.UI
             if (root == null)
                 return;
 
-            stanceButton ??= root.Find("StanceButton")?.GetComponent<Button>();
+            stanceButton ??= root.Find("StanceButton")?.GetComponent<Button>()
+                ?? root.Find("AngleButton")?.GetComponent<Button>();
             discButton ??= root.Find("DiscButton")?.GetComponent<Button>();
             stanceValue ??= root.Find("StanceButton/Value")?.GetComponent<TextMeshProUGUI>();
             discValue ??= root.Find("DiscButton/Value")?.GetComponent<TextMeshProUGUI>();
@@ -354,6 +358,7 @@ namespace DiskGolf.UI
 
             bar.BindReferences();
             bar.Refresh();
+            bar.ApplyCanonicalLayout();
             return bar;
         }
 
@@ -427,6 +432,109 @@ namespace DiskGolf.UI
         }
 
         public void ApplyTypography() => HudTypography.BindFontsPreservingStyle(transform);
+
+        public void ApplyCanonicalLayout()
+        {
+            var root = transform as RectTransform;
+            if (root == null)
+                return;
+
+            ResolveOptionalReferences();
+
+            float barHeight = 52f * S;
+            float leftInset = HudTypography.LeftInset;
+            float rightInset = TimingMeterLayout.RightInset;
+
+            root.anchorMin = new Vector2(0f, 0f);
+            root.anchorMax = new Vector2(1f, 0f);
+            root.pivot = new Vector2(0.5f, 0f);
+            root.anchoredPosition = new Vector2(0f, TimingMeterLayout.BottomBarInset);
+            root.sizeDelta = new Vector2(0f, barHeight);
+            root.offsetMin = new Vector2(leftInset, TimingMeterLayout.BottomBarInset);
+            root.offsetMax = new Vector2(-rightInset, TimingMeterLayout.BottomBarInset + barHeight);
+
+            float innerH = barHeight - 8f * S;
+            float sectionGap = 14f * S;
+            float x = 12f * S;
+            float barWidth = ResolveBarContentWidth(root, leftInset, rightInset);
+
+            float stanceLabelW = 72f * S;
+            float stanceBtnW = 92f * S;
+            float discLabelW = 56f * S;
+            float arcLabelW = 48f * S;
+            float arcBtnW = 108f * S;
+            float discBtnW = Mathf.Max(
+                200f * S,
+                barWidth - stanceLabelW - stanceBtnW - discLabelW - arcLabelW - arcBtnW - (2f * sectionGap) - 36f * S);
+
+            x = PlaceSectionLabel(root, "STANCELabel", "STANCE", x, innerH, stanceLabelW);
+            x = PlaceInsetButton(root, stanceButton, x, innerH, stanceBtnW);
+            x += sectionGap;
+
+            x = PlaceSectionLabel(root, "DISCLabel", "DISC", x, innerH, discLabelW);
+            x = PlaceInsetButton(root, discButton, x, innerH, discBtnW);
+            x += sectionGap;
+
+            x = PlaceSectionLabel(root, "ARCLabel", "ARC", x, innerH, arcLabelW);
+            PlaceInsetButton(root, arcButton, x, innerH, arcBtnW);
+
+            RepairInsetLayouts();
+            ApplyTypography();
+        }
+
+        static float ResolveBarContentWidth(RectTransform root, float leftInset, float rightInset)
+        {
+            float width = root.rect.width;
+            if (width > 100f)
+            {
+                return width;
+            }
+
+            var canvas = root.GetComponentInParent<Canvas>()?.transform as RectTransform;
+            if (canvas == null)
+            {
+                return TimingMeterLayout.BottomBarWidth;
+            }
+
+            return Mathf.Max(TimingMeterLayout.BottomBarWidth, canvas.rect.width - leftInset - rightInset);
+        }
+
+        static float PlaceSectionLabel(
+            RectTransform parent,
+            string objectName,
+            string fallbackName,
+            float x,
+            float height,
+            float width)
+        {
+            var rt = parent.Find(objectName) as RectTransform
+                ?? parent.Find(fallbackName + "Label") as RectTransform;
+            if (rt == null)
+            {
+                return x + width + 4f * S;
+            }
+
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, 0f);
+            rt.sizeDelta = new Vector2(width, height);
+            return x + width + 4f * S;
+        }
+
+        static float PlaceInsetButton(RectTransform parent, Button button, float x, float height, float width)
+        {
+            if (button == null)
+            {
+                return x + width + 6f * S;
+            }
+
+            var rt = button.transform as RectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, 0f);
+            rt.sizeDelta = new Vector2(width, height - 4f * S);
+            return x + width + 6f * S;
+        }
 
         public void RepairInsetLayouts()
         {

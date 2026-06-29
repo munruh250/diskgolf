@@ -90,7 +90,8 @@ namespace DiskGolf.Flight
                     + forward * dist
                     + right * lateral
                     + windOffset;
-                pos.y = ArcHeightFeet(u, input.Height, heightPower) * FtToUnity;
+                pos.y = input.Origin.y
+                    + ArcHeightFeet(u, input.Height, heightPower) * FtToUnity;
 
                 waypoints.Add(new FlightWaypoint(pos, timeU * totalTime));
             }

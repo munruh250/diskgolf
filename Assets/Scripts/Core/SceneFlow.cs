@@ -15,6 +15,10 @@ namespace DiskGolf.Core
 
         public const string SettingsPath = ProjectArtPaths.Scenes.Settings;
 
+        public const string CourseEditorHubPath = ProjectArtPaths.Scenes.CourseEditorHub;
+
+        public const string CourseEditorPath = ProjectArtPaths.Scenes.CourseEditor;
+
         public const string GameplayPath = ProjectArtPaths.Scenes.PrototypeFlat3;
 
         public const string Intro = "Intro";
@@ -26,6 +30,10 @@ namespace DiskGolf.Core
         public const string CourseSelect = "CourseSelect";
 
         public const string Settings = "Settings";
+
+        public const string CourseEditorHub = "CourseEditorHub";
+
+        public const string CourseEditor = "CourseEditor";
 
         public const string Gameplay = "PrototypeFlat3";
     }

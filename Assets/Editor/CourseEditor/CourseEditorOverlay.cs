@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using DiskGolf.CourseEditor;
+using DiskGolf.CourseEditor.Authoring;
 using UnityEditor;
 using UnityEngine;
 
@@ -118,27 +119,14 @@ namespace DiskGolf.EditorTools.CourseEditor
 
         static void DrawElevationContours(HoleData data)
         {
-            if (data.Elevation == null || data.Elevation.Width <= 1 || data.Elevation.Height <= 1)
+            if (CourseEditorState.ActiveTool != CourseEditorTool.Elevate)
             {
                 return;
             }
 
-            Handles.color = new Color(1f, 0.95f, 0.4f, 0.85f);
-            float tileSize = data.TileSize;
-
-            for (int y = 0; y < data.Elevation.Height; y++)
+            if (data.Elevation == null || data.Elevation.Width <= 1 || data.Elevation.Height <= 1)
             {
-                for (int x = 0; x < data.Elevation.Width; x++)
-                {
-                    float height = data.Elevation.Get(x, y);
-                    if (Mathf.Abs(height) < 0.01f)
-                    {
-                        continue;
-                    }
-
-                    Vector3 corner = CourseEditorState.TileCornerWorld(data, x, y);
-                    Handles.Label(corner + Vector3.up * 0.15f, height.ToString("0.0"));
-                }
+                return;
             }
 
             const float step = 1f;
@@ -146,6 +134,7 @@ namespace DiskGolf.EditorTools.CourseEditor
             foreach (float height in data.Elevation.Heights)
                 maxHeight = Mathf.Max(maxHeight, height);
 
+            float tileSize = data.TileSize;
             for (float level = step; level <= maxHeight + step; level += step)
             {
                 DrawContourLevel(data, level, tileSize);
@@ -231,6 +220,13 @@ namespace DiskGolf.EditorTools.CourseEditor
 
             Color fill = type == HazardType.OB ? ObPreview : WaterPreview;
             fill.a *= alpha;
+
+            if (vertices.Count >= 3 && type == HazardType.Water)
+            {
+                DrawTerrainHazardFill(data, new HazardPolygon("preview", type, vertices), fill);
+                return;
+            }
+
             Handles.color = fill;
 
             var world = new Vector3[vertices.Count];
@@ -244,6 +240,34 @@ namespace DiskGolf.EditorTools.CourseEditor
             for (int i = 0; i < world.Length; i++)
             {
                 Handles.DrawLine(world[i], world[(i + 1) % world.Length]);
+            }
+        }
+
+        static readonly List<Vector2Int> HazardPreviewTiles = new();
+
+        static void DrawTerrainHazardFill(HoleData data, HazardPolygon hazard, Color fill)
+        {
+            HazardGeometry.CollectTilesInside(data, hazard, HazardPreviewTiles);
+            Handles.color = fill;
+
+            float tileSize = data.TileSize;
+            float half = tileSize * 0.5f;
+            const float lift = 0.1f;
+
+            foreach (var tile in HazardPreviewTiles)
+            {
+                float centerX = data.Origin.x + tile.x * tileSize + half;
+                float centerZ = data.Origin.y + tile.y * tileSize + half;
+                var corners = HeightGridSampler.TileCornerHeights(data, tile.x, tile.y);
+                var verts = new[]
+                {
+                    new Vector3(centerX - half, corners[0] + lift, centerZ - half),
+                    new Vector3(centerX - half, corners[1] + lift, centerZ + half),
+                    new Vector3(centerX + half, corners[2] + lift, centerZ + half),
+                    new Vector3(centerX + half, corners[3] + lift, centerZ - half),
+                };
+
+                Handles.DrawAAConvexPolygon(verts);
             }
         }
 
@@ -270,9 +294,12 @@ namespace DiskGolf.EditorTools.CourseEditor
 
                     if (evt.keyCode == KeyCode.Escape)
                     {
-                        CourseEditorState.ClearHazardDraft();
-                        evt.Use();
-                        SceneView.RepaintAll();
+                        if (TryCancelHazardDraft(data))
+                        {
+                            evt.Use();
+                            SceneView.RepaintAll();
+                        }
+
                         return;
                     }
                 }
@@ -334,18 +361,31 @@ namespace DiskGolf.EditorTools.CourseEditor
             SceneView.RepaintAll();
         }
 
+        static CourseAuthoringState CreateAuthoringState() => new()
+        {
+            ActiveTool = (CourseAuthoringTool)CourseEditorState.ActiveTool,
+            BrushType = CourseEditorState.BrushType,
+            ElevateRadius = CourseEditorState.ElevateRadius,
+            ElevateStrength = CourseEditorState.ElevateStrength,
+            ElevateSmooth = CourseEditorState.ElevateSmooth,
+            HazardBrushType = CourseEditorState.HazardBrushType,
+            HazardDraftVertices = CourseEditorState.HazardDraftVertices,
+        };
+
         static bool PaintTile(HoleData data, int x, int y)
         {
+            var state = CreateAuthoringState();
             data.TryGetTile(x, y, out SurfaceTileType existing);
-            if (existing == CourseEditorState.BrushType)
+            if (existing != state.BrushType)
             {
-                EnsureElevationGrid(data);
+                RecordUndo("Paint Tile");
+            }
+
+            if (!CourseAuthoringOperations.TryPaintTile(data, state, x, y))
+            {
                 return false;
             }
 
-            RecordUndo("Paint Tile");
-            data.SetTile(x, y, CourseEditorState.BrushType);
-            EnsureElevationGrid(data);
             SyncDataAsset(data);
             return true;
         }
@@ -358,33 +398,32 @@ namespace DiskGolf.EditorTools.CourseEditor
             }
 
             RecordUndo("Erase Tile");
-            data.ClearTile(x, y);
+            if (!CourseAuthoringOperations.TryEraseTile(data, CreateAuthoringState(), x, y))
+            {
+                return false;
+            }
+
             SyncDataAsset(data);
             return true;
         }
 
         static bool PlaceMarker(HoleData data, int x, int y, bool tee)
         {
-            Vector2 marker = TileCenter2D(data, x, y);
-            if (tee)
+            var state = CreateAuthoringState();
+            Vector3 center = CourseAuthoringGrid.TileCenterWorld(data, x, y);
+            Vector2 marker = new Vector2(center.x, center.z);
+            if (tee && data.Hole.Tee == marker || !tee && data.Hole.Basket == marker)
             {
-                if (data.Hole.Tee == marker)
-                {
-                    return false;
-                }
-
-                RecordUndo("Place Tee");
-                data.Hole.Tee = marker;
+                return false;
             }
-            else
-            {
-                if (data.Hole.Basket == marker)
-                {
-                    return false;
-                }
 
-                RecordUndo("Place Basket");
-                data.Hole.Basket = marker;
+            RecordUndo(tee ? "Place Tee" : "Place Basket");
+            bool changed = tee
+                ? CourseAuthoringOperations.TryPlaceTee(data, state, x, y)
+                : CourseAuthoringOperations.TryPlaceBasket(data, state, x, y);
+            if (!changed)
+            {
+                return false;
             }
 
             SyncDataAsset(data);
@@ -393,42 +432,9 @@ namespace DiskGolf.EditorTools.CourseEditor
 
         static bool ElevateAt(HoleData data, int centerX, int centerY, bool subtract)
         {
-            EnsureElevationGrid(data);
             RecordUndo("Elevate Terrain");
-
-            float delta = CourseEditorState.ElevateStrength * (subtract ? -1f : 1f);
-            int radius = Mathf.Clamp(CourseEditorState.ElevateRadius, 1, 5);
-            bool changed = false;
-
-            for (int dy = -radius; dy <= radius; dy++)
-            {
-                for (int dx = -radius; dx <= radius; dx++)
-                {
-                    if (dx * dx + dy * dy > radius * radius)
-                    {
-                        continue;
-                    }
-
-                    int x = centerX + dx;
-                    int y = centerY + dy;
-                    if (x < 0 || y < 0 || x >= data.Elevation.Width || y >= data.Elevation.Height)
-                    {
-                        continue;
-                    }
-
-                    if (CourseEditorState.ElevateSmooth)
-                    {
-                        changed |= SmoothCell(data, x, y);
-                    }
-                    else
-                    {
-                        float next = data.Elevation.Get(x, y) + delta;
-                        data.Elevation.Set(x, y, next);
-                        changed = true;
-                    }
-                }
-            }
-
+            bool changed = CourseAuthoringOperations.TryElevateAt(
+                data, CreateAuthoringState(), centerX, centerY, subtract);
             if (changed)
             {
                 SyncDataAsset(data);
@@ -437,86 +443,54 @@ namespace DiskGolf.EditorTools.CourseEditor
             return changed;
         }
 
-        static bool SmoothCell(HoleData data, int x, int y)
-        {
-            float sum = 0f;
-            int count = 0;
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    int sx = x + dx;
-                    int sy = y + dy;
-                    if (sx < 0 || sy < 0 || sx >= data.Elevation.Width || sy >= data.Elevation.Height)
-                    {
-                        continue;
-                    }
-
-                    sum += data.Elevation.Get(sx, sy);
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                return false;
-            }
-
-            float average = sum / count;
-            if (Mathf.Approximately(data.Elevation.Get(x, y), average))
-            {
-                return false;
-            }
-
-            data.Elevation.Set(x, y, average);
-            return true;
-        }
-
         static bool AppendHazardVertex(HoleData data, int tileX, int tileY)
         {
+            var state = CreateAuthoringState();
             var corner = new Vector2Int(tileX, tileY);
-            if (CourseEditorState.HazardDraftVertices.Count > 0
-                && CourseEditorState.HazardDraftVertices[CourseEditorState.HazardDraftVertices.Count - 1] == corner)
+            if (state.HazardDraftVertices.Count > 0
+                && state.HazardDraftVertices[state.HazardDraftVertices.Count - 1] == corner)
             {
                 return false;
             }
 
             RecordUndo("Add Hazard Vertex");
-            CourseEditorState.HazardDraftVertices.Add(corner);
+            if (!CourseAuthoringOperations.TryAppendHazardVertex(data, state, tileX, tileY))
+            {
+                return false;
+            }
+
             SyncDataAsset(data);
             return true;
         }
 
         static bool CommitHazardDraft(HoleData data)
         {
-            if (CourseEditorState.HazardDraftVertices.Count < 3)
+            var state = CreateAuthoringState();
+            if (state.HazardDraftVertices.Count < 3)
             {
                 return false;
             }
 
             RecordUndo("Add Hazard Polygon");
-            string prefix = CourseEditorState.HazardBrushType == HazardType.OB ? "ob" : "water";
-            int index = (data.Hazards?.Count ?? 0) + 1;
-            data.Hazards.Add(new HazardPolygon(
-                $"{prefix}_{index}",
-                CourseEditorState.HazardBrushType,
-                new List<Vector2Int>(CourseEditorState.HazardDraftVertices)));
-            CourseEditorState.ClearHazardDraft();
+            if (!CourseAuthoringOperations.TryCommitHazardPolygon(data, state))
+            {
+                return false;
+            }
+
             SyncDataAsset(data);
             CourseEditorState.IsDirty = true;
             return true;
         }
 
-        static void EnsureElevationGrid(HoleData data)
+        static bool TryCancelHazardDraft(HoleData data)
         {
-            var size = HeightGridSampler.GridSizeForHole(data);
-            if (data.Elevation == null)
+            if (!CourseAuthoringOperations.TryCancelHazardDraft(data, CreateAuthoringState()))
             {
-                data.Elevation = new ElevationGrid(size.x, size.y);
-                return;
+                return false;
             }
 
-            data.Elevation.EnsureSize(size.x, size.y);
+            SyncDataAsset(data);
+            return true;
         }
 
         static void DrawMarkers(HoleData data)
@@ -544,17 +518,9 @@ namespace DiskGolf.EditorTools.CourseEditor
 
         static Vector3 TileCenter(HoleData data, int x, int y)
         {
-            Vector2 center2D = TileCenter2D(data, x, y);
-            float elevationY = HeightGridSampler.SampleWorldY(data, center2D.x, center2D.y);
-            return new Vector3(center2D.x, elevationY + OverlayY, center2D.y);
-        }
-
-        static Vector2 TileCenter2D(HoleData data, int x, int y)
-        {
-            float half = data.TileSize * 0.5f;
-            return new Vector2(
-                data.Origin.x + (x * data.TileSize) + half,
-                data.Origin.y + (y * data.TileSize) + half);
+            Vector3 center = CourseAuthoringGrid.TileCenterWorld(data, x, y);
+            center.y += OverlayY;
+            return center;
         }
 
         static void RecordUndo(string actionName)

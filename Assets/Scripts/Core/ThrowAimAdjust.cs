@@ -15,11 +15,13 @@ namespace DiskGolf.Core
 
         float _yawOffsetDeg;
 
-        float _distanceOffsetFt;
+        float _downholeOffsetFt;
 
         ThrowHeight _plannedHeight = ThrowHeight.Nice;
 
         public float YawOffsetDegrees => _yawOffsetDeg;
+
+        public float DownholeOffsetFt => _downholeOffsetFt;
 
         public float TargetDistanceFt { get; private set; }
 
@@ -28,7 +30,7 @@ namespace DiskGolf.Core
         public void ResetForLie(HoleSetup hole, Vector3 lie, DiscProfile disc)
         {
             _yawOffsetDeg = 0f;
-            _distanceOffsetFt = 0f;
+            _downholeOffsetFt = 0f;
             _plannedHeight = ThrowHeight.Nice;
             RecalculateTarget(hole, lie, disc);
         }
@@ -44,16 +46,46 @@ namespace DiskGolf.Core
             }
 
             float alongBasket = DistanceAlongAim(hole, lie, AimDirection(hole, lie));
-            float maxReach = disc.maxDistanceFt * FlightSimulator.DistanceScale * PowerDistanceMultiplier();
-            float baseline = alongBasket;
+            float maxReach = MaxReachFeet(disc);
+            float cappedBaseline = Mathf.Min(alongBasket, maxReach);
 
-            TargetDistanceFt = Mathf.Clamp(baseline + _distanceOffsetFt, MinTargetDistanceFt, maxReach);
+            TargetDistanceFt = Mathf.Clamp(cappedBaseline, MinTargetDistanceFt, maxReach);
         }
 
         public Vector3 AimDirection(HoleSetup hole, Vector3 lie)
         {
             var baseAim = hole != null ? hole.AimDirectionFrom(lie) : Vector3.forward;
             return Quaternion.Euler(0f, _yawOffsetDeg, 0f) * baseAim;
+        }
+
+        public void BuildAdjustedThrowVectors(
+            HoleSetup hole,
+            Vector3 lie,
+            DiscProfile disc,
+            out Vector3 aim,
+            out float distanceFt)
+        {
+            RecalculateTarget(hole, lie, disc);
+
+            var baseAim = AimDirection(hole, lie);
+            var downhole = hole != null ? hole.AimDirection : Vector3.forward;
+            float maxReach = MaxReachFeet(disc);
+            Vector3 landingPoint = lie
+                + baseAim * (TargetDistanceFt * 0.3048f)
+                + downhole * (_downholeOffsetFt * 0.3048f);
+
+            var toTarget = landingPoint - lie;
+            toTarget.y = 0f;
+
+            if (toTarget.sqrMagnitude < 1e-6f)
+            {
+                aim = baseAim;
+                distanceFt = TargetDistanceFt;
+                return;
+            }
+
+            distanceFt = Mathf.Clamp(toTarget.magnitude / 0.3048f, MinTargetDistanceFt, maxReach);
+            aim = toTarget.normalized;
         }
 
         public void ApplyHeldInput(
@@ -81,16 +113,16 @@ namespace DiskGolf.Core
                 _yawOffsetDeg = Mathf.Clamp(_yawOffsetDeg + yawDelta, -maxYawDegrees, maxYawDegrees);
             }
 
-            float distanceDelta = 0f;
+            float downholeDelta = 0f;
             if (up)
-                distanceDelta += DistanceHoldRateFtPerSec * deltaTime;
+                downholeDelta += DistanceHoldRateFtPerSec * deltaTime;
             if (down)
-                distanceDelta -= DistanceHoldRateFtPerSec * deltaTime;
+                downholeDelta -= DistanceHoldRateFtPerSec * deltaTime;
 
-            if (Mathf.Abs(distanceDelta) > 0f)
-                _distanceOffsetFt += distanceDelta;
+            if (Mathf.Abs(downholeDelta) > 0f)
+                _downholeOffsetFt += downholeDelta;
 
-            if (Mathf.Abs(yawDelta) > 0f || Mathf.Abs(distanceDelta) > 0f)
+            if (Mathf.Abs(yawDelta) > 0f || Mathf.Abs(downholeDelta) > 0f)
                 RecalculateTarget(hole, lie, disc);
         }
 
@@ -112,6 +144,9 @@ namespace DiskGolf.Core
 
             return Mathf.Max(0f, Vector3.Dot(toBasket.normalized, aim.normalized) * toBasket.magnitude / 0.3048f);
         }
+
+        static float MaxReachFeet(DiscProfile disc) =>
+            disc.maxDistanceFt * FlightSimulator.DistanceScale * PowerDistanceMultiplier();
 
         static float PowerDistanceMultiplier()
         {

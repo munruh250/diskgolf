@@ -187,6 +187,7 @@ namespace DiskGolf.EditorTools
 
             bool hadArc = bar.transform.Find("ArcButton") != null;
             bar.BakeSceneUpgrades();
+            bar.ApplyCanonicalLayout();
             return !hadArc && bar.transform.Find("ArcButton") != null;
         }
 

@@ -5,32 +5,45 @@ using UnityEngine;
 
 namespace DiskGolf.EditorTools
 {
-    /// <summary>Configures the standalone tree sprite import settings without overwriting authored PNGs.</summary>
+    /// <summary>Configures foliage sprite import settings (bottom pivot, PPU) for editor-built courses.</summary>
     static class FoliageSpriteImporter
     {
-        const string TreeSpritePath = ProjectArtPaths.Environment.Foliage.Tree;
+        const float FoliagePixelsPerUnit = 64f;
 
-        const float TreePixelsPerUnit = 64f;
-
-        static readonly Vector2 TreePivot = new(0.5f, 0.18f);
+        static readonly Vector2 BottomCenterPivot = new(0.5f, 0f);
 
         [InitializeOnLoadMethod]
         static void ScheduleImport() => EditorApplication.delayCall += OnDelayedImport;
 
-        [MenuItem("Disk Golf/Refresh Tree Sprite Import")]
-        public static void RefreshFromMenu() => ConfigureTreeSpriteImporter(force: true);
+        [MenuItem("Disk Golf/Refresh Foliage Sprite Import")]
+        public static void RefreshFromMenu() => ConfigureFoliageSprites(force: true);
 
-        static void OnDelayedImport() => ConfigureTreeSpriteImporter(force: false);
+        static void OnDelayedImport() => ConfigureFoliageSprites(force: false);
 
-        static void ConfigureTreeSpriteImporter(bool force)
+        static void ConfigureFoliageSprites(bool force)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 return;
 
-            if (!System.IO.File.Exists(TreeSpritePath))
+            var spritesRoot = ProjectArtPaths.Environment.Foliage.SpritesRoot;
+            if (!AssetDatabase.IsValidFolder(spritesRoot))
                 return;
 
-            var importer = AssetImporter.GetAtPath(TreeSpritePath) as TextureImporter;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { spritesRoot }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                ConfigureSpriteImporter(path, force);
+            }
+
+            GameplayArtCatalogBuilder.EnsureCatalog(force: true);
+        }
+
+        static void ConfigureSpriteImporter(string path, bool force)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null)
                 return;
 
@@ -60,22 +73,20 @@ namespace DiskGolf.EditorTools
                 dirty = true;
             }
 
-            if (Mathf.Abs(importer.spritePixelsPerUnit - TreePixelsPerUnit) > 0.1f)
+            if (Mathf.Abs(importer.spritePixelsPerUnit - FoliagePixelsPerUnit) > 0.1f)
             {
-                importer.spritePixelsPerUnit = TreePixelsPerUnit;
+                importer.spritePixelsPerUnit = FoliagePixelsPerUnit;
                 dirty = true;
             }
 
-            if (importer.spritePivot != TreePivot)
+            if (importer.spritePivot != BottomCenterPivot)
             {
-                importer.spritePivot = TreePivot;
+                importer.spritePivot = BottomCenterPivot;
                 dirty = true;
             }
 
             if (dirty || force)
                 importer.SaveAndReimport();
-
-            GameplayArtCatalogBuilder.EnsureCatalog(force: true);
         }
     }
 }

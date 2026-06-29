@@ -121,7 +121,7 @@ namespace DiskGolf.UI
         {
             hub.anchorMin = hub.anchorMax = new Vector2(0.5f, 0f);
             hub.pivot = new Vector2(0.5f, 0.5f);
-            hub.anchoredPosition = Vector2.zero;
+            hub.anchoredPosition = new Vector2(TimingMeterLayout.PowerMeterPortraitXOffset, 0f);
             hub.sizeDelta = new Vector2(
                 TimingMeterLayout.PowerMeterPortraitWidth,
                 TimingMeterLayout.PowerMeterPortraitHeight);

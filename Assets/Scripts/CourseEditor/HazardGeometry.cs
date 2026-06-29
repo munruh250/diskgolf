@@ -90,5 +90,88 @@ namespace DiskGolf.CourseEditor
 
             return inside;
         }
+
+        public static bool IsTileCenterInside(HoleData data, HazardPolygon hazard, int tileX, int tileY)
+        {
+            if (data == null)
+            {
+                return false;
+            }
+
+            float tileSize = data.TileSize;
+            float centerX = data.Origin.x + tileX * tileSize + tileSize * 0.5f;
+            float centerZ = data.Origin.y + tileY * tileSize + tileSize * 0.5f;
+            return ContainsWorldPoint(data, hazard, centerX, centerZ);
+        }
+
+        public static bool IsTileInsideHazard(HoleData data, int tileX, int tileY, HazardType type)
+        {
+            if (data == null)
+            {
+                return false;
+            }
+
+            if (data.TryGetHazardTile(tileX, tileY, out var painted) && painted == type)
+            {
+                return true;
+            }
+
+            if (data.Hazards == null)
+            {
+                return false;
+            }
+
+            foreach (var hazard in data.Hazards)
+            {
+                if (hazard.Type != type)
+                {
+                    continue;
+                }
+
+                if (IsTileCenterInside(data, hazard, tileX, tileY))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static void CollectTilesInside(HoleData data, HazardPolygon hazard, List<Vector2Int> results)
+        {
+            results.Clear();
+            if (data == null || hazard?.Vertices == null || hazard.Vertices.Count < 3)
+            {
+                return;
+            }
+
+            int minX = int.MaxValue;
+            int maxX = int.MinValue;
+            int minY = int.MaxValue;
+            int maxY = int.MinValue;
+            foreach (var vertex in hazard.Vertices)
+            {
+                minX = Mathf.Min(minX, vertex.x);
+                maxX = Mathf.Max(maxX, vertex.x);
+                minY = Mathf.Min(minY, vertex.y);
+                maxY = Mathf.Max(maxY, vertex.y);
+            }
+
+            float tileSize = data.TileSize;
+            for (int tileY = minY; tileY < maxY; tileY++)
+            {
+                for (int tileX = minX; tileX < maxX; tileX++)
+                {
+                    float centerX = data.Origin.x + tileX * tileSize + tileSize * 0.5f;
+                    float centerZ = data.Origin.y + tileY * tileSize + tileSize * 0.5f;
+                    if (!ContainsWorldPoint(data, hazard, centerX, centerZ))
+                    {
+                        continue;
+                    }
+
+                    results.Add(new Vector2Int(tileX, tileY));
+                }
+            }
+        }
     }
 }

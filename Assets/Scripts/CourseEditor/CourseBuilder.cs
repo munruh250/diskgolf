@@ -71,12 +71,19 @@ namespace DiskGolf.CourseEditor
             DestroyObject(existing);
         }
 
+        static readonly List<Vector2Int> HazardTileScratch = new();
+
         static void BuildSurfaceMeshes(HoleData data, ThemePack theme, Transform groundRoot)
         {
             var grouped = new Dictionary<SurfaceTileType, List<TileBuildInfo>>();
 
             foreach (var tile in data.SurfaceTiles)
             {
+                if (HazardGeometry.IsTileInsideHazard(data, tile.X, tile.Y, HazardType.Water))
+                {
+                    continue;
+                }
+
                 if (!grouped.TryGetValue(tile.Type, out var tiles))
                 {
                     tiles = new List<TileBuildInfo>();
@@ -166,6 +173,8 @@ namespace DiskGolf.CourseEditor
 
         static void BuildHazards(HoleData data, Transform hazardsRoot)
         {
+            BuildPaintedHazardTiles(data, hazardsRoot);
+
             if (data.Hazards == null || data.Hazards.Count == 0)
             {
                 return;
@@ -182,6 +191,110 @@ namespace DiskGolf.CourseEditor
             }
         }
 
+        static void BuildPaintedHazardTiles(HoleData data, Transform hazardsRoot)
+        {
+            if (data.HazardTiles == null || data.HazardTiles.Count == 0)
+            {
+                return;
+            }
+
+            HazardTileScratch.Clear();
+            var obTiles = new List<Vector2Int>();
+
+            foreach (var tile in data.HazardTiles)
+            {
+                if (tile.Type == HazardType.Water)
+                    HazardTileScratch.Add(new Vector2Int(tile.X, tile.Y));
+                else
+                    obTiles.Add(new Vector2Int(tile.X, tile.Y));
+            }
+
+            if (HazardTileScratch.Count > 0)
+                AddPaintedWaterSurface(data, hazardsRoot, HazardTileScratch);
+
+            foreach (var tile in obTiles)
+                CreatePaintedObTrigger(data, hazardsRoot, tile);
+        }
+
+        static void AddPaintedWaterSurface(HoleData data, Transform hazardsRoot, List<Vector2Int> tiles)
+        {
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            AppendElevatedTileQuads(data, tiles, data.TileSize, WaterSurfaceLift, vertices, triangles);
+
+            if (vertices.Count == 0)
+            {
+                return;
+            }
+
+            var mesh = new Mesh { name = "WaterSurface_Painted" };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            var surfaceGo = new GameObject("WaterSurface_Painted");
+            surfaceGo.transform.SetParent(hazardsRoot, false);
+            surfaceGo.tag = HazardTags.ToUnityTag(HazardType.Water);
+
+            var meshFilter = surfaceGo.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = mesh;
+
+            var meshRenderer = surfaceGo.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = GetWaterMaterial();
+            meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            meshRenderer.receiveShadows = false;
+        }
+
+        static void CreatePaintedObTrigger(HoleData data, Transform hazardsRoot, Vector2Int tile)
+        {
+            float tileSize = data.TileSize;
+            float centerX = data.Origin.x + tile.x * tileSize + tileSize * 0.5f;
+            float centerZ = data.Origin.y + tile.y * tileSize + tileSize * 0.5f;
+            float centerY = HeightGridSampler.SampleWorldY(data, centerX, centerZ);
+
+            var go = new GameObject($"OB_tile_{tile.x}_{tile.y}");
+            go.transform.SetParent(hazardsRoot, false);
+            go.tag = HazardTags.ToUnityTag(HazardType.OB);
+            go.transform.position = new Vector3(centerX, centerY + 1f, centerZ);
+
+            var collider = go.AddComponent<BoxCollider>();
+            collider.isTrigger = true;
+            collider.size = new Vector3(tileSize, 2f, tileSize);
+
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            visual.name = "OB_Visual";
+            visual.transform.SetParent(go.transform, false);
+            visual.transform.localPosition = new Vector3(0f, -0.98f, 0f);
+            visual.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            visual.transform.localScale = new Vector3(tileSize * 0.92f, tileSize * 0.92f, 1f);
+
+            var quadCollider = visual.GetComponent<Collider>();
+            if (quadCollider != null)
+                UnityEngine.Object.Destroy(quadCollider);
+
+            var renderer = visual.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = GetObDebugMaterial();
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+        }
+
+        static Material _obDebugMaterial;
+
+        static Material GetObDebugMaterial()
+        {
+            if (_obDebugMaterial != null)
+                return _obDebugMaterial;
+
+            var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default");
+            _obDebugMaterial = new Material(shader);
+            _obDebugMaterial.color = new Color(0.92f, 0.18f, 0.14f, 0.9f);
+            return _obDebugMaterial;
+        }
+
         static void CreateHazardTrigger(HoleData data, Transform hazardsRoot, HazardPolygon hazard)
         {
             HazardGeometry.ComputeWorldBounds(data, hazard, out Bounds bounds);
@@ -193,12 +306,117 @@ namespace DiskGolf.CourseEditor
             string prefix = hazard.Type == HazardType.OB ? "OB" : "Water";
             var go = new GameObject($"{prefix}_{hazard.Id}");
             go.transform.SetParent(hazardsRoot, false);
-            go.transform.position = bounds.center;
             go.tag = HazardTags.ToUnityTag(hazard.Type);
 
-            var collider = go.AddComponent<BoxCollider>();
-            collider.isTrigger = true;
-            collider.size = bounds.size;
+            if (hazard.Type == HazardType.OB)
+            {
+                go.transform.position = bounds.center;
+                var collider = go.AddComponent<BoxCollider>();
+                collider.isTrigger = true;
+                collider.size = bounds.size;
+            }
+
+            if (hazard.Type == HazardType.Water)
+                AddWaterSurface(data, hazardsRoot, hazard);
+        }
+
+        const float WaterSurfaceLift = DiscLieGround.WaterSurfaceLift;
+
+        static readonly Color WaterSurfaceColor = new(0.18f, 0.42f, 0.95f, 0.82f);
+
+        static Material _waterMaterial;
+
+        static void AddWaterSurface(HoleData data, Transform hazardsRoot, HazardPolygon hazard)
+        {
+            HazardGeometry.CollectTilesInside(data, hazard, HazardTileScratch);
+            if (HazardTileScratch.Count == 0)
+            {
+                return;
+            }
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            AppendElevatedTileQuads(data, HazardTileScratch, data.TileSize, WaterSurfaceLift, vertices, triangles);
+
+            if (vertices.Count == 0)
+            {
+                return;
+            }
+
+            var mesh = new Mesh { name = $"WaterSurface_{hazard.Id}" };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            var surfaceGo = new GameObject($"WaterSurface_{hazard.Id}");
+            surfaceGo.transform.SetParent(hazardsRoot, false);
+            surfaceGo.tag = HazardTags.ToUnityTag(HazardType.Water);
+
+            var meshFilter = surfaceGo.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = mesh;
+
+            var meshRenderer = surfaceGo.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = GetWaterMaterial();
+            meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            meshRenderer.receiveShadows = false;
+        }
+
+        static void AppendElevatedTileQuads(
+            HoleData data,
+            IReadOnlyList<Vector2Int> tiles,
+            float tileSize,
+            float yLift,
+            List<Vector3> vertices,
+            List<int> triangles)
+        {
+            float half = tileSize * 0.5f;
+
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                int tileX = tiles[i].x;
+                int tileY = tiles[i].y;
+                int baseIndex = vertices.Count;
+                float centerX = data.Origin.x + tileX * tileSize + half;
+                float centerZ = data.Origin.y + tileY * tileSize + half;
+                var corners = HeightGridSampler.TileCornerHeights(data, tileX, tileY);
+
+                vertices.Add(new Vector3(centerX - half, corners[0] + yLift, centerZ - half));
+                vertices.Add(new Vector3(centerX - half, corners[1] + yLift, centerZ + half));
+                vertices.Add(new Vector3(centerX + half, corners[2] + yLift, centerZ + half));
+                vertices.Add(new Vector3(centerX + half, corners[3] + yLift, centerZ - half));
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 2);
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
+            }
+        }
+
+        static Material GetWaterMaterial()
+        {
+            if (_waterMaterial != null)
+                return _waterMaterial;
+
+            var shader = Shader.Find("Standard");
+            _waterMaterial = shader != null ? new Material(shader) : new Material(Shader.Find("Sprites/Default"));
+            _waterMaterial.color = WaterSurfaceColor;
+            if (_waterMaterial.HasProperty("_Mode"))
+            {
+                _waterMaterial.SetFloat("_Mode", 3f);
+                _waterMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                _waterMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                _waterMaterial.SetInt("_ZWrite", 0);
+                _waterMaterial.DisableKeyword("_ALPHATEST_ON");
+                _waterMaterial.EnableKeyword("_ALPHABLEND_ON");
+                _waterMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                _waterMaterial.renderQueue = 3000;
+            }
+
+            return _waterMaterial;
         }
 
         static void BuildFoliage(HoleData data, ThemePack theme, Transform foliageRoot)
@@ -215,10 +433,10 @@ namespace DiskGolf.CourseEditor
                     continue;
                 }
 
-                float groundY = HeightGridSampler.SampleWorldY(data, placement.X, placement.Z);
-                var position = new Vector3(placement.X, groundY, placement.Z);
+                float groundY = SampleFoliageGroundY(data, placement.X, placement.Z);
+                var groundPosition = new Vector3(placement.X, groundY, placement.Z);
                 var variant = ResolveTreeVariant(placement.Archetype);
-                var tree = CourseTree.Spawn(foliageRoot, position, variant, placement.Yaw);
+                var tree = CourseTree.Spawn(foliageRoot, groundPosition, variant, placement.Yaw);
                 if (tree == null)
                 {
                     continue;
@@ -231,6 +449,7 @@ namespace DiskGolf.CourseEditor
                     {
                         renderer.sprite = sprite;
                         CourseTree.FitColliderToSprite(tree.gameObject);
+                        CourseTree.AlignBaseToGround(tree, groundPosition);
                     }
                 }
 
@@ -239,7 +458,14 @@ namespace DiskGolf.CourseEditor
                     tree.localScale = Vector3.one * placement.Scale;
                     CourseTree.FitColliderToSprite(tree.gameObject);
                 }
+
+                CourseTree.AlignBaseToGround(tree, groundPosition);
             }
+        }
+
+        static float SampleFoliageGroundY(HoleData data, float worldX, float worldZ)
+        {
+            return HeightGridSampler.SampleTileSurfaceWorldY(data, worldX, worldZ);
         }
 
         static CourseTreeVariant ResolveTreeVariant(string archetypeId)
@@ -282,29 +508,51 @@ namespace DiskGolf.CourseEditor
         static Transform ResolveOrCreateBasket(HoleData data, Transform root)
         {
             float basketY = HeightGridSampler.SampleWorldY(data, data.Hole.Basket.x, data.Hole.Basket.y);
+            var pos = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
 
-            var existing = GameObject.FindGameObjectWithTag("Basket");
-            if (existing != null)
+            var existing = root.Find(BasketName);
+            Transform basketTf = existing != null
+                ? existing
+                : TryCreateBasketFromPrefab(root);
+
+            if (basketTf == null)
             {
-                existing.transform.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
-                return existing.transform;
+                var basket = new GameObject(BasketName);
+                basket.tag = "Basket";
+                basket.transform.SetParent(root, false);
+                basketTf = basket.transform;
             }
 
-            var fromPrefab = TryCreateBasketFromPrefab(root);
-            if (fromPrefab != null)
+            basketTf.SetParent(root, false);
+            basketTf.position = pos;
+            FinalizeBasket(basketTf);
+            DisableStraySceneBaskets(basketTf);
+            return basketTf;
+        }
+
+        static void FinalizeBasket(Transform basketTf)
+        {
+            BasketVisual.Ensure(basketTf);
+            BasketCatchDetector.Ensure(basketTf);
+        }
+
+        static void DisableStraySceneBaskets(Transform keptBasket)
+        {
+            var courseRoot = keptBasket.GetComponentInParent<BuiltCourseHost>()?.transform;
+            foreach (var go in GameObject.FindGameObjectsWithTag("Basket"))
             {
-                fromPrefab.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
-                return fromPrefab;
+                if (go == null || go.transform == keptBasket)
+                {
+                    continue;
+                }
+
+                if (courseRoot != null && go.transform.IsChildOf(courseRoot))
+                {
+                    continue;
+                }
+
+                go.SetActive(false);
             }
-
-            var basket = new GameObject(BasketName);
-            basket.tag = "Basket";
-            basket.transform.SetParent(root, false);
-            basket.transform.position = new Vector3(data.Hole.Basket.x, basketY, data.Hole.Basket.y);
-
-            BasketVisual.Ensure(basket.transform);
-            BasketCatchDetector.Ensure(basket.transform);
-            return basket.transform;
         }
 
         static Transform TryCreateBasketFromPrefab(Transform root)

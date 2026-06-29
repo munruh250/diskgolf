@@ -132,7 +132,12 @@ namespace DiskGolf.CourseEditor
                 return;
 
             foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer is SpriteRenderer)
+                    continue;
+
                 renderer.gameObject.layer = layer;
+            }
         }
     }
 }

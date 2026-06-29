@@ -57,6 +57,25 @@ namespace DiskGolf.CourseEditor
             };
         }
 
+        /// <summary>Matches painted tile mesh height at a world XZ point.</summary>
+        public static float SampleTileSurfaceWorldY(HoleData data, float worldX, float worldZ)
+        {
+            if (data == null || data.Elevation == null)
+                return 0f;
+
+            float tileXf = (worldX - data.Origin.x) / data.TileSize;
+            float tileZf = (worldZ - data.Origin.y) / data.TileSize;
+            int tileX = Mathf.FloorToInt(tileXf);
+            int tileY = Mathf.FloorToInt(tileZf);
+            float fx = Mathf.Clamp01(tileXf - tileX);
+            float fz = Mathf.Clamp01(tileZf - tileY);
+
+            var corners = TileCornerHeights(data, tileX, tileY);
+            float south = Mathf.Lerp(corners[0], corners[3], fx);
+            float north = Mathf.Lerp(corners[1], corners[2], fx);
+            return Mathf.Lerp(south, north, fz);
+        }
+
         static float SampleGridCorner(HoleData data, int gridX, int gridY)
         {
             if (data?.Elevation == null)

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using DiskGolf.CourseEditor;
+using DiskGolf.CourseEditor.Authoring;
 using UnityEngine;
 
 namespace DiskGolf.EditorTools.CourseEditor
@@ -52,31 +53,10 @@ namespace DiskGolf.EditorTools.CourseEditor
         public static void ClearHazardDraft() => HazardDraftVertices.Clear();
 
         public static bool TryWorldToTile(Vector3 world, out Vector2Int tile)
-        {
-            tile = default;
-            if (Data == null || Data.TileSize <= 0f)
-            {
-                return false;
-            }
-
-            int x = Mathf.FloorToInt((world.x - Data.Origin.x) / Data.TileSize);
-            int y = Mathf.FloorToInt((world.z - Data.Origin.y) / Data.TileSize);
-            if (x < 0 || y < 0)
-            {
-                return false;
-            }
-
-            tile = new Vector2Int(x, y);
-            return true;
-        }
+            => CourseAuthoringGrid.TryWorldToTile(Data, world, out tile);
 
         public static Vector3 TileCornerWorld(HoleData data, int tileX, int tileY)
-        {
-            return new Vector3(
-                data.Origin.x + tileX * data.TileSize,
-                HeightGridSampler.SampleWorldY(data, data.Origin.x + tileX * data.TileSize, data.Origin.y + tileY * data.TileSize),
-                data.Origin.y + tileY * data.TileSize);
-        }
+            => CourseAuthoringGrid.TileCornerWorld(data, tileX, tileY);
     }
 }
 #endif

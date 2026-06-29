@@ -6681,31 +6681,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 102,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 102,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 102,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 102,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 102,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 103,
       "type": "rough"
@@ -6744,31 +6719,6 @@
       "x": 13,
       "y": 103,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 103,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 103,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 103,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 103,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 103,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -6811,31 +6761,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 104,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 104,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 104,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 104,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 104,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 105,
       "type": "rough"
@@ -6874,31 +6799,6 @@
       "x": 13,
       "y": 105,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 105,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 105,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 105,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 105,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 105,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -6941,31 +6841,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 106,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 106,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 106,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 106,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 106,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 107,
       "type": "rough"
@@ -7004,31 +6879,6 @@
       "x": 13,
       "y": 107,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 107,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 107,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 107,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 107,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 107,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -7071,31 +6921,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 108,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 108,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 108,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 108,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 108,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 109,
       "type": "rough"
@@ -7134,31 +6959,6 @@
       "x": 13,
       "y": 109,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 109,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 109,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 109,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 109,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 109,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -7201,31 +7001,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 110,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 110,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 110,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 110,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 110,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 111,
       "type": "rough"
@@ -7264,31 +7039,6 @@
       "x": 13,
       "y": 111,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 111,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 111,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 111,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 111,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 111,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -7331,31 +7081,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 112,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 112,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 112,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 112,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 112,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 113,
       "type": "rough"
@@ -7394,31 +7119,6 @@
       "x": 13,
       "y": 113,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 113,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 113,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 113,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 113,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 113,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -7461,31 +7161,6 @@
       "type": "rough"
     },
     {
-      "x": 7,
-      "y": 114,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 114,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 114,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 114,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 114,
-      "type": "fairway"
-    },
-    {
       "x": 3,
       "y": 115,
       "type": "rough"
@@ -7524,31 +7199,6 @@
       "x": 13,
       "y": 115,
       "type": "rough"
-    },
-    {
-      "x": 7,
-      "y": 115,
-      "type": "fairway"
-    },
-    {
-      "x": 8,
-      "y": 115,
-      "type": "fairway"
-    },
-    {
-      "x": 9,
-      "y": 115,
-      "type": "fairway"
-    },
-    {
-      "x": 10,
-      "y": 115,
-      "type": "fairway"
-    },
-    {
-      "x": 11,
-      "y": 115,
-      "type": "fairway"
     },
     {
       "x": 3,
@@ -10206,24 +9856,24 @@
   },
   "hazards": [
     {
-      "id": "water_valley",
+      "id": "water_green",
       "type": "water",
       "vertices": [
         {
-          "x": 6,
-          "y": 44
+          "x": 5,
+          "y": 102
         },
         {
-          "x": 13,
-          "y": 44
+          "x": 14,
+          "y": 102
         },
         {
-          "x": 13,
-          "y": 48
+          "x": 14,
+          "y": 116
         },
         {
-          "x": 6,
-          "y": 48
+          "x": 5,
+          "y": 116
         }
       ]
     },

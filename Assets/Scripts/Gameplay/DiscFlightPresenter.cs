@@ -111,6 +111,15 @@ namespace DiskGolf.Gameplay
 
                 var nextPos = SamplePathAtTime(wps, simTime);
 
+                if (TryHitGround(previousPos, nextPos, wps, out var groundHit))
+                {
+                    discTransform.position = groundHit;
+                    ApplyDiscRotation(FlatRotation(YawFromPosition(previousPos, groundHit)));
+                    IsFlying = false;
+                    _onComplete?.Invoke(_activePath);
+                    yield break;
+                }
+
                 if (TreeObstacle.TryHitSegment(previousPos, nextPos, discRadius, out var treeHit))
                 {
                     float originGroundY = wps.Count > 0 ? wps[0].Position.y : treeHit.GroundFallbackY;
@@ -181,6 +190,43 @@ namespace DiskGolf.Gameplay
                 discTransform.position = end;
                 ApplyDiscRotation(FlatRotation(YawFromPosition(approachFrom, end)));
             }
+        }
+
+        static bool TryHitGround(
+            Vector3 from,
+            Vector3 to,
+            System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps,
+            out Vector3 landing)
+        {
+            landing = to;
+            float fallbackGroundY = wps.Count > 0
+                ? wps[0].Position.y - DiscLieGround.DiscRestLift
+                : to.y;
+            float clearance = DiscLieGround.DiscRestLift;
+
+            const int steps = 6;
+            for (int i = 1; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                var pos = Vector3.Lerp(from, to, t);
+                float groundY = ResolveLandingGroundY(pos, fallbackGroundY);
+
+                if (pos.y > groundY + clearance)
+                    continue;
+
+                landing = new Vector3(pos.x, groundY + clearance, pos.z);
+                return true;
+            }
+
+            return false;
+        }
+
+        static float ResolveLandingGroundY(Vector3 pos, float fallbackGroundY)
+        {
+            if (DiscLieGround.IsInWaterFootprint(pos.x, pos.z))
+                return DiscLieGround.SampleWaterSurfaceY(pos, fallbackGroundY);
+
+            return DiscLieGround.SampleTerrainY(pos, fallbackGroundY);
         }
 
         static Vector3 SamplePathAtTime(System.Collections.Generic.IReadOnlyList<FlightWaypoint> wps, float time)

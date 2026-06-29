@@ -102,6 +102,22 @@ namespace DiskGolf.UI
 
             indicator ??= track.Find("Indicator") as RectTransform;
             sweetSpot ??= track.Find("SweetSpot") as RectTransform;
+            RefreshAccuracyTitle();
+        }
+
+        void RefreshAccuracyTitle()
+        {
+            var title = transform.Find("Title")?.GetComponent<TextMeshProUGUI>();
+            ApplyAccuracyTitleStyle(title);
+        }
+
+        static void ApplyAccuracyTitleStyle(TextMeshProUGUI title)
+        {
+            if (title == null)
+                return;
+
+            title.color = TimingMeterLayout.MeterTitleColor;
+            title.fontStyle = FontStyles.Bold;
         }
 
         /// <summary>Editor bake: rebuild track as 5-zone accuracy meter if layout is outdated.</summary>
@@ -132,6 +148,28 @@ namespace DiskGolf.UI
                 && root.sizeDelta.x >= TimingMeterLayout.HeightWidth - 1f
                 && track.Find("Frame") != null)
                 return;
+
+            if (track != null)
+            {
+                RebuildHeight();
+                return;
+            }
+
+            BuildFromExistingRoot(transform);
+        }
+
+        public void ApplyCanonicalLayout()
+        {
+            ApplyRootLayout();
+            RefreshAccuracyTitle();
+
+            if (IsAccuracyLayout(transform)
+                && track != null
+                && (transform as RectTransform).sizeDelta.y >= TimingMeterLayout.HeightTotal - 1f)
+            {
+                BindSceneReferences();
+                return;
+            }
 
             if (track != null)
             {
@@ -275,9 +313,8 @@ namespace DiskGolf.UI
             titleRt.sizeDelta = new Vector2(TimingMeterLayout.HeightWidth, 20f * s);
             var title = titleGo.AddComponent<TextMeshProUGUI>();
             title.text = "ACCURACY";
-            var titleColor = new Color(0.85f, 0.85f, 0.85f);
             HudTypography.Apply(title, TextAlignmentOptions.MidlineLeft);
-            title.color = titleColor;
+            ApplyAccuracyTitleStyle(title);
 
             SetNeedleVisible(false);
         }

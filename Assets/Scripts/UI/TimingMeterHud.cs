@@ -122,6 +122,23 @@ namespace DiskGolf.UI
             NtmBottomBar.Ensure(canvas);
         }
 
+        public static void ApplyCanonicalMeterLayout(RectTransform canvas)
+        {
+            if (canvas == null)
+                return;
+
+            var root = canvas.Find(MetersRootName);
+            if (root == null)
+                return;
+
+            var power = root.Find(PowerMeterVisual.VisualNameForFind)?.GetComponent<PowerMeterVisual>()
+                ?? root.Find("NtmPowerMeter")?.GetComponent<PowerMeterVisual>();
+            power?.ApplyCanonicalLayout();
+
+            var height = HeightMeterVisual.FindMeterRoot(root)?.GetComponent<HeightMeterVisual>();
+            height?.ApplyCanonicalLayout();
+        }
+
         void OnDestroy()
         {
             if (_instance == this)

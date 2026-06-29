@@ -1,5 +1,6 @@
 using DiskGolf.Core;
 using DiskGolf.Disc;
+using DiskGolf.UI.CourseEditor;
 using UnityEngine;
 
 namespace DiskGolf.CourseEditor
@@ -14,9 +15,20 @@ namespace DiskGolf.CourseEditor
 
         [SerializeField] HoleSetup holeSetup;
 
+        HoleData runtimeHole;
+
         public void Configure(HoleDataAsset hole, ThemePack themePack, HoleSetup setup)
         {
             playtestHole = hole;
+            runtimeHole = null;
+            theme = themePack;
+            holeSetup = setup;
+        }
+
+        public void Configure(HoleData data, ThemePack themePack, HoleSetup setup)
+        {
+            playtestHole = null;
+            runtimeHole = data;
             theme = themePack;
             holeSetup = setup;
         }
@@ -26,10 +38,21 @@ namespace DiskGolf.CourseEditor
             var bag = FindFirstObjectByType<DiscBag>();
             DiscBagBootstrap.EnsurePopulated(bag);
 
-            if (playtestHole?.Data == null || theme == null)
+            HoleData data = runtimeHole ?? playtestHole?.Data;
+            if (data == null)
+            {
+                string id = PlayerPrefs.GetString(CourseEditorNavigation.ActiveHoleIdKey, null);
+                if (!string.IsNullOrEmpty(id))
+                {
+                    data = HoleDataCatalog.Player.Load(id);
+                    theme ??= ThemePackLoader.Load(data.ThemeId);
+                }
+            }
+
+            if (data == null || theme == null)
                 return;
 
-            var host = CourseBuilder.Build(playtestHole.Data, theme);
+            var host = CourseBuilder.Build(data, theme);
             if (host == null)
                 return;
 
@@ -37,7 +60,6 @@ namespace DiskGolf.CourseEditor
             if (holeSetup == null)
                 return;
 
-            var data = playtestHole.Data;
             holeSetup.BindBuiltCourse(
                 host.TeePad,
                 host.Basket,
@@ -47,6 +69,8 @@ namespace DiskGolf.CourseEditor
 
             holeSetup.PositionThrowerAtTee();
             holeSetup.RefreshCameraAimPoint();
+
+            SceneEnvironmentApplier.Apply(data, theme);
         }
     }
 }

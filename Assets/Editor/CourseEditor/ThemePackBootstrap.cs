@@ -66,7 +66,41 @@ namespace DiskGolf.EditorTools.CourseEditor
             AssetDatabase.Refresh();
 
             Debug.Log($"[Disk Golf] Created theme pack at {TemperateAssetPath}");
+            EnsureThemePackRegistry();
             return AssetDatabase.LoadAssetAtPath<ThemePack>(TemperateAssetPath);
+        }
+
+        [MenuItem("Disk Golf/Course/Fix Theme Pack Registry")]
+        public static void FixThemePackRegistryMenu()
+        {
+            EnsureThemePackRegistry();
+            EditorUtility.DisplayDialog(
+                "Course Editor",
+                "Updated Assets/Resources/ThemePackRegistry.asset with ThemePack_Temperate.",
+                "OK");
+        }
+
+        public static void EnsureThemePackRegistry()
+        {
+            const string registryPath = "Assets/Resources/ThemePackRegistry.asset";
+            if (!AssetDatabase.IsValidFolder("Assets/Resources"))
+                AssetDatabase.CreateFolder("Assets", "Resources");
+
+            var temperate = AssetDatabase.LoadAssetAtPath<ThemePack>(TemperateAssetPath);
+            if (temperate == null)
+                temperate = EnsureTemperateThemePack();
+
+            var registry = AssetDatabase.LoadAssetAtPath<ThemePackRegistry>(registryPath);
+            if (registry == null)
+            {
+                registry = ScriptableObject.CreateInstance<ThemePackRegistry>();
+                AssetDatabase.CreateAsset(registry, registryPath);
+            }
+
+            registry.themes = temperate != null ? new[] { temperate } : System.Array.Empty<ThemePack>();
+            EditorUtility.SetDirty(registry);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Disk Golf] ThemePackRegistry updated for runtime player editor.");
         }
 
         static void EnsureThemesFolder()
@@ -87,24 +121,7 @@ namespace DiskGolf.EditorTools.CourseEditor
             theme.greenMaterial = LoadMaterial(ProjectArtPaths.Environment.Green.Material, "green");
             theme.teeMaterial = theme.fairwayMaterial;
 
-            var treeSprite = AssetDatabase.LoadAssetAtPath<Sprite>(ProjectArtPaths.Environment.Foliage.Tree);
-            if (treeSprite == null)
-            {
-                var catalog = AssetDatabase.LoadAssetAtPath<GameplayArtCatalog>(
-                    ProjectArtPaths.Runtime.GameplayArtCatalog);
-                treeSprite = catalog != null ? catalog.treeRound : null;
-            }
-
-            theme.foliage.Clear();
-            if (treeSprite != null)
-            {
-                theme.foliage.Add(new FoliageArchetypeEntry
-                {
-                    archetypeId = "tree_round",
-                    sprite = treeSprite,
-                    sortingOrder = 10
-                });
-            }
+            ThemePackArtSync.SyncThemePack(theme);
 
             if (theme.fairwayMaterial == null || theme.roughMaterial == null || theme.greenMaterial == null)
             {

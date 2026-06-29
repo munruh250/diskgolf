@@ -15,6 +15,11 @@ namespace DiskGolf.Gameplay
 
         public static float DiscRestLift => GreyboxScale.DiscThicknessM * 0.5f;
 
+        /// <summary>Matches the visual water mesh offset in CourseBuilder.</summary>
+        public const float WaterSurfaceLift = 0.12f;
+
+        const float WaterContactTolerance = 0.08f;
+
         public static Vector3 SnapLie(Vector3 worldPos, float fallbackGroundY)
         {
             float groundY = SampleGroundY(worldPos, fallbackGroundY);
@@ -23,10 +28,7 @@ namespace DiskGolf.Gameplay
 
         public static LieType SampleLieType(Vector3 worldPos, float fallbackGroundY)
         {
-            if (TrySampleBuiltCourseHazard(worldPos, out LieType hazardLie))
-                return hazardLie;
-
-            if (TrySampleHazardTrigger(worldPos, out hazardLie))
+            if (TrySampleHazardLie(worldPos, fallbackGroundY, out LieType hazardLie))
                 return hazardLie;
 
             if (!TrySampleClosestGroundHit(worldPos, out RaycastHit hit))
@@ -35,12 +37,58 @@ namespace DiskGolf.Gameplay
             return ClassifyGroundCollider(hit.collider);
         }
 
+        public static bool TrySampleHazardLie(Vector3 worldPos, float fallbackGroundY, out LieType lie)
+        {
+            if (TrySampleWaterContact(worldPos, fallbackGroundY, out lie))
+                return true;
+
+            if (TrySampleBuiltCourseOb(worldPos, out lie))
+                return true;
+
+            return TrySampleObTrigger(worldPos, out lie);
+        }
+
+        public static bool TrySampleWaterContact(Vector3 worldPos, float fallbackGroundY, out LieType lie)
+        {
+            lie = default;
+            if (!IsTouchingWaterSurface(worldPos, fallbackGroundY))
+                return false;
+
+            lie = LieType.Water;
+            return true;
+        }
+
+        public static float SampleWaterSurfaceY(Vector3 worldPos, float fallbackGroundY) =>
+            SampleTerrainY(worldPos, fallbackGroundY) + WaterSurfaceLift;
+
+        public static bool IsTouchingWaterSurface(Vector3 worldPos, float fallbackGroundY)
+        {
+            if (!IsInWaterFootprint(worldPos.x, worldPos.z))
+                return false;
+
+            float surfaceTop = SampleWaterSurfaceY(worldPos, fallbackGroundY) + DiscRestLift;
+            return worldPos.y <= surfaceTop + WaterContactTolerance;
+        }
+
         public static float SampleGroundY(Vector3 worldPos, float fallbackGroundY)
         {
             if (TrySampleClosestGroundHit(worldPos, out RaycastHit hit))
                 return hit.point.y;
 
             return ResolveCourseGroundY(fallbackGroundY);
+        }
+
+        public static float SampleTerrainY(Vector3 worldPos, float fallbackGroundY)
+        {
+            var host = Object.FindFirstObjectByType<BuiltCourseHost>();
+            if (host?.SourceData?.Elevation != null)
+            {
+                float gridY = HeightGridSampler.SampleWorldY(host.SourceData, worldPos.x, worldPos.z);
+                float rayY = SampleGroundY(worldPos, fallbackGroundY);
+                return Mathf.Max(gridY, rayY);
+            }
+
+            return SampleGroundY(worldPos, fallbackGroundY);
         }
 
         static bool TrySampleClosestGroundHit(Vector3 worldPos, out RaycastHit closestHit)
@@ -113,22 +161,53 @@ namespace DiskGolf.Gameplay
             return LieType.Fairway;
         }
 
-        static bool TrySampleBuiltCourseHazard(Vector3 worldPos, out LieType lie)
+        static bool TrySampleBuiltCourseOb(Vector3 worldPos, out LieType lie)
         {
             lie = default;
             var host = Object.FindFirstObjectByType<BuiltCourseHost>();
-            if (host?.SourceData == null)
+            if (host?.SourceData?.Hazards == null)
                 return false;
 
-            return HazardRules.TryClassifyHazard(host.SourceData, worldPos, out lie);
+            foreach (var hazard in host.SourceData.Hazards)
+            {
+                if (hazard.Type != HazardType.OB)
+                    continue;
+
+                if (!HazardGeometry.ContainsWorldPoint(host.SourceData, hazard, worldPos.x, worldPos.z))
+                    continue;
+
+                lie = LieType.OB;
+                return true;
+            }
+
+            return false;
         }
 
-        static bool TrySampleHazardTrigger(Vector3 worldPos, out LieType lie)
+        public static bool IsInWaterFootprint(float worldX, float worldZ)
+        {
+            var host = Object.FindFirstObjectByType<BuiltCourseHost>();
+            if (host?.SourceData?.Hazards == null)
+                return false;
+
+            foreach (var hazard in host.SourceData.Hazards)
+            {
+                if (hazard.Type != HazardType.Water)
+                    continue;
+
+                if (HazardGeometry.ContainsWorldPoint(host.SourceData, hazard, worldX, worldZ))
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool TrySampleObTrigger(Vector3 worldPos, out LieType lie)
         {
             lie = default;
+            float sampleRadius = Mathf.Max(0.35f, GreyboxScale.DiscDiameterM * 0.45f);
             var hits = Physics.OverlapSphere(
                 worldPos,
-                0.15f,
+                sampleRadius,
                 ~0,
                 QueryTriggerInteraction.Collide);
 
@@ -136,12 +215,6 @@ namespace DiskGolf.Gameplay
             {
                 if (collider == null || !collider.isTrigger)
                     continue;
-
-                if (collider.CompareTag("Water"))
-                {
-                    lie = LieType.Water;
-                    return true;
-                }
 
                 if (collider.CompareTag("OB"))
                 {

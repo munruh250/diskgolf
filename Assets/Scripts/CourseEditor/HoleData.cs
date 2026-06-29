@@ -28,6 +28,7 @@ namespace DiskGolf.CourseEditor
         public Vector2 Basket = Vector2.zero;
         public int Par = 3;
         public float CircleRadiusFt = 33f;
+        public string SkyboxId = "sky_clear";
     }
 
     [Serializable]
@@ -43,6 +44,7 @@ namespace DiskGolf.CourseEditor
         public Vector2 Origin = Vector2.zero;
         public string ThemeId = "temperate";
         public List<HoleTile> SurfaceTiles = new();
+        public List<HoleHazardTile> HazardTiles = new();
         public HoleMeta Hole = new();
         public ElevationGrid Elevation;
         public List<HazardPolygon> Hazards = new();
@@ -80,6 +82,40 @@ namespace DiskGolf.CourseEditor
         public void ClearTile(int x, int y)
         {
             SurfaceTiles.RemoveAll(t => t.X == x && t.Y == y);
+        }
+
+        public void SetHazardTile(int x, int y, HazardType type)
+        {
+            for (int i = 0; i < HazardTiles.Count; i++)
+            {
+                if (HazardTiles[i].X == x && HazardTiles[i].Y == y)
+                {
+                    HazardTiles[i] = new HoleHazardTile(x, y, type);
+                    return;
+                }
+            }
+
+            HazardTiles.Add(new HoleHazardTile(x, y, type));
+        }
+
+        public bool TryGetHazardTile(int x, int y, out HazardType type)
+        {
+            foreach (var tile in HazardTiles)
+            {
+                if (tile.X == x && tile.Y == y)
+                {
+                    type = tile.Type;
+                    return true;
+                }
+            }
+
+            type = default;
+            return false;
+        }
+
+        public void ClearHazardTile(int x, int y)
+        {
+            HazardTiles.RemoveAll(t => t.X == x && t.Y == y);
         }
 
         public Vector2Int ComputeBoundsMax()

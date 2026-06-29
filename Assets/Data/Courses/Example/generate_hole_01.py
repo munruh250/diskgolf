@@ -13,6 +13,13 @@ ROUGH_INNER_X = (5, 6, 12, 13)
 ROUGH_OUTER_X = (3, 4, 14, 15)
 TREE_LINE_X = (2, 16, 17)
 
+# Fairway tiles replaced by the large test pond near the green.
+WATER_TILES = frozenset(
+    (x, y)
+    for x in range(5, 14)
+    for y in range(102, 116)
+)
+
 
 def height_profile(world_z: float) -> float:
     """Along-hole elevation: climb a big hill, then throw downhill toward the basket."""
@@ -44,6 +51,8 @@ def build_surface_tiles():
         for x in ROUGH_INNER_X:
             tiles.append({"x": x, "y": y, "type": "rough"})
         for x in FAIRWAY_X:
+            if (x, y) in WATER_TILES:
+                continue
             tile_type = "fairway"
             if y == 0 and x == 9:
                 tile_type = "tee"
@@ -84,15 +93,16 @@ def build_placements():
 
 
 def build_hazards():
+    # Large guard pond on the flat approach in front of the green (easy to see and test).
     return [
         {
-            "id": "water_valley",
+            "id": "water_green",
             "type": "water",
             "vertices": [
-                {"x": 6, "y": 44},
-                {"x": 13, "y": 44},
-                {"x": 13, "y": 48},
-                {"x": 6, "y": 48},
+                {"x": 5, "y": 102},
+                {"x": 14, "y": 102},
+                {"x": 14, "y": 116},
+                {"x": 5, "y": 116},
             ],
         },
         {

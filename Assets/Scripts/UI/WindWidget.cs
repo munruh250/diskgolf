@@ -103,12 +103,12 @@ namespace DiskGolf.UI
             var speedPanel = CreatePanel("SpeedPanel", SpeedPanelColor, new Vector2(64f, 4f), new Vector2(100f, 48f));
             speedPanel.SetParent(frame, false);
 
-            var windLabel = CreateText("WindLabel", "WIND", new Vector2(8f, 24f),
-                new Vector2(84f, 20f), SpeedTextColor, TextAlignmentOptions.TopLeft);
+            var windLabel = CreateText("WindLabel", "WIND", new Vector2(8f, 28f),
+                new Vector2(84f, 16f), SpeedTextColor, TextAlignmentOptions.TopLeft);
             windLabel.transform.SetParent(speedPanel.transform, false);
 
-            speedValueText = CreateText("WindSpeed", "0m", new Vector2(8f, 0f),
-                new Vector2(84f, 28f), SpeedTextColor, TextAlignmentOptions.BottomLeft);
+            speedValueText = CreateText("WindSpeed", "0m", new Vector2(8f, 4f),
+                new Vector2(84f, 22f), SpeedTextColor, TextAlignmentOptions.BottomLeft);
             speedValueText.transform.SetParent(speedPanel.transform, false);
             ApplyTypography();
         }
@@ -167,7 +167,20 @@ namespace DiskGolf.UI
             foreach (var tmp in GetComponentsInChildren<TextMeshProUGUI>(true))
             {
                 var color = tmp.color;
-                HudTypography.Apply(tmp, tmp.alignment);
+                var align = tmp.alignment;
+
+                if (tmp.name == "WindLabel")
+                {
+                    HudTypography.BindFont(tmp);
+                    tmp.fontSize = 14f;
+                    tmp.fontStyle = FontStyles.Bold;
+                    tmp.alignment = align;
+                }
+                else
+                {
+                    HudTypography.Apply(tmp, align);
+                }
+
                 tmp.color = color;
             }
         }

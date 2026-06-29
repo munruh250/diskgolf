@@ -8,9 +8,9 @@ namespace DiskGolf.UI
         /// <summary>UI scale multiplier for timing meters (2 = testing size).</summary>
         public const float UiScale = 2f;
 
-        public const int LayoutVersion = 5;
+        public const int LayoutVersion = 6;
 
-        public const float BottomInset = 8f;
+        public const float BottomInset = 28f;
 
         public const float BottomBarInset = 6f;
 
@@ -23,6 +23,11 @@ namespace DiskGolf.UI
         public const float ClusterGap = 8f * UiScale;
 
         public static readonly Color SweetSpotColor = new(0.78f, 0.18f, 1f, 1f);
+
+        public static readonly Color MeterTitleColor = new(1f, 0.92f, 0.18f, 1f);
+
+        /// <summary>Shifts the mood portrait left so it does not sit under the accuracy bar.</summary>
+        public static float PowerMeterPortraitXOffset => -36f * UiScale;
 
         public static float ArcRadius => 72f * UiScale;
 

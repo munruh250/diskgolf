@@ -45,7 +45,22 @@ namespace DiskGolf.EditorTools
             BuildCourseEditorScene();
         }
 
+        internal sealed class CourseEditorSceneContext
+        {
+            public RectTransform HudCanvas;
+            public ThrowInputHandler ThrowInput;
+            public ThrowController ThrowController;
+            public HUDController HudController;
+        }
+
         public static void BuildCourseEditorScene()
+        {
+            var ctx = BuildCourseEditorSceneCore();
+            FinishCourseEditorScene(ctx, CourseEditorScenePath,
+                $"[Disk Golf] Saved {CourseEditorScenePath} — paint in Scene view, then Playtest.");
+        }
+
+        internal static CourseEditorSceneContext BuildCourseEditorSceneCore()
         {
             Directory.CreateDirectory(PrefabsDir);
             Directory.CreateDirectory(CoursePrefabsDir);
@@ -56,7 +71,6 @@ namespace DiskGolf.EditorTools
             EnsureTmpEssentials();
             EnsureTags(new[] { "Fairway", "Tee", "Basket", "Circle", "Rough", "Green" });
 
-            var fairRgb = new Color(0.2f, 0.52f, 0.26f);
             var teeMat = LoadOrCreateMaterial("MAT_Tee", new Color(0.73f, 0.57f, 0.41f),
                 ProjectArtPaths.Environment.Tee.Material);
             var metalMat = LoadOrCreateMaterial("MAT_Basket", new Color(0.46f, 0.49f, 0.53f),
@@ -161,16 +175,30 @@ namespace DiskGolf.EditorTools
 
             hudCanvas.localScale = Vector3.one;
             HudSceneAuthoring.BakeMissingSceneWidgets();
-            HudLayout.ApplyCleanupOnly();
+            HudLayout.ForceApplyCanonicalLayout();
             hudCanvas.localScale = Vector3.one;
+
+            return new CourseEditorSceneContext
+            {
+                HudCanvas = hudCanvas,
+                ThrowInput = inputs,
+                ThrowController = controller,
+                HudController = hud
+            };
+        }
+
+        internal static void FinishCourseEditorScene(CourseEditorSceneContext ctx, string scenePath, string logMessage)
+        {
+            if (ctx.HudCanvas != null)
+                ctx.HudCanvas.localScale = Vector3.one;
 
             SceneHierarchy.Organize();
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
             AssetDatabase.SaveAssets();
-            EditorSceneManager.SaveScene(scene, CourseEditorScenePath);
-            Debug.Log($"[Disk Golf] Saved {CourseEditorScenePath} — paint in Scene view, then Playtest.");
+            EditorSceneManager.SaveScene(scene, scenePath);
+            Debug.Log(logMessage);
         }
 
         static Material LoadOrCreateMaterial(string name, Color color, string path)

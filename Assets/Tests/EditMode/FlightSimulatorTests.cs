@@ -132,6 +132,29 @@ namespace DiskGolf.Tests
         }
 
         [Test]
+        public void Compute_ElevatedOrigin_PeakIsRelativeToReleaseHeight()
+        {
+            var buzzz = MakeDisc(5, 4, -1, 1, 320f);
+            var origin = new Vector3(0f, 12f, 0f);
+            var input = new ThrowInput(
+                buzzz,
+                ReleaseAngle.Flat,
+                1f,
+                ThrowHeight.Nice,
+                new WindSettings { direction = Vector2.right, speedMph = 0f },
+                origin,
+                Vector3.forward);
+
+            var path = FlightSimulator.Compute(input);
+            float peakY = path.Waypoints[0].Position.y;
+            foreach (var wp in path.Waypoints)
+                peakY = Mathf.Max(peakY, wp.Position.y);
+
+            Assert.That(path.Waypoints[0].Position.y, Is.EqualTo(origin.y).Within(0.01f));
+            Assert.That(peakY, Is.GreaterThan(origin.y + 3f));
+        }
+
+        [Test]
         public void Compute_UnderstableMid_NoMidFlightLateralJerk()
         {
             var buzzz = MakeDisc(5, 4, -1, 1, 320f);

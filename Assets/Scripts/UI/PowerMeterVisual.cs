@@ -144,6 +144,26 @@ namespace DiskGolf.UI
             BuildFromExistingRoot(transform);
         }
 
+        public void ApplyCanonicalLayout()
+        {
+            ApplyRootLayout();
+
+            if (pivot != null && pivot.Find("ArcHub/" + LayoutMarker) != null && IsCurrentLayout(transform))
+            {
+                BindSceneReferences();
+                return;
+            }
+
+            if (pivot != null)
+            {
+                RebuildMeterArt();
+                BindSceneReferences();
+                return;
+            }
+
+            BuildFromExistingRoot(transform);
+        }
+
         void ApplyRootLayout()
         {
             var root = transform as RectTransform;

@@ -60,26 +60,21 @@ namespace DiskGolf.Gameplay
             var sprite = ResolveSprite();
             if (sprite == null)
             {
-                Debug.LogWarning("[BasketVisual] Missing basket sprite. Assign a sprite or check Art/Characters/Player/Thrower.png import.");
+                Debug.LogWarning("[BasketVisual] Missing basket sprite. Assign a sprite or check basket art import settings.");
                 return;
             }
 
-            var spriteTf = transform.Find(SpriteChildName);
-            GameObject spriteGo;
-
-            if (spriteTf == null)
+            var spriteGo = GetOrCreateSpriteChild();
+            var renderer = spriteGo.GetComponent<SpriteRenderer>();
+            if (renderer == null)
             {
-                spriteGo = new GameObject(SpriteChildName);
-                spriteGo.transform.SetParent(transform, false);
-            }
-            else
-            {
-                spriteGo = spriteTf.gameObject;
+                Debug.LogWarning("[BasketVisual] BasketSprite is missing SpriteRenderer; rebuilding child.");
+                DestroySpriteChild(spriteGo);
+                spriteGo = GetOrCreateSpriteChild();
+                renderer = spriteGo.GetComponent<SpriteRenderer>()
+                    ?? spriteGo.AddComponent<SpriteRenderer>();
             }
 
-            spriteGo.SetActive(true);
-
-            var renderer = spriteGo.GetComponent<SpriteRenderer>() ?? spriteGo.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.color = Color.white;
             renderer.enabled = true;
@@ -98,6 +93,34 @@ namespace DiskGolf.Gameplay
 
             if (spriteGo.GetComponent<BasketBillboard>() == null)
                 spriteGo.AddComponent<BasketBillboard>();
+        }
+
+        GameObject GetOrCreateSpriteChild()
+        {
+            var spriteTf = transform.Find(SpriteChildName);
+            if (spriteTf != null)
+            {
+                if (spriteTf.GetComponent<SpriteRenderer>() != null)
+                    return spriteTf.gameObject;
+
+                DestroySpriteChild(spriteTf.gameObject);
+            }
+
+            var spriteGo = new GameObject(SpriteChildName);
+            spriteGo.transform.SetParent(transform, false);
+            spriteGo.AddComponent<SpriteRenderer>();
+            return spriteGo;
+        }
+
+        static void DestroySpriteChild(GameObject spriteGo)
+        {
+            if (spriteGo == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(spriteGo);
+            else
+                DestroyImmediate(spriteGo);
         }
 
         Sprite ResolveSprite()

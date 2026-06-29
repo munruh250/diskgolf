@@ -13,6 +13,7 @@ namespace DiskGolf.CourseEditor
         public Material greenMaterial;
         public Material teeMaterial;
         public List<FoliageArchetypeEntry> foliage = new();
+        public List<SkyboxArchetypeEntry> skyboxes = new();
 
         public Material GetMaterial(SurfaceTileType type) => type switch
         {
@@ -29,6 +30,34 @@ namespace DiskGolf.CourseEditor
             {
                 if (entry.archetypeId == archetypeId)
                     return entry.sprite;
+            }
+
+            return null;
+        }
+
+        public Material ResolveSkybox(string skyboxId)
+        {
+            if (string.IsNullOrEmpty(skyboxId))
+                return null;
+
+            foreach (var entry in skyboxes)
+            {
+                if (entry != null && entry.skyboxId == skyboxId)
+                    return entry.material;
+            }
+
+            return null;
+        }
+
+        public SkyboxArchetypeEntry ResolveSkyboxEntry(string skyboxId)
+        {
+            if (string.IsNullOrEmpty(skyboxId))
+                return null;
+
+            foreach (var entry in skyboxes)
+            {
+                if (entry != null && entry.skyboxId == skyboxId)
+                    return entry;
             }
 
             return null;

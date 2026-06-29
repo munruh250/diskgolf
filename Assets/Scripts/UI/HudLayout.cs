@@ -35,6 +35,32 @@ namespace DiskGolf.UI
             ApplyPositions();
         }
 
+        /// <summary>
+        /// Applies the coded HUD layout even when <see cref="HudLayoutSettings.preserveManualLayout"/> is on.
+        /// Used for course-editor playtest and editor scene fixes.
+        /// </summary>
+        public static void ForceApplyCanonicalLayout()
+        {
+            var hud = GameObject.Find(HudRootName);
+            if (hud == null)
+                return;
+
+            var canvas = hud.GetComponent<RectTransform>();
+            if (canvas == null)
+                return;
+
+            StyleCanvasScaler(hud);
+            HideLegacyDiscHeightLabel(canvas);
+            HideLegacyLabels(canvas);
+            HideLegacySliders(canvas);
+            TimingMeterHud.Ensure();
+            ApplyRightStack(canvas);
+            HideLegacyPowerHeightLabels(canvas);
+            EnsureWidgetLabelsVisible(canvas);
+            TimingMeterHud.ApplyCanonicalMeterLayout(canvas);
+            NtmBottomBar.Ensure(canvas)?.ApplyCanonicalLayout();
+        }
+
         /// <summary>Hides legacy widgets and ensures HUD children exist without moving them.</summary>
         public static void ApplyCleanupOnly()
         {

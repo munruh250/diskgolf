@@ -20,15 +20,44 @@ namespace DiskGolf.Tests.EditMode
         }
 
         [Test]
-        public void ResolveDrop_OB_ReturnsTee()
+        public void ResolveDrop_OB_ReturnsNearestRough()
+        {
+            var data = BuildHoleWithObAndRough();
+            var discPos = new Vector3(3f, 0f, 11f);
+
+            var drop = HazardRules.ResolveDrop(data, LieType.OB, discPos);
+
+            Assert.AreEqual(7f, drop.x, 0.001f);
+            Assert.AreEqual(11f, drop.z, 0.001f);
+        }
+
+        static HoleData BuildHoleWithObAndRough()
+        {
+            var data = new HoleData { TileSize = 2f, Origin = Vector2.zero };
+            data.SetTile(5, 5, SurfaceTileType.Fairway);
+            data.SetTile(3, 5, SurfaceTileType.Rough);
+            data.SetTile(10, 5, SurfaceTileType.Rough);
+            data.Hole.Tee = new Vector2(11f, 11f);
+            data.Hazards.Add(new HazardPolygon("ob_left", HazardType.OB, new[]
+            {
+                new Vector2Int(0, 4),
+                new Vector2Int(2, 4),
+                new Vector2Int(2, 6),
+                new Vector2Int(0, 6)
+            }));
+            return data;
+        }
+
+        [Test]
+        public void ResolveDrop_OB_FallsBackToNearestPlayableWhenNoRoughExists()
         {
             var data = BuildHoleWithWaterHazard();
             data.Hole.Tee = new Vector2(4f, 4f);
 
             var drop = HazardRules.ResolveDrop(data, LieType.OB, new Vector3(14f, 0f, 10f));
 
-            Assert.AreEqual(4f, drop.x, 0.001f);
-            Assert.AreEqual(4f, drop.z, 0.001f);
+            Assert.AreEqual(11f, drop.x, 0.001f);
+            Assert.AreEqual(11f, drop.z, 0.001f);
         }
 
         [Test]

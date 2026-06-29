@@ -75,6 +75,8 @@ namespace DiskGolf.UI
 
         void Start() => RefreshCapture();
 
+        void OnEnable() => RefreshCapture();
+
         void OnDestroy()
         {
             if (_captureCam != null)
@@ -131,11 +133,18 @@ namespace DiskGolf.UI
             builtCourse?.ApplyMinimapLayer();
             course?.Refresh();
             course?.ApplyMinimapLayer();
+            EnsureCaptureCamera();
             EnsureHazardMarkers();
             FrameCourse();
 
             if (mapImage != null && _renderTexture != null)
                 mapImage.texture = _renderTexture;
+        }
+
+        public static void NotifyCourseRebuilt()
+        {
+            foreach (var minimap in FindObjectsByType<MinimapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                minimap.RefreshCapture();
         }
 
         void EnsureCaptureCamera()
@@ -147,13 +156,15 @@ namespace DiskGolf.UI
             if (!HasCourseSource())
                 return;
 
-            _renderTexture = new RenderTexture(TextureWidth, TextureHeight, 16, RenderTextureFormat.ARGB32);
-            _renderTexture.name = "MinimapRT";
-            _renderTexture.Create();
+            if (_renderTexture == null)
+            {
+                _renderTexture = new RenderTexture(TextureWidth, TextureHeight, 16, RenderTextureFormat.ARGB32);
+                _renderTexture.name = "MinimapRT";
+                _renderTexture.Create();
+            }
 
             var camGo = new GameObject("MinimapCaptureCamera");
-            var rigParent = ResolveCaptureParent();
-            camGo.transform.SetParent(rigParent, false);
+            camGo.transform.SetParent(transform, false);
 
             _captureCam = camGo.AddComponent<UnityEngine.Camera>();
             _captureCam.orthographic = true;
@@ -486,7 +497,7 @@ namespace DiskGolf.UI
             if (primary == null)
             {
                 var go = new GameObject("MinimapTrajectoryLine");
-                go.transform.SetParent(ResolveCaptureParent(), false);
+                go.transform.SetParent(transform, false);
                 go.AddComponent<LineRenderer>();
                 primary = go.AddComponent<MinimapTrajectoryLine>();
             }

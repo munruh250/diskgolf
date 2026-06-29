@@ -22,7 +22,7 @@ namespace DiskGolf.EditorTools.CourseEditor
 
             hud.localScale = Vector3.one;
             EditorTools.HudSceneAuthoring.BakeMissingSceneWidgets();
-            HudLayout.ApplyCleanupOnly();
+            HudLayout.ForceApplyCanonicalLayout();
 
             var bag = Object.FindFirstObjectByType<DiscBag>();
             if (bag != null)
@@ -30,7 +30,7 @@ namespace DiskGolf.EditorTools.CourseEditor
 
             hud.localScale = Vector3.one;
             EditorSceneManager.MarkSceneDirty(hud.gameObject.scene);
-            Debug.Log("[Disk Golf] Course Editor HUD upgraded (disc bag, timing meters, bottom bar). Save the scene.");
+            Debug.Log("[Disk Golf] Course Editor HUD upgraded with canonical layout. Save the scene.");
         }
 
         public static void Rebuild() => EditorTools.PrototypeFlat3SceneBuilder.BuildCourseEditorScene();

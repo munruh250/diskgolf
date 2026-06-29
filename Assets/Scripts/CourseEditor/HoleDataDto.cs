@@ -18,6 +18,7 @@ namespace DiskGolf.CourseEditor
         public float[] basket = { 0f, 0f };
         public int par = 3;
         public float circleRadiusFt = 33f;
+        public string skyboxId = "sky_clear";
     }
 
     [Serializable]
@@ -33,6 +34,14 @@ namespace DiskGolf.CourseEditor
     {
         public int x;
         public int y;
+    }
+
+    [Serializable]
+    public sealed class HazardTileDto
+    {
+        public int x;
+        public int y;
+        public string type = "water";
     }
 
     [Serializable]
@@ -65,6 +74,7 @@ namespace DiskGolf.CourseEditor
         public string themeId = "temperate";
         public ElevationGridDto elevation;
         public HoleTileDto[] surfaceTiles = Array.Empty<HoleTileDto>();
+        public HazardTileDto[] hazardTiles = Array.Empty<HazardTileDto>();
         public HazardPolygonDto[] hazards = Array.Empty<HazardPolygonDto>();
         public FoliagePlacementDto[] placements = Array.Empty<FoliagePlacementDto>();
         public HoleMetaDto hole = new();
@@ -93,6 +103,7 @@ namespace DiskGolf.CourseEditor
                 themeId = data.ThemeId,
                 elevation = ToElevationDto(data.Elevation),
                 surfaceTiles = tiles,
+                hazardTiles = ToHazardTileDtos(data.HazardTiles),
                 hazards = ToHazardDtos(data.Hazards),
                 placements = ToPlacementDtos(data.Placements),
                 hole = new HoleMetaDto
@@ -100,7 +111,8 @@ namespace DiskGolf.CourseEditor
                     tee = new[] { data.Hole.Tee.x, data.Hole.Tee.y },
                     basket = new[] { data.Hole.Basket.x, data.Hole.Basket.y },
                     par = data.Hole.Par,
-                    circleRadiusFt = data.Hole.CircleRadiusFt
+                    circleRadiusFt = data.Hole.CircleRadiusFt,
+                    skyboxId = string.IsNullOrEmpty(data.Hole.SkyboxId) ? "sky_clear" : data.Hole.SkyboxId
                 }
             };
         }
@@ -121,6 +133,17 @@ namespace DiskGolf.CourseEditor
             data.Hazards = ToHazardDomain(hazards);
             data.Placements = ToPlacementDomain(placements);
 
+            if (hazardTiles != null)
+            {
+                foreach (var tile in hazardTiles)
+                {
+                    if (!TryParseHazardType(tile.type, out var type))
+                        continue;
+
+                    data.SetHazardTile(tile.x, tile.y, type);
+                }
+            }
+
             if (surfaceTiles != null)
             {
                 foreach (var tile in surfaceTiles)
@@ -138,6 +161,7 @@ namespace DiskGolf.CourseEditor
                 data.Hole.Basket = new Vector2(hole.basket[0], hole.basket[1]);
                 data.Hole.Par = hole.par;
                 data.Hole.CircleRadiusFt = hole.circleRadiusFt;
+                data.Hole.SkyboxId = string.IsNullOrEmpty(hole.skyboxId) ? "sky_clear" : hole.skyboxId;
             }
 
             return data;
@@ -172,6 +196,26 @@ namespace DiskGolf.CourseEditor
             int copyLength = Mathf.Min(dto.heights.Length, grid.Heights.Length);
             Array.Copy(dto.heights, grid.Heights, copyLength);
             return grid;
+        }
+
+        static HazardTileDto[] ToHazardTileDtos(System.Collections.Generic.List<HoleHazardTile> tiles)
+        {
+            if (tiles == null || tiles.Count == 0)
+                return Array.Empty<HazardTileDto>();
+
+            var dtos = new HazardTileDto[tiles.Count];
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                var tile = tiles[i];
+                dtos[i] = new HazardTileDto
+                {
+                    x = tile.X,
+                    y = tile.Y,
+                    type = tile.Type.ToString().ToLowerInvariant()
+                };
+            }
+
+            return dtos;
         }
 
         static HazardPolygonDto[] ToHazardDtos(System.Collections.Generic.List<HazardPolygon> hazards)

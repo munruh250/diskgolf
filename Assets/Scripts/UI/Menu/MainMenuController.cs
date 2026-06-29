@@ -12,6 +12,8 @@ namespace DiskGolf.UI.Menu
 
         [SerializeField] Button settingsButton;
 
+        [SerializeField] Button courseEditorButton;
+
         void Awake()
         {
             if (characterSelectButton != null)
@@ -22,6 +24,9 @@ namespace DiskGolf.UI.Menu
 
             if (settingsButton != null)
                 settingsButton.onClick.AddListener(() => SceneLoader.Load(SceneFlow.Settings));
+
+            if (courseEditorButton != null)
+                courseEditorButton.onClick.AddListener(() => SceneLoader.Load(SceneFlow.CourseEditorHub));
         }
     }
 }

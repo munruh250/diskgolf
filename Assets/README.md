@@ -78,10 +78,31 @@ Runtime loading goes through `RuntimeArt` / `GameplayArtCatalog`.
 3. Tune the scene directly in the Hierarchy/Inspector — no auto-setup menu runs on load
 4. Always commit `.meta` files with assets
 
-## Course editor (P0)
+## Player Course Editor
 
+Player-facing in-game editor (no Unity Editor required):
+
+- **Main Menu → Course Editor** — opens the Course Editor Hub
+- **New Hole** wizard: name your hole, pick a template (e.g. **Straight Par 3** ~250 yd), choose a theme, then **Start Building**
+- Edit tools: paint surfaces, place tee/basket, hazards; camera presets; undo/redo
+- **Playtest** — inline throw using the same gameplay HUD and rules as Course Select
+- **Save** writes to `Application.persistentDataPath/Courses/` (`{id}.json`, thumbnail, meta)
+- Autosaves every 30 s while editing when there are unsaved changes
+- **PC only:** Hub **Import File** / card **Export** for sharing `.json` holes
+
+Scenes: `Assets/Scenes/Menu/CourseEditorHub.unity`, `Assets/Scenes/Prototype/CourseEditor.unity`
+
+Unity menu (setup / rebuild):
+
+- **Disk Golf → Build Menu Scenes** — regenerates menu scenes including Hub + player editor
+- **Disk Golf → Course → Rebuild Player Course Editor Scene** — rebuilds the runtime editor scene (throw rig, HUD roots)
+
+## Course editor (dev)
+
+Legacy Unity Editor workflow for developers — not the player path:
+
+- Open **Disk Golf → Course Editor (Dev)** (or **Disk Golf → Course Editor**)
 - Open **Assets/Scenes/Prototype/CourseEditor.unity** (run **Disk Golf → Course → Rebuild Course Editor Scene** once if playtest lacks a throw rig)
-- Open **Disk Golf → Course Editor**
 - If **Theme** is empty: click **Create Default Theme Pack** in the window, or run **Disk Golf → Course → Create Default Theme Pack**
 - Paint tiles, place tee/basket, export `Assets/Data/Courses/<name>/hole_XX.json`
 - Themes live in `Assets/Data/Themes/ThemePack_*.asset`
